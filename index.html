@@ -385,21 +385,20 @@
       const CHUNK      = 4096;
 
       for (let offset = 0; offset < total; offset += CHUNK) {
-        const count       = Math.min(CHUNK, total - offset);
-        const interleaved = new Float32Array(count * numCh);
+        const count  = Math.min(CHUNK, total - offset);
+        // f32-planar: all ch0 samples, then all ch1 samples (non-interleaved)
+        const planar = new Float32Array(count * numCh);
         for (let ch = 0; ch < numCh; ch++) {
           const chData = audioBuffer.getChannelData(ch);
-          for (let i = 0; i < count; i++) {
-            interleaved[i * numCh + ch] = chData[offset + i];
-          }
+          planar.set(chData.subarray(offset, offset + count), ch * count);
         }
         const audioData = new AudioData({
-          format:           'f32',
+          format:           'f32-planar',
           sampleRate:       sr,
           numberOfChannels: numCh,
           numberOfFrames:   count,
           timestamp:        Math.round((offset / sr) * 1_000_000),
-          data:             interleaved,
+          data:             planar,
         });
         audioEncoder.encode(audioData);
         audioData.close();
