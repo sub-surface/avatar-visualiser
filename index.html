@@ -36,7 +36,7 @@
     }
     #overlay.hidden { display: none; }
 
-    /* ── Info widget ─────────────────────────────────────────── */
+    /* ── Widget ──────────────────────────────────────────────── */
     #widget {
       position: fixed;
       top: 16px;
@@ -52,28 +52,22 @@
       pointer-events: auto;
       user-select: none;
     }
-    #widget a {
+    #widget a, .wbtn {
+      background: transparent;
+      border: none;
+      padding: 0;
       color: rgba(232, 213, 176, 0.35);
       text-decoration: none;
       text-transform: lowercase;
       letter-spacing: 0.22em;
-      transition: color 0.15s;
-    }
-    #widget a:hover { color: #e8d5b0; }
-    #exportBtn {
-      background: transparent;
-      border: none;
-      color: rgba(232, 213, 176, 0.35);
       font-family: 'Courier New', monospace;
       font-size: 0.72rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      padding: 0;
       cursor: pointer;
       transition: color 0.15s;
     }
-    #exportBtn:hover:not(:disabled) { color: #e8d5b0; }
-    #exportBtn:disabled { opacity: 0.28; cursor: not-allowed; }
+    #widget a:hover, .wbtn:hover:not(:disabled) { color: #e8d5b0; }
+    .wbtn:disabled { opacity: 0.28; cursor: not-allowed; }
+
     #progress {
       color: rgba(232, 213, 176, 0.4);
       font-size: 0.65rem;
@@ -81,9 +75,76 @@
       min-height: 0.9em;
       text-align: right;
     }
+
+    /* ── Parameters panel ────────────────────────────────────── */
+    #paramsPanel {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      width: 220px;
+      padding: 8px 0 4px;
+      border-top: 1px solid rgba(232, 213, 176, 0.1);
+    }
+    #paramsPanel.open { display: flex; }
+
+    .prow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .prow label {
+      color: rgba(232, 213, 176, 0.35);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      min-width: 80px;
+    }
+    .prow .pval {
+      color: rgba(232, 213, 176, 0.55);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* Range inputs */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 2px;
+      background: rgba(232, 213, 176, 0.2);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      background: rgba(232, 213, 176, 0.7);
+      border-radius: 50%;
+    }
+    input[type=range]:hover { background: rgba(232, 213, 176, 0.35); }
+
+    /* Select inputs */
+    select.psel {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(232, 213, 176, 0.2);
+      color: rgba(232, 213, 176, 0.7);
+      font-family: 'Courier New', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      outline: none;
+      cursor: pointer;
+      padding: 1px 0;
+    }
+    select.psel option { background: #111; }
   </style>
 
-  <!-- mp4-muxer: MP4 container muxing (must come before importmap) -->
+  <!-- mp4-muxer (must come before importmap) -->
   <script src="https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 
   <script type="importmap">
@@ -99,23 +160,79 @@
   <div id="overlay"><span>Click to start</span></div>
 
   <div id="widget">
-    <a href="https://sub-surface.net" target="_blank">sub-surface.net</a>
-    <button id="exportBtn">Load &amp; Export</button>
+    <a href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
+    <button class="wbtn" id="paramsToggle">parameters</button>
+
+    <div id="paramsPanel">
+      <div class="prow">
+        <label>freq scale</label>
+        <select class="psel" id="pFreqScale">
+          <option value="dnb" selected>dnb</option>
+          <option value="log">log</option>
+          <option value="linear">linear</option>
+        </select>
+        <span class="pval" id="vFreqScale">dnb</span>
+      </div>
+      <div class="prow">
+        <label>freq range</label>
+        <input type="range" id="pFreqRange" min="0.2" max="1.0" step="0.05" value="0.55">
+        <span class="pval" id="vFreqRange">0.55</span>
+      </div>
+      <div class="prow">
+        <label>smoothing</label>
+        <input type="range" id="pSmoothing" min="0.1" max="0.95" step="0.05" value="0.55">
+        <span class="pval" id="vSmoothing">0.55</span>
+      </div>
+      <div class="prow">
+        <label>displacement</label>
+        <input type="range" id="pMaxDisp" min="0.5" max="5.0" step="0.1" value="2.2">
+        <span class="pval" id="vMaxDisp">2.2</span>
+      </div>
+      <div class="prow">
+        <label>bowl shape</label>
+        <input type="range" id="pBowlExp" min="0.5" max="4.0" step="0.1" value="2.0">
+        <span class="pval" id="vBowlExp">2.0</span>
+      </div>
+      <div class="prow">
+        <label>rows</label>
+        <input type="range" id="pRows" min="20" max="120" step="10" value="60">
+        <span class="pval" id="vRows">60</span>
+      </div>
+      <div class="prow">
+        <label>cols</label>
+        <input type="range" id="pCols" min="64" max="256" step="32" value="128">
+        <span class="pval" id="vCols">128</span>
+      </div>
+    </div>
+
+    <button class="wbtn" id="exportBtn">load &amp; export</button>
     <div id="progress"></div>
   </div>
   <input type="file" id="wavInput" accept=".wav,audio/wav,audio/x-wav" style="display:none">
 
   <script type="module">
     import * as THREE from 'three';
+    import {
+      applyHannWindow, fftRadix2, computeFFTBins,
+      buildBinMap, bowlFactor, buildAWeightGain
+    } from './dsp.js';
 
-    /* ── Constants ─────────────────────────────────────────── */
-    const ROWS       = 60;
-    const COLS       = 128;
-    const GRID_W     = 10;
-    const GRID_D     = 10;
-    const FFT_SIZE   = 2048;  // 4x resolution: ~21Hz/bin at 44.1kHz vs ~86Hz before
-    const MAX_DISP   = 2.2;
-    const BOWL_EXP   = 2.0;
+    /* ── Live parameters object ──────────────────────────────── */
+    const P = {
+      rows:      60,
+      cols:      128,
+      maxDisp:   2.2,
+      bowlExp:   2.0,
+      smoothing: 0.55,
+      freqScale: 'dnb',
+      freqRange: 0.55,
+    };
+
+    /* ── Fixed constants ─────────────────────────────────────── */
+    const FFT_SIZE  = 2048;
+    const NUM_BINS  = FFT_SIZE / 2;   // 1024
+    const GRID_W    = 10;
+    const GRID_D    = 10;
     const LINE_COLOR = 0xe8d5b0;
     const BG_COLOR   = 0x0d0d0d;
     const EXPORT_W   = 1920;
@@ -131,38 +248,61 @@
 
     /* ── Scene & Camera ─────────────────────────────────────── */
     const scene  = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      100
-    );
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.set(0, 5.5, 9);
     camera.lookAt(0, -0.5, 0);
 
-    /* ── Grid ───────────────────────────────────────────────── */
+    /* ── Grid (mutable — rebuilt when P.rows/P.cols change) ─── */
     const lines      = [];
     const posBuffers = [];
     const material   = new THREE.LineBasicMaterial({ color: LINE_COLOR });
 
-    for (let r = 0; r < ROWS; r++) {
-      const t_row = r / (ROWS - 1);
-      const z     = (t_row - 0.5) * GRID_D;
-
-      const positions = new Float32Array(COLS * 3);
-      for (let c = 0; c < COLS; c++) {
-        const t_col = c / (COLS - 1);
-        positions[c * 3 + 0] = (t_col - 0.5) * GRID_W;
-        positions[c * 3 + 1] = 0;
-        positions[c * 3 + 2] = z;
+    function rebuildGrid() {
+      lines.forEach(l => scene.remove(l));
+      lines.length = 0;
+      posBuffers.length = 0;
+      // histBuf is resized separately in rebuildHistory()
+      for (let r = 0; r < P.rows; r++) {
+        const t_row     = r / (P.rows - 1);
+        const z         = (t_row - 0.5) * GRID_D;
+        const positions = new Float32Array(P.cols * 3);
+        for (let c = 0; c < P.cols; c++) {
+          const t_col = c / (P.cols - 1);
+          positions[c * 3 + 0] = (t_col - 0.5) * GRID_W;
+          positions[c * 3 + 1] = 0;
+          positions[c * 3 + 2] = z;
+        }
+        const geo  = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const line = new THREE.Line(geo, material);
+        scene.add(line);
+        lines.push(line);
+        posBuffers.push(positions);
       }
+    }
 
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const line = new THREE.Line(geo, material);
-      scene.add(line);
-      lines.push(line);
-      posBuffers.push(positions);
+    rebuildGrid();
+
+    /* ── Frequency history ring buffer ──────────────────────── */
+    const histBuf = [];
+    let   histHead = 0;
+
+    function rebuildHistory() {
+      histBuf.length = 0;
+      for (let i = 0; i < P.rows; i++) histBuf.push(new Float32Array(NUM_BINS));
+      histHead = 0;
+    }
+
+    rebuildHistory();
+
+    /* ── A-weight gain table (assume 44100Hz; good for 48kHz too) */
+    const aWeightGain = buildAWeightGain(NUM_BINS, FFT_SIZE, 44100);
+
+    /* ── Bin map — rebuilt when scale/range changes ──────────── */
+    let binMap = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
+
+    function refreshBinMap() {
+      binMap = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
     }
 
     /* ── Audio (live mic) ────────────────────────────────────── */
@@ -176,7 +316,7 @@
       const source = ctx.createMediaStreamSource(stream);
       analyser     = ctx.createAnalyser();
       analyser.fftSize               = FFT_SIZE;
-      analyser.smoothingTimeConstant = 0.55; // sharper transients vs 0.80
+      analyser.smoothingTimeConstant = P.smoothing;
       source.connect(analyser);
       freqData   = new Uint8Array(analyser.frequencyBinCount);
       audioReady = true;
@@ -202,73 +342,31 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    /* ── Frequency history ring buffer ──────────────────────── */
-    // Each row shows a different moment in time: row 0 (front) = newest,
-    // row ROWS-1 (back) = oldest. This is what gives the "terrain scrolling
-    // toward the viewer" look of the reference image.
-    const NUM_BINS   = FFT_SIZE / 2;              // 1024 bins
-    const histBuf    = new Array(ROWS).fill(null).map(() => new Float32Array(NUM_BINS));
-    let   histHead   = 0;                         // index of the newest row
-
-    // A-weighting approximation: boosts perceptually loud mids, rolls off
-    // sub-bass and ultra-high. Bin k at sample rate sr maps to freq f = k*sr/FFT_SIZE.
-    function aWeight(f) {
-      const f2 = f * f;
-      const f4 = f2 * f2;
-      // Numerator / denominator approximation of the A(f) curve
-      const num = 1.562339 * f4;
-      const den = (f2 + 107.65265) * (f2 + 737.86223);
-      const aden = (f2 + 20.598997) * (f2 + 12194.217);
-      return (num / (den * aden * aden)) * 1e16; // scale so peak ≈ 1
-    }
-
-    // Pre-compute A-weight gain per bin (clamped 0–1, peaked at ~3.5kHz)
-    const aWeightGain = new Float32Array(NUM_BINS);
-    {
-      const sr = 44100; // assume 44.1kHz; recalculated on first audio frame if needed
-      let peak = 0;
-      for (let k = 0; k < NUM_BINS; k++) {
-        const f = Math.max(1, k * sr / FFT_SIZE);
-        aWeightGain[k] = aWeight(f);
-        if (aWeightGain[k] > peak) peak = aWeightGain[k];
-      }
-      // Normalise so max gain = 1, then blend with flat response (0.5 flat + 0.5 weighted)
-      for (let k = 0; k < NUM_BINS; k++) {
-        aWeightGain[k] = 0.5 + 0.5 * (aWeightGain[k] / peak);
-      }
-    }
-
-    /* ── Push a new frequency snapshot into the history ─────── */
+    /* ── Push a frequency snapshot into the history ──────────── */
     function pushHistory(fd) {
-      histHead = (histHead + ROWS - 1) % ROWS; // advance head backward (newest at front)
-      const row = histBuf[histHead];
+      histHead      = (histHead + P.rows - 1) % P.rows;
+      const row     = histBuf[histHead];
+      const halfCols = P.cols / 2;
       for (let k = 0; k < NUM_BINS; k++) {
         row[k] = (fd[k] / 255) * aWeightGain[k];
       }
     }
 
-    /* ── Shared displacement helper ──────────────────────────── */
-    // fd / timeAcc args kept for API compatibility but only fd is used to push history.
-    function applyDisplacement(fd, _timeAcc) {
+    /* ── Displacement (shared: live + export) ────────────────── */
+    function applyDisplacement(fd) {
       pushHistory(fd);
+      const halfCols = P.cols / 2;
 
-      const halfCols = COLS / 2;
+      for (let r = 0; r < P.rows; r++) {
+        const positions = posBuffers[r];
+        const histRow   = histBuf[(histHead + r) % P.rows];
+        const bf        = bowlFactor(r, P.rows, P.bowlExp);
 
-      for (let r = 0; r < ROWS; r++) {
-        const positions  = posBuffers[r];
-        // Row r reads from history offset r: row 0 = newest, row ROWS-1 = oldest
-        const histRow    = histBuf[(histHead + r) % ROWS];
-
-        const t_row      = r / (ROWS - 1);
-        const centreDist = Math.abs(t_row - 0.5) * 2;
-        const bowlFactor = Math.pow(1.0 - centreDist, BOWL_EXP);
-
-        for (let c = 0; c < COLS; c++) {
-          // Mirror left/right for symmetry; map to lower 55% of bins (sub-bass to ~10kHz)
-          const colMirror = c < halfCols ? c : COLS - 1 - c;
-          const binIndex  = Math.floor((colMirror / halfCols) * NUM_BINS * 0.55);
-          const val       = histRow[Math.min(binIndex, NUM_BINS - 1)];
-          positions[c * 3 + 1] = -val * bowlFactor * MAX_DISP;
+        for (let c = 0; c < P.cols; c++) {
+          const colMirror = c < halfCols ? c : P.cols - 1 - c;
+          const bin       = binMap[Math.min(colMirror, halfCols - 1)];
+          const val       = histRow[bin];
+          positions[c * 3 + 1] = -val * bf * P.maxDisp;
         }
 
         lines[r].geometry.attributes.position.needsUpdate = true;
@@ -277,15 +375,14 @@
 
     /* ── Live animation loop ─────────────────────────────────── */
     const clock = new THREE.Clock();
-    let timeAccum = 0;
 
     function animate() {
       requestAnimationFrame(animate);
-      timeAccum += clock.getDelta();
+      clock.getDelta(); // keep clock ticking even when not used
 
       if (audioReady) {
         analyser.getByteFrequencyData(freqData);
-        applyDisplacement(freqData, timeAccum);
+        applyDisplacement(freqData);
       }
 
       renderer.render(scene, camera);
@@ -294,71 +391,56 @@
     animate();
 
     /* ══════════════════════════════════════════════════════════
-       EXPORT PIPELINE
+       PARAMETERS PANEL
     ══════════════════════════════════════════════════════════ */
 
-    /* ── Inline Cooley-Tukey FFT ─────────────────────────────── */
-    function applyHannWindow(buf) {
-      const N = buf.length;
-      for (let i = 0; i < N; i++) {
-        buf[i] *= 0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
-      }
+    document.getElementById('paramsToggle').addEventListener('click', () => {
+      document.getElementById('paramsPanel').classList.toggle('open');
+    });
+
+    function bindRange(id, valId, key, onChange) {
+      const input = document.getElementById(id);
+      const label = document.getElementById(valId);
+      input.addEventListener('input', () => {
+        const v = parseFloat(input.value);
+        P[key]  = v;
+        label.textContent = v;
+        if (onChange) onChange(v);
+      });
     }
 
-    function fftRadix2(re, im) {
-      const N = re.length;
-      // Bit-reversal permutation
-      let j = 0;
-      for (let i = 1; i < N; i++) {
-        let bit = N >> 1;
-        for (; j & bit; bit >>= 1) j ^= bit;
-        j ^= bit;
-        if (i < j) {
-          [re[i], re[j]] = [re[j], re[i]];
-          [im[i], im[j]] = [im[j], im[i]];
-        }
-      }
-      // Butterfly stages
-      for (let len = 2; len <= N; len <<= 1) {
-        const ang = (-2 * Math.PI) / len;
-        const wRe = Math.cos(ang);
-        const wIm = Math.sin(ang);
-        for (let i = 0; i < N; i += len) {
-          let curRe = 1, curIm = 0;
-          for (let k = 0; k < len / 2; k++) {
-            const uRe = re[i + k],             uIm = im[i + k];
-            const vRe = re[i + k + len/2] * curRe - im[i + k + len/2] * curIm;
-            const vIm = re[i + k + len/2] * curIm + im[i + k + len/2] * curRe;
-            re[i + k]          = uRe + vRe;  im[i + k]          = uIm + vIm;
-            re[i + k + len/2]  = uRe - vRe;  im[i + k + len/2]  = uIm - vIm;
-            const nextRe = curRe * wRe - curIm * wIm;
-            curIm = curRe * wIm + curIm * wRe;
-            curRe = nextRe;
-          }
-        }
-      }
+    function bindSelect(id, valId, key, onChange) {
+      const input = document.getElementById(id);
+      const label = document.getElementById(valId);
+      input.addEventListener('change', () => {
+        P[key] = input.value;
+        label.textContent = input.value;
+        if (onChange) onChange(input.value);
+      });
     }
 
-    // Matches Web Audio AnalyserNode default: minDecibels -100, maxDecibels -30
-    const WA_MIN_DB = -100;
-    const WA_MAX_DB = -30;
+    bindSelect('pFreqScale', 'vFreqScale', 'freqScale', () => refreshBinMap());
+    bindRange ('pFreqRange', 'vFreqRange', 'freqRange', () => refreshBinMap());
+    bindRange ('pSmoothing', 'vSmoothing', 'smoothing', v => {
+      if (analyser) analyser.smoothingTimeConstant = v;
+    });
+    bindRange('pMaxDisp', 'vMaxDisp', 'maxDisp');
+    bindRange('pBowlExp', 'vBowlExp', 'bowlExp');
+    bindRange('pRows', 'vRows', 'rows', () => {
+      P.rows = parseInt(document.getElementById('pRows').value);
+      rebuildGrid();
+      rebuildHistory();
+      refreshBinMap();
+    });
+    bindRange('pCols', 'vCols', 'cols', () => {
+      P.cols = parseInt(document.getElementById('pCols').value);
+      rebuildGrid();
+      refreshBinMap();
+    });
 
-    function computeFFTBins(pcmWindow) {
-      const N  = FFT_SIZE; // 2048
-      const re = new Float32Array(pcmWindow);
-      const im = new Float32Array(N);
-      applyHannWindow(re);
-      fftRadix2(re, im);
-      const numBins = N / 2; // 1024
-      const out     = new Uint8Array(numBins);
-      for (let k = 0; k < numBins; k++) {
-        const mag     = Math.sqrt(re[k] * re[k] + im[k] * im[k]) / N;
-        const db      = mag > 0 ? 20 * Math.log10(mag) : WA_MIN_DB;
-        const clamped = Math.max(WA_MIN_DB, Math.min(WA_MAX_DB, db));
-        out[k]        = Math.round(((clamped - WA_MIN_DB) / (WA_MAX_DB - WA_MIN_DB)) * 255);
-      }
-      return out;
-    }
+    /* ══════════════════════════════════════════════════════════
+       EXPORT PIPELINE
+    ══════════════════════════════════════════════════════════ */
 
     /* ── Pre-compute per-frame FFT data ──────────────────────── */
     function precomputeFrameData(audioBuffer, fps) {
@@ -366,9 +448,8 @@
       const totalSamples    = audioBuffer.length;
       const samplesPerFrame = Math.ceil(sr / fps);
       const totalFrames     = Math.ceil(totalSamples / samplesPerFrame);
-      const halfFFT         = FFT_SIZE / 2; // 1024
+      const halfFFT         = FFT_SIZE / 2;
 
-      // Mix to mono
       const ch0  = audioBuffer.getChannelData(0);
       const ch1  = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
       const mono = new Float32Array(totalSamples);
@@ -377,22 +458,20 @@
       }
 
       const frameFreqData = new Array(totalFrames);
-      let prevBins        = new Uint8Array(halfFFT);
+      let   prevBins      = new Uint8Array(halfFFT);
+      const smooth        = P.smoothing;
 
       for (let f = 0; f < totalFrames; f++) {
-        // Centre the 2048-sample window on this frame's midpoint
         const windowStart = f * samplesPerFrame - halfFFT;
         const pcmWindow   = new Float32Array(FFT_SIZE);
         for (let i = 0; i < FFT_SIZE; i++) {
           const idx    = windowStart + i;
           pcmWindow[i] = (idx >= 0 && idx < totalSamples) ? mono[idx] : 0;
         }
-
         const rawBins  = computeFFTBins(pcmWindow);
         const smoothed = new Uint8Array(halfFFT);
-        // Match live smoothingTimeConstant = 0.55
         for (let k = 0; k < halfFFT; k++) {
-          smoothed[k] = Math.round(0.55 * prevBins[k] + 0.45 * rawBins[k]);
+          smoothed[k] = Math.round(smooth * prevBins[k] + (1 - smooth) * rawBins[k]);
         }
         prevBins         = smoothed;
         frameFreqData[f] = smoothed;
@@ -425,26 +504,22 @@
 
     /* ── Encode audio track ──────────────────────────────────── */
     async function encodeAudio(audioEncoder, audioBuffer) {
-      const sr         = audioBuffer.sampleRate;
-      const numCh      = audioBuffer.numberOfChannels;
-      const total      = audioBuffer.length;
-      const CHUNK      = 4096;
+      const sr    = audioBuffer.sampleRate;
+      const numCh = audioBuffer.numberOfChannels;
+      const total = audioBuffer.length;
+      const CHUNK = 4096;
 
       for (let offset = 0; offset < total; offset += CHUNK) {
         const count  = Math.min(CHUNK, total - offset);
-        // f32-planar: all ch0 samples, then all ch1 samples (non-interleaved)
         const planar = new Float32Array(count * numCh);
         for (let ch = 0; ch < numCh; ch++) {
-          const chData = audioBuffer.getChannelData(ch);
-          planar.set(chData.subarray(offset, offset + count), ch * count);
+          planar.set(audioBuffer.getChannelData(ch).subarray(offset, offset + count), ch * count);
         }
         const audioData = new AudioData({
-          format:           'f32-planar',
-          sampleRate:       sr,
-          numberOfChannels: numCh,
-          numberOfFrames:   count,
-          timestamp:        Math.round((offset / sr) * 1_000_000),
-          data:             planar,
+          format: 'f32-planar', sampleRate: sr,
+          numberOfChannels: numCh, numberOfFrames: count,
+          timestamp: Math.round((offset / sr) * 1_000_000),
+          data: planar,
         });
         audioEncoder.encode(audioData);
         audioData.close();
@@ -455,32 +530,53 @@
     /* ── Frame render + encode loop ──────────────────────────── */
     async function runFrameLoop(videoEncoder, frameFreqData, totalFrames, fps, onProgress) {
       const frameDt        = 1 / fps;
-      const exportFreqData = new Uint8Array(NUM_BINS); // 1024
+      const exportFreqData = new Uint8Array(NUM_BINS);
       let   exportTimeAccum = 0;
 
+      // Snapshot export history state (separate from live histBuf)
+      const expHistBuf  = Array.from({ length: P.rows }, () => new Float32Array(NUM_BINS));
+      const expBinMap   = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
+      const expAWGain   = aWeightGain;
+      let   expHistHead = 0;
+
       for (let f = 0; f < totalFrames; f++) {
-        // Backpressure: wait until encoder queue drains before submitting more
-        while (videoEncoder.encodeQueueSize > 2) { // tighter — lossless frames are large
+        while (videoEncoder.encodeQueueSize > 2) {
           await new Promise(r => setTimeout(r, 0));
         }
 
         exportFreqData.set(frameFreqData[f]);
         exportTimeAccum += frameDt;
 
-        applyDisplacement(exportFreqData, exportTimeAccum);
+        // Push into export-local history (doesn't pollute live histBuf)
+        expHistHead = (expHistHead + P.rows - 1) % P.rows;
+        const expRow = expHistBuf[expHistHead];
+        for (let k = 0; k < NUM_BINS; k++) {
+          expRow[k] = (exportFreqData[k] / 255) * expAWGain[k];
+        }
+
+        // Apply displacement using export history
+        const halfCols = P.cols / 2;
+        for (let r = 0; r < P.rows; r++) {
+          const positions  = posBuffers[r];
+          const histRow    = expHistBuf[(expHistHead + r) % P.rows];
+          const bf         = bowlFactor(r, P.rows, P.bowlExp);
+          for (let c = 0; c < P.cols; c++) {
+            const colMirror = c < halfCols ? c : P.cols - 1 - c;
+            const bin       = expBinMap[Math.min(colMirror, halfCols - 1)];
+            positions[c * 3 + 1] = -histRow[bin] * bf * P.maxDisp;
+          }
+          lines[r].geometry.attributes.position.needsUpdate = true;
+        }
+
         renderer.render(scene, camera);
 
-        // Construct VideoFrame directly from canvas — reads true pixel buffer
-        // dimensions (1920×1080) without going through createImageBitmap which
-        // can be confused by CSS display-size overrides
         const videoFrame = new VideoFrame(renderer.domElement, {
           timestamp: Math.round(f * (1_000_000 / fps)),
           duration:  Math.round(1_000_000 / fps),
         });
-        videoEncoder.encode(videoFrame, { keyFrame: true }); // every frame = keyframe, no temporal compression
+        videoEncoder.encode(videoFrame, { keyFrame: true });
         videoFrame.close();
 
-        // Yield every frame to keep browser responsive
         if (f % 5 === 0) {
           onProgress(Math.round((f / totalFrames) * 100));
           await new Promise(r => setTimeout(r, 0));
@@ -495,103 +591,79 @@
 
     async function startExport(wavFile) {
       if (isExporting) return;
-      isExporting        = true;
+      isExporting = true;
       exportBtn.disabled = true;
-      const FPS          = 30;
+      const FPS = 30;
 
       try {
-        // 1. Decode WAV
         progressEl.textContent = 'Decoding audio...';
         const arrayBuffer = await wavFile.arrayBuffer();
         const tmpCtx      = new AudioContext();
         const audioBuffer = await tmpCtx.decodeAudioData(arrayBuffer);
         await tmpCtx.close();
 
-        // 2. Pre-compute FFT per frame
         progressEl.textContent = 'Analysing frequencies...';
         const { frameFreqData, totalFrames } = precomputeFrameData(audioBuffer, FPS);
 
-        // 3. Resize renderer to export resolution
         beginExportResize();
 
-        // 4. Set up muxer
         const { Muxer, ArrayBufferTarget } = Mp4Muxer;
         const target = new ArrayBufferTarget();
         const muxer  = new Muxer({
           target,
           video: { codec: 'avc', width: EXPORT_W, height: EXPORT_H },
           audio: {
-            codec:            'aac',
-            sampleRate:       audioBuffer.sampleRate,
+            codec: 'aac',
+            sampleRate: audioBuffer.sampleRate,
             numberOfChannels: audioBuffer.numberOfChannels,
           },
           fastStart: 'in-memory',
         });
 
-        // 5. Configure VideoEncoder — lossless-quality: every frame is a keyframe,
-        //    quantizer mode q=0 (lossless H.264), no inter-frame temporal compression.
-        //    This is the highest possible quality for line-art on black.
         const videoEncoder = new VideoEncoder({
           output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
           error:  (e) => console.error('VideoEncoder error:', e),
         });
-
         const videoCfg = {
-          codec:          'avc1.640028', // H.264 High Profile 4.0
-          width:          EXPORT_W,
-          height:         EXPORT_H,
-          framerate:      FPS,
-          bitrateMode:    'quantizer',   // CQP mode — ignores bitrate field
-          quantizer:      0,             // 0 = lossless (0–51 scale, lower = better)
-          latencyMode:    'quality',     // prioritise quality over encode speed
+          codec: 'avc1.640028', width: EXPORT_W, height: EXPORT_H,
+          framerate: FPS, bitrateMode: 'quantizer', quantizer: 0, latencyMode: 'quality',
         };
-
-        // quantizer mode may not be supported everywhere — check first
         const qSupport = await VideoEncoder.isConfigSupported(videoCfg);
         if (!qSupport.supported) {
-          // Fallback: very high constant bitrate (100Mbps) — still DCT but near-lossless
           delete videoCfg.bitrateMode; delete videoCfg.quantizer; delete videoCfg.latencyMode;
           videoCfg.bitrate = 100_000_000;
         }
         videoEncoder.configure(videoCfg);
 
-        // 6. Configure AudioEncoder
         const audioEncoder = new AudioEncoder({
           output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
           error:  (e) => console.error('AudioEncoder error:', e),
         });
         audioEncoder.configure({
-          codec:            'mp4a.40.2', // AAC-LC
-          sampleRate:       audioBuffer.sampleRate,
+          codec: 'mp4a.40.2',
+          sampleRate: audioBuffer.sampleRate,
           numberOfChannels: audioBuffer.numberOfChannels,
-          bitrate:          192_000,
+          bitrate: 192_000,
         });
 
-        // 7. Render + encode video frames
-        progressEl.textContent = `0% — 0/${totalFrames} frames`;
-        await runFrameLoop(videoEncoder, frameFreqData, totalFrames, FPS, (pct) => {
+        progressEl.textContent = `0%`;
+        await runFrameLoop(videoEncoder, frameFreqData, totalFrames, FPS, pct => {
           progressEl.textContent = `${pct}%`;
         });
 
-        // 8. Encode audio
         progressEl.textContent = 'Encoding audio...';
         await encodeAudio(audioEncoder, audioBuffer);
 
-        // 9. Flush + finalise
         progressEl.textContent = 'Muxing...';
         await videoEncoder.flush();
         muxer.finalize();
 
-        // 10. Download
         const blob = new Blob([target.buffer], { type: 'video/mp4' });
         const url  = URL.createObjectURL(blob);
         const stem = wavFile.name.replace(/\.[^.]+$/, '');
         const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `${stem}_psychograph.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.href = url; a.download = `${stem}_psychograph.mp4`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
 
         progressEl.textContent = 'Done.';
@@ -601,7 +673,7 @@
         progressEl.textContent = `Error: ${err.message ?? err}`;
       } finally {
         endExportResize();
-        isExporting        = false;
+        isExporting = false;
         exportBtn.disabled = false;
       }
     }
@@ -612,16 +684,10 @@
       exportBtn.disabled = true;
     }
 
-    exportBtn.addEventListener('click', () => {
-      if (!isExporting) wavInput.click();
-    });
-
-    wavInput.addEventListener('change', (e) => {
+    exportBtn.addEventListener('click', () => { if (!isExporting) wavInput.click(); });
+    wavInput.addEventListener('change', e => {
       const file = e.target.files[0];
-      if (file) {
-        startExport(file);
-        wavInput.value = ''; // allow re-selecting same file
-      }
+      if (file) { startExport(file); wavInput.value = ''; }
     });
 
   </script>

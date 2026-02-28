@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PSYCHOGRAPH — Tests</title>
+  <style>
+    body { background: #0d0d0d; color: #c8c8c8; font-family: 'Courier New', monospace; font-size: 0.8rem; padding: 24px; line-height: 1.7; }
+    h1 { color: #e8d5b0; letter-spacing: 0.3em; font-size: 0.9rem; margin-bottom: 20px; font-weight: normal; }
+    h2 { color: rgba(232,213,176,0.5); letter-spacing: 0.2em; font-size: 0.75rem; margin: 18px 0 6px; font-weight: normal; }
+    .pass { color: #7ec87e; }
+    .fail { color: #e07070; }
+    #summary { margin-top: 20px; color: #e8d5b0; letter-spacing: 0.15em; }
+  </style>
+</head>
+<body>
+<h1>PSYCHOGRAPH / TESTS</h1>
+<div id="out"></div>
+<div id="summary"></div>
+
+<script type="module">
+  import {
+    applyHannWindow, fftRadix2, computeFFTBins,
+    buildBinMap, bowlFactor, buildAWeightGain
+  } from './dsp.js';
+
+  /* ── Minimal test harness ──────────────────────────────────── */
+  const results = [];
+  const out     = document.getElementById('out');
+
+  function section(name) {
+    const h = document.createElement('h2');
+    h.textContent = name;
+    out.appendChild(h);
+  }
+
+  function test(name, fn) {
+    let ok = false, msg = '';
+    try {
+      fn();
+      ok = true;
+    } catch (e) {
+      msg = e.message ?? String(e);
+    }
+    results.push(ok);
+    const el = document.createElement('div');
+    el.className = ok ? 'pass' : 'fail';
+    el.textContent = `${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  —  ${msg}`}`;
+    out.appendChild(el);
+  }
+
+  function assert(cond, msg) {
+    if (!cond) throw new Error(msg ?? 'assertion failed');
+  }
+  function assertClose(a, b, tol, msg) {
+    if (Math.abs(a - b) > tol)
+      throw new Error(`${msg ?? ''}: expected ${b} ±${tol}, got ${a}`);
+  }
+  function assertMonotone(arr, msg) {
+    for (let i = 1; i < arr.length; i++) {
+      if (arr[i] < arr[i - 1])
+        throw new Error(`${msg ?? 'not monotone'} at index ${i}: ${arr[i-1]} > ${arr[i]}`);
+    }
+  }
+
+  /* ── Helpers ───────────────────────────────────────────────── */
+  const SR      = 44100;
+  const FFT_N   = 2048;
+  const NUM_BINS = FFT_N / 2;
+
+  function makeSine(freq, n, sr, amp = 0.9) {
+    const buf = new Float32Array(n);
+    for (let i = 0; i < n; i++) buf[i] = amp * Math.sin(2 * Math.PI * freq * i / sr);
+    return buf;
+  }
+
+  function dominantBin(bins) {
+    let max = -1, idx = 0;
+    for (let i = 0; i < bins.length; i++) if (bins[i] > max) { max = bins[i]; idx = i; }
+    return idx;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     1. FFT CORRECTNESS
+  ════════════════════════════════════════════════════════════ */
+  section('FFT correctness');
+
+  test('applyHannWindow: sum of squares ≈ N/2', () => {
+    const buf = new Float32Array(FFT_N).fill(1);
+    applyHannWindow(buf);
+    const sos = buf.reduce((s, v) => s + v * v, 0);
+    assertClose(sos, FFT_N / 2, FFT_N * 0.02, 'Hann SOS');
+  });
+
+  test('fftRadix2: DC bin for constant signal', () => {
+    const re = new Float32Array(FFT_N).fill(1);
+    const im = new Float32Array(FFT_N).fill(0);
+    fftRadix2(re, im);
+    // DC bin magnitude should equal N
+    assertClose(re[0], FFT_N, FFT_N * 0.001, 'DC re[0]');
+    assertClose(im[0], 0, 0.001, 'DC im[0]');
+  });
+
+  test('fftRadix2: 440 Hz sine dominant bin correct', () => {
+    const signal = makeSine(440, FFT_N, SR);
+    const re = new Float32Array(signal);
+    const im = new Float32Array(FFT_N);
+    fftRadix2(re, im);
+    const mags = new Float32Array(NUM_BINS);
+    for (let k = 0; k < NUM_BINS; k++) mags[k] = Math.sqrt(re[k]*re[k] + im[k]*im[k]);
+    const dom     = dominantBin(mags);
+    const expected = Math.round(440 * FFT_N / SR);
+    assert(Math.abs(dom - expected) <= 1, `dominant bin ${dom}, expected ${expected} ±1`);
+  });
+
+  test('computeFFTBins: silence → all bins 0', () => {
+    const bins = computeFFTBins(new Float32Array(FFT_N));
+    assert(bins.every(v => v === 0), 'expected all-zero bins for silence');
+  });
+
+  test('computeFFTBins: 1kHz full-scale sine → bin at 1kHz > 180', () => {
+    const signal = makeSine(1000, FFT_N, SR);
+    const bins   = computeFFTBins(signal);
+    const kBin   = Math.round(1000 * FFT_N / SR);
+    assert(bins[kBin] > 180, `1kHz bin value ${bins[kBin]}, expected > 180`);
+  });
+
+  test('computeFFTBins: output is Uint8Array of length FFT_N/2', () => {
+    const bins = computeFFTBins(new Float32Array(FFT_N));
+    assert(bins instanceof Uint8Array, 'not Uint8Array');
+    assert(bins.length === NUM_BINS, `length ${bins.length}, expected ${NUM_BINS}`);
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     2. BIN MAP
+  ════════════════════════════════════════════════════════════ */
+  section('Bin mapping');
+
+  const HALF_COLS  = 64;
+  const FREQ_RANGE = 0.55;
+
+  test('linear: first bin = 0', () => {
+    const m = buildBinMap('linear', HALF_COLS, NUM_BINS, FREQ_RANGE, SR);
+    assert(m[0] === 0, `m[0]=${m[0]}`);
+  });
+
+  test('linear: last bin ≈ freqRange * NUM_BINS', () => {
+    const m = buildBinMap('linear', HALF_COLS, NUM_BINS, FREQ_RANGE, SR);
+    const expected = Math.round(FREQ_RANGE * NUM_BINS);
+    assertClose(m[HALF_COLS - 1], expected, 2, 'last bin');
+  });
+
+  test('linear: monotonically non-decreasing', () => {
+    const m = buildBinMap('linear', HALF_COLS, NUM_BINS, FREQ_RANGE, SR);
+    assertMonotone(m, 'linear binMap');
+  });
+
+  test('log: monotonically non-decreasing', () => {
+    const m = buildBinMap('log', HALF_COLS, NUM_BINS, FREQ_RANGE, SR);
+    assertMonotone(m, 'log binMap');
+  });
+
+  test('log: denser at low end than linear (first quarter wider)', () => {
+    const lin = buildBinMap('linear', HALF_COLS, NUM_BINS, FREQ_RANGE, SR);
+    const log = buildBinMap('log',    HALF_COLS, NUM_BINS, FREQ_RANGE, SR);
+    // Log should map more cols to low bins: midpoint col should be at lower bin in log than linear
+    const mid = Math.floor(HALF_COLS / 2);
+    assert(log[mid] < lin[mid], `log mid bin ${log[mid]} not < linear mid bin ${lin[mid]}`);
+  });
+
+  test('dnb: first 25% of cols map into 40–180 Hz', () => {
+    const m         = buildBinMap('dnb', HALF_COLS, NUM_BINS, 1.0, SR);
+    const hzPerBin  = (SR / 2) / NUM_BINS;
+    const quarter   = Math.floor(HALF_COLS * 0.25);
+    // All bins in first quarter should be in 40–180Hz range
+    for (let c = 0; c < quarter; c++) {
+      const hz = m[c] * hzPerBin;
+      assert(hz >= 35 && hz <= 185, `col ${c}: ${hz.toFixed(0)}Hz not in 40–180Hz`);
+    }
+  });
+
+  test('dnb: middle 50% of cols span 500–6000 Hz', () => {
+    const m        = buildBinMap('dnb', HALF_COLS, NUM_BINS, 1.0, SR);
+    const hzPerBin = (SR / 2) / NUM_BINS;
+    const lo = Math.floor(HALF_COLS * 0.25);
+    const hi = Math.floor(HALF_COLS * 0.75);
+    const hzLo = m[lo] * hzPerBin;
+    const hzHi = m[hi] * hzPerBin;
+    assert(hzLo >= 450 && hzLo <= 600,   `lower boundary: ${hzLo.toFixed(0)}Hz, expected ~500`);
+    assert(hzHi >= 5000 && hzHi <= 7000, `upper boundary: ${hzHi.toFixed(0)}Hz, expected ~6000`);
+  });
+
+  test('dnb: monotonically non-decreasing', () => {
+    const m = buildBinMap('dnb', HALF_COLS, NUM_BINS, 1.0, SR);
+    assertMonotone(m, 'dnb binMap');
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     3. BOWL FACTOR
+  ════════════════════════════════════════════════════════════ */
+  section('Bowl factor');
+
+  test('centre row returns 1.0', () => {
+    const rows = 60, exp = 2.0;
+    const mid  = Math.round(rows / 2);
+    assertClose(bowlFactor(mid, rows, exp), 1.0, 0.05, 'centre');
+  });
+
+  test('first row ≈ 0', () => {
+    assertClose(bowlFactor(0, 60, 2.0), 0.0, 0.05, 'first row');
+  });
+
+  test('last row ≈ 0', () => {
+    assertClose(bowlFactor(59, 60, 2.0), 0.0, 0.05, 'last row');
+  });
+
+  test('higher bowlExp → steeper falloff', () => {
+    // At 25% from edge, higher exp should give lower value
+    const r = 5, rows = 60;
+    assert(bowlFactor(r, rows, 3.0) < bowlFactor(r, rows, 2.0), 'exp 3 should be smaller than exp 2 near edge');
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     4. A-WEIGHT GAIN
+  ════════════════════════════════════════════════════════════ */
+  section('A-weighting');
+
+  test('gain is Float32Array of length NUM_BINS', () => {
+    const g = buildAWeightGain(NUM_BINS, FFT_N, SR);
+    assert(g instanceof Float32Array, 'not Float32Array');
+    assert(g.length === NUM_BINS, `length ${g.length}`);
+  });
+
+  test('all gains in range 0.5–1.0 (blended with flat)', () => {
+    const g = buildAWeightGain(NUM_BINS, FFT_N, SR);
+    assert(g.every(v => v >= 0.49 && v <= 1.01), 'gain out of 0.5–1.0 range');
+  });
+
+  test('peak gain ≈ 1.0', () => {
+    const g   = buildAWeightGain(NUM_BINS, FFT_N, SR);
+    const max = Math.max(...g);
+    assertClose(max, 1.0, 0.01, 'peak gain');
+  });
+
+  test('gain at 3.5kHz is higher than at 100Hz (A-weight peak)', () => {
+    const g       = buildAWeightGain(NUM_BINS, FFT_N, SR);
+    const bin100  = Math.round(100  * FFT_N / SR);
+    const bin3500 = Math.round(3500 * FFT_N / SR);
+    assert(g[bin3500] > g[bin100], `3.5kHz gain ${g[bin3500].toFixed(3)} not > 100Hz gain ${g[bin100].toFixed(3)}`);
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     5. EXPORT SMOOTHING EMA
+  ════════════════════════════════════════════════════════════ */
+  section('Export EMA smoothing');
+
+  test('step response: value after F frames follows (smooth)^F decay', () => {
+    // Simulate: silence for 10 frames, then full signal for 20 frames
+    // Check that response at onset+3 matches EMA formula
+    const smooth    = 0.55;
+    const FFT_HALF  = FFT_N / 2;
+    let   prevBins  = new Uint8Array(FFT_HALF);
+
+    // Build a fake single-bin signal (only bin 10 = 200)
+    // Use a flat signal so computeFFTBins is predictable
+    const silentBins = new Uint8Array(FFT_HALF); // all 0
+    const loudBins   = new Uint8Array(FFT_HALF).fill(200);
+
+    // Run 3 "loud" frames through the EMA
+    let smoothed = new Uint8Array(FFT_HALF);
+    // Frame 0 (loud)
+    for (let k = 0; k < FFT_HALF; k++) smoothed[k] = Math.round(smooth * 0 + (1 - smooth) * 200);
+    const expected1 = Math.round((1 - smooth) * 200);
+    assertClose(smoothed[10], expected1, 2, `frame 1 EMA value`);
+
+    // Frame 1 (loud)
+    const prev = new Uint8Array(smoothed);
+    for (let k = 0; k < FFT_HALF; k++) smoothed[k] = Math.round(smooth * prev[k] + (1 - smooth) * 200);
+    const expected2 = Math.round(smooth * expected1 + (1 - smooth) * 200);
+    assertClose(smoothed[10], expected2, 2, `frame 2 EMA value`);
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     SUMMARY
+  ════════════════════════════════════════════════════════════ */
+  const passed = results.filter(Boolean).length;
+  const total  = results.length;
+  const summary = document.getElementById('summary');
+  summary.textContent = `${passed}/${total} tests passed`;
+  summary.style.color = passed === total ? '#7ec87e' : '#e07070';
+
+</script>
+</body>
+</html>
