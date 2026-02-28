@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PSYCHOGRAPH</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d0d0d;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      cursor: pointer;
+    }
+    #overlay span {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.3em;
+      color: rgba(232, 213, 176, 0.3);
+      text-transform: uppercase;
+      user-select: none;
+    }
+    #overlay.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div id="overlay"><span>Click to start</span></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.169.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    /* ── Constants ─────────────────────────────────────────── */
+    const ROWS       = 60;
+    const COLS       = 128;
+    const GRID_W     = 10;
+    const GRID_D     = 10;
+    const FFT_SIZE   = 512;
+    const MAX_DISP   = 2.2;
+    const BOWL_EXP   = 2.0;
+    const FLOW_SPEED = 0.4;
+    const LINE_COLOR = 0xe8d5b0;
+    const BG_COLOR   = 0x0d0d0d;
+
+    /* ── Renderer ───────────────────────────────────────────── */
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(BG_COLOR, 1);
+    document.body.appendChild(renderer.domElement);
+
+    /* ── Scene & Camera ─────────────────────────────────────── */
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.set(0, 5.5, 9);
+    camera.lookAt(0, -0.5, 0);
+
+    /* ── Grid ───────────────────────────────────────────────── */
+    const lines      = [];
+    const posBuffers = [];
+
+    const material = new THREE.LineBasicMaterial({ color: LINE_COLOR });
+
+    for (let r = 0; r < ROWS; r++) {
+      const t_row = r / (ROWS - 1);
+      const z     = (t_row - 0.5) * GRID_D;
+
+      const positions = new Float32Array(COLS * 3);
+      for (let c = 0; c < COLS; c++) {
+        const t_col = c / (COLS - 1);
+        positions[c * 3 + 0] = (t_col - 0.5) * GRID_W;
+        positions[c * 3 + 1] = 0;
+        positions[c * 3 + 2] = z;
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const line = new THREE.Line(geo, material);
+      scene.add(line);
+      lines.push(line);
+      posBuffers.push(positions);
+    }
+
+    /* ── Audio ──────────────────────────────────────────────── */
+    let analyser   = null;
+    let freqData   = null;
+    let audioReady = false;
+
+    async function initAudio() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const ctx    = new AudioContext();
+      const source = ctx.createMediaStreamSource(stream);
+      analyser     = ctx.createAnalyser();
+      analyser.fftSize              = FFT_SIZE;
+      analyser.smoothingTimeConstant = 0.80;
+      source.connect(analyser);
+      freqData   = new Uint8Array(analyser.frequencyBinCount); // 256 bins
+      audioReady = true;
+    }
+
+    /* ── Overlay / Start gate ───────────────────────────────── */
+    const overlay = document.getElementById('overlay');
+    let started   = false;
+
+    overlay.addEventListener('click', async () => {
+      if (started) return;
+      started = true;
+      overlay.classList.add('hidden');
+      try { await initAudio(); }
+      catch (err) { console.error('Audio init failed:', err); }
+    });
+
+    /* ── Resize ─────────────────────────────────────────────── */
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* ── Animation loop ─────────────────────────────────────── */
+    const clock = new THREE.Clock();
+    let timeAccum = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      timeAccum += clock.getDelta();
+
+      if (audioReady) {
+        analyser.getByteFrequencyData(freqData);
+      }
+
+      const halfCols  = COLS / 2;
+      const bins      = freqData ? freqData.length : 1;
+      const flowPhase = timeAccum * FLOW_SPEED;
+
+      for (let r = 0; r < ROWS; r++) {
+        const positions    = posBuffers[r];
+        const t_row        = r / (ROWS - 1);
+        const centreDist   = Math.abs(t_row - 0.5) * 2;
+        const bowlFactor   = Math.pow(1.0 - centreDist, BOWL_EXP);
+
+        for (let c = 0; c < COLS; c++) {
+          let y = 0;
+
+          if (audioReady) {
+            const colMirror = c < halfCols ? c : COLS - 1 - c;
+            const binIndex  = Math.floor((colMirror / halfCols) * bins * 0.6);
+            const binValue  = freqData[Math.min(binIndex, bins - 1)] / 255;
+
+            const rowOffset = Math.floor(((t_row + flowPhase) % 1) * bins * 0.4);
+            const shiftedBin = (binIndex + rowOffset) % bins;
+            const shiftedVal = freqData[shiftedBin] / 255;
+
+            const blended = binValue * 0.6 + shiftedVal * 0.4;
+            y = -blended * bowlFactor * MAX_DISP;
+          }
+
+          positions[c * 3 + 1] = y;
+        }
+
+        lines[r].geometry.attributes.position.needsUpdate = true;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
