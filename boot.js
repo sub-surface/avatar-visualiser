@@ -136,18 +136,52 @@ const LOADING_STEPS = [
 ];
 
 const TIPS = [
-  'Bowl exponent controls crater wall steepness — try values between 1.5 and 4.',
-  'Press [1-4] to switch visualisation modes live, or [space] to toggle export/live.',
+  // Controls
+  'Press [1–4] to switch vis modes live. [5] cycles the UI palette.',
   'The LFO rate is BPM-synced — 0.25 cycles/beat = one full sweep per bar.',
-  'DNB mode gives 25% of columns to sub-bass (40–180 Hz) for kick clarity.',
-  'Sphere mode auto-rotates at 0.005 rad/frame — use modRms for zoom reactivity.',
-  'LFO 2 modulates the lowpass filter — use with lfoDepth for timbral animation.',
-  'Export renders at 30 FPS through 6 camera styles triggered by audio peaks.',
   'Drag any audio file onto the window — WAV, MP3, FLAC, AAC all supported.',
-  'Director mode lets you reposition the 6 export camera styles precisely.',
-  'Clean mode hides all UI — hover the screen edges to reveal controls.',
-  'A-weighting peaks at ~3.5 kHz per IEC 61672 — this shapes the colour gradient.',
-  'Config export (↓) saves your full parameter set as JSON for sharing.',
+  'Config export (↓) saves your full parameter set as JSON for sharing or archiving.',
+  'Clean mode hides all UI — hover screen edges to reveal controls. URL: ?clean',
+  'Director mode lets you sculpt each of the 6 export camera positions precisely.',
+  // Sound design
+  'DNB bin scale dedicates 25% of columns to 40–180 Hz — the kick lives there.',
+  'Bowl exponent warps crater wall steepness. Try 1.2 (gentle) vs 3.8 (cliff-face).',
+  'LFO 2 modulates the lowpass filter cutoff — pulse it for filter-sweep automation.',
+  'The freq range slider acts as a high-cut. Pull it back to focus the bass register.',
+  'modRms drives camera zoom. High values make the terrain breathe with the mix.',
+  'Polar spacing pushed past zero inverts the fold — try −3.5 for inside-out terrain.',
+  'Sphere mode auto-rotates at 0.005 rad/frame. modRms pulls the camera in on peaks.',
+  'A-weighting biases colour toward 3.5 kHz — the frequency humans hear most clearly.',
+  'Reducing complexity to 1–2 gives a coarse, brutalist look. Pairs well with wave.',
+  // Export
+  'Export renders at 30 FPS; energy peaks trigger camera cuts and vis morphs.',
+  'Cinematic cycle mode cuts between the 6 camera angles on audio energy peaks.',
+  'The lofi export preset adds VHS jitter and chromatic noise to each frame.',
+  'Lossless preset writes 25 Mbps AVC1 — safe to re-encode without generation loss.',
+  // Hidden / esoteric
+  'Sub-bass geometry displacement: modSub at 1.0 will move the earth on a kick drum.',
+  'The worm\'s-eye camera (4) + bowl mode creates an almost geological cross-section.',
+  'Opacity reacts to modTrans — set it high to feel every transient in the wireframe.',
+  'Color cycle at 1.0 with contrasting colorA/B creates a full spectral sweep per bar.',
+  // Humorous
+  'Subwoofer strongly recommended. Laptop speakers will try their best. They will fail.',
+  'If it looks right, turn it up. If it looks wrong, turn it up more.',
+  'The system has detected your taste in music. Results: inconclusive. Sample size: 1.',
+  'Note: ghost mode is accessible via [~]. This has not been confirmed. Good luck.',
+];
+
+// Short inline hints — shown mid-boot in varying styles
+const INLINE_TIPS = [
+  '// [undocumented]  try [~] while the terrain is running',
+  '// colour gradient driven by IEC 61672 A-weighting curve',
+  '// all 6 camera positions are editable in the Director tab',
+  '// drag a .json config onto the window to restore a session',
+  '// LFO rate 0.25 = one cycle per 4 beats at any BPM',
+  '// bowl exponent > 3 creates near-vertical crater walls',
+  '// [undocumented]  clean mode URL: ?clean or ?obs',
+  '// terrain: 60 rows × 128 cols — 7,680 vertices per frame',
+  '// stereo FFT pair — L channel maps left half, R maps right',
+  '// modTrans reacts to onset detection, not raw amplitude',
 ];
 
 // ── Canvas animation helpers ─────────────────────────────────────────────────
@@ -494,14 +528,20 @@ class BootAudio {
 export class BootScreen {
   constructor(terminalEl) {
     this.el = terminalEl;
-    this.skipped = false;
+    this.skipped = false;   // S key: abort everything
+    this.phaseSkip = 0;     // click: advance to next section
+    this._phase = -1;       // current section index
     this.audio = new BootAudio();
   }
 
-  _sk() { return this.skipped; }
+  /** True if this section should collapse (either advance-click or full skip). */
+  _sk() { return this.skipped || this.phaseSkip > this._phase; }
+
+  /** Left-click: jump to the next section. */
+  advance() { this.phaseSkip++; }
 
   _line(text, cls = '') {
-    if (!this.skipped) this.audio.chug(); // Subtle sound on line write
+    if (!this._sk()) this.audio.chug();
     const d = document.createElement('div');
     d.className = 'boot-line' + (cls ? ' ' + cls : '');
     d.innerHTML = text;
@@ -514,17 +554,15 @@ export class BootScreen {
     const d = document.createElement('div');
     d.className = 'boot-line' + (cls ? ' ' + cls : '');
     this.el.appendChild(d);
-    if (this.skipped) { d.innerHTML = text; return; }
-    
-    // For typing, we strip tags to get the visible length
+    if (this._sk()) { d.innerHTML = text; return; }
+
     const plain = text.replace(/<[^>]*>/g, '');
     for (let i = 0; i < plain.length; i++) {
-      if (this.skipped) { d.innerHTML = text; return; }
+      if (this._sk()) { d.innerHTML = text; return; }
       d.textContent = plain.slice(0, i + 1);
       this.el.scrollTop = this.el.scrollHeight;
       await this._sleep(delay);
     }
-    // Set final HTML content to show colors/spans
     d.innerHTML = text;
   }
 
@@ -533,9 +571,9 @@ export class BootScreen {
     d.className = 'boot-line';
     this.el.appendChild(d);
     const W = 24;
-    if (this.skipped) { d.innerHTML = `${label}[${'█'.repeat(W)}] <span class="boot-ok">OK</span>`; return; }
+    if (this._sk()) { d.innerHTML = `${label}[${'█'.repeat(W)}] <span class="boot-ok">OK</span>`; return; }
     for (let i = 0; i <= W; i++) {
-      if (this.skipped) { i = W; }
+      if (this._sk()) { i = W; }
       d.innerHTML = `${label}[${'█'.repeat(i)}${'░'.repeat(W - i)}]`;
       this.audio.chug();
       await this._sleep(duration / W);
@@ -549,10 +587,10 @@ export class BootScreen {
     this.el.appendChild(d);
     const step = 8192;
     for (let v = 0; v <= target; v += step) {
-      if (this.skipped) { v = target; }
+      if (this._sk()) { v = target; }
       d.textContent = `Memory Test: ${(v / 1024).toFixed(0).padStart(4)}K`;
       this.audio.chug();
-      await this._sleep(this.skipped ? 0 : 18);
+      await this._sleep(this._sk() ? 0 : 18);
     }
     d.textContent = `Memory Test:  ${target / 1024}K OK`;
   }
@@ -562,7 +600,7 @@ export class BootScreen {
     d.className = 'boot-line boot-dim';
     this.el.appendChild(d);
     for (let i = 0; i < n; i++) {
-      if (this.skipped) { d.textContent = '.'.repeat(n); return; }
+      if (this._sk()) { d.textContent = '.'.repeat(n); return; }
       d.textContent += '.';
       this.audio.chug();
       await this._sleep(35);
@@ -580,7 +618,7 @@ export class BootScreen {
       { l: 'A_WEIGHT_CURVE_GEN ', ms: 0.15 + Math.random() * 0.1 },
     ];
     for (const t of tests) {
-      if (this.skipped) {
+      if (this._sk()) {
         this._line(`  running ${t.l}${t.ms.toFixed(2).padStart(5)}ms  [PASSED]`, 'boot-ok');
         continue;
       }
@@ -592,8 +630,112 @@ export class BootScreen {
   }
 
   _sleep(ms) {
-    if (this.skipped || ms <= 0) return Promise.resolve();
+    if (this._sk() || ms <= 0) return Promise.resolve();
     return new Promise(r => setTimeout(r, ms));
+  }
+
+  // ── ASCII widgets ──────────────────────────────────────────────────────────
+
+  /** Oscilloscope pulse: a single animated scan-line that builds then decays. */
+  async _scopePulse() {
+    const W = 48;
+    const d = document.createElement('div');
+    d.className = 'boot-line boot-dim';
+    this.el.appendChild(d);
+    const frames = 18;
+    for (let f = 0; f <= frames; f++) {
+      if (this._sk()) { d.remove(); return; }
+      const t = f / frames;
+      const row = Array.from({ length: W }, (_, i) => {
+        const x = (i / W - 0.5) * Math.PI * 4;
+        const y = Math.sin(x + t * Math.PI * 4) * (1 - t * 0.7);
+        if (y > 0.55) return '▄';
+        if (y > 0.15) return '▃';
+        if (y > -0.15) return '─';
+        if (y > -0.55) return '▁';
+        return ' ';
+      }).join('');
+      d.textContent = '  ' + row;
+      await this._sleep(28);
+    }
+    await this._sleep(60);
+    d.remove();
+  }
+
+  /** Branching tree grows upward from a single trunk — 7 lines, random splits. */
+  async _branchTree() {
+    const segs = [
+      '         │         ',
+      '        ╱│╲        ',
+      '       ╱ │ ╲       ',
+      '      ╱  ╪  ╲      ',
+      '    ╱╲  ╱ ╲  ╱╲   ',
+      '   ╱  ╲╱   ╲╱  ╲  ',
+      '  ───────────────  ',
+    ];
+    const lines = [];
+    for (let i = segs.length - 1; i >= 0; i--) {
+      if (this._sk()) { lines.forEach(l => l.remove()); return; }
+      const d = this._line(segs[i], 'boot-dim');
+      lines.push(d);
+      this.audio.beep(220 + i * 60, 0.04, 'sine');
+      await this._sleep(55);
+    }
+    await this._sleep(180);
+    for (const l of lines) l.remove();
+  }
+
+  /** Echo text: a word printed then reverbed into silence. */
+  async _echoText(word = 'INITIALISING') {
+    const steps = 5;
+    const lines = [];
+    for (let i = 0; i < steps; i++) {
+      if (this._sk()) { lines.forEach(l => l.remove()); return; }
+      const fade = ['', '·', ':', '·.', '  .'][i] ?? '';
+      const spaces = '  '.repeat(i);
+      const d = this._line(spaces + word + fade, i === 0 ? 'boot-accent' : 'boot-dim');
+      lines.push(d);
+      this.audio.beep(880 / (1 + i * 0.4), 0.03, 'sine');
+      await this._sleep(70 + i * 20);
+    }
+    await this._sleep(200);
+    lines.forEach(l => l.remove());
+  }
+
+  /**
+   * Show a tip in one of several randomly chosen presentation styles.
+   * @param {string} tip  Full tip text.
+   * @param {string[]} pool  Source pool to draw inline hints from.
+   */
+  async _tipBlock(tip, pool = INLINE_TIPS) {
+    const style = Math.floor(Math.random() * 4);
+    if (style === 0) {
+      // Plain comment style
+      const hint = pool[Math.floor(Math.random() * pool.length)];
+      this._line('');
+      await this._type(hint, 3, 'boot-dim');
+      await this._type(`  → ${tip}`, 3, 'boot-dim');
+      this._line('');
+    } else if (style === 1) {
+      // Framed block
+      const bar = '─'.repeat(Math.min(tip.length + 4, 56));
+      this._line('');
+      this._line(`┌─ TIP ${'─'.repeat(Math.max(0, 50 - tip.length))}┐`, 'boot-tertiary');
+      await this._type(`│  ${tip.padEnd(52)}│`, 3, 'boot-dim');
+      this._line(`└${bar}┘`, 'boot-tertiary');
+      this._line('');
+    } else if (style === 2) {
+      // Echo-style: the tip appears then fades
+      await this._echoText(tip.slice(0, 28).toUpperCase());
+    } else {
+      // Inline hint + tip on same block, no framing
+      const hint = pool[Math.floor(Math.random() * pool.length)];
+      this._line('');
+      this._line(hint, 'boot-dim');
+      await this._type(`  TIP  ${tip}`, 3, 'boot-dim');
+      this._line('');
+    }
+    await this._sleep(60);
   }
 
   /** Fast-boot path: skip intro animation, show 5 BIOS lines, launch. */
@@ -622,18 +764,34 @@ export class BootScreen {
 
   async run(containerEl) {
     this.audio.init();
-    this.audio.beep(880, 0.15, 'square'); // POST beep
+    this.audio.beep(880, 0.15, 'square');
     await this._sleep(80);
-    this.audio.beep(1200, 0.1, 'sine');   // Secondary beep
+    this.audio.beep(1200, 0.1, 'sine');
     await this._sleep(50);
-    this.audio.beep(660, 0.12, 'sine');   // Lower beep
+    this.audio.beep(660, 0.12, 'sine');
+
+    // Shuffle a copy of TIPS so we can pop without repeats
+    const tipPool = [...TIPS].sort(() => Math.random() - 0.5);
+    const nextTip = () => tipPool.length ? tipPool.pop() : TIPS[0];
 
     // Phase 0: Intro animation
+    this._phase = 0;
     const anim = INTRO_ANIMS[Math.floor(Math.random() * INTRO_ANIMS.length)];
-    await anim(containerEl, () => this.skipped);
+    await anim(containerEl, () => this._sk());
     if (this.skipped) return;
 
-    // Phase 1: BIOS POST
+    // Phase 1: ASCII widget
+    this._phase = 1;
+    const widgets = [
+      () => this._scopePulse(),
+      () => this._branchTree(),
+      () => this._echoText('INITIALISING'),
+    ];
+    await widgets[Math.floor(Math.random() * widgets.length)]();
+    if (this.skipped) return;
+
+    // Phase 2: BIOS POST
+    this._phase = 2;
     this._line('');
 
     for (const entry of BIOS_LINES) {
@@ -646,16 +804,20 @@ export class BootScreen {
     }
     if (this.skipped) return;
 
+    // Random mid-boot tip — appears once during the BIOS phase
+    await this._tipBlock(nextTip());
+    if (this.skipped) return;
+
     this._line('');
-    this.audio.beep(1100, 0.1, 'square'); // Pre-perf-tests beep
+    this.audio.beep(1100, 0.1, 'square');
     await this._perfTests();
     await this._sleep(100);
     if (this.skipped) return;
 
-    // Add power-up sweep here
     this.audio.powerUpSweep(1.2);
 
-    // Phase 2: Logo + init steps
+    // Phase 3: Logo + loading bars + tip
+    this._phase = 3;
     this.el.innerHTML = '';
 
     for (const line of ASCII_LOGO_SIMPLE) {
@@ -682,14 +844,12 @@ export class BootScreen {
     await this._sleep(100);
     if (this.skipped) return;
 
-    this._line('');
-    const tip = TIPS[Math.floor(Math.random() * TIPS.length)];
-    await this._type(`  TIP  ${tip}`, 3, 'boot-dim');
-    await this._sleep(150);
+    // Final tip — different style each boot
+    await this._tipBlock(nextTip());
     if (this.skipped) return;
 
     this._line('');
-    this.audio.beep(880, 0.1, 'sine');    // Final ready beep
+    this.audio.beep(880, 0.1, 'sine');
     await this._type('  System ready. Initialising visualiser...', 4, 'boot-bright');
     await this._sleep(200);
   }

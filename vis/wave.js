@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import { scene, LINE_COLOR, GRID_W, _colA, _colB } from '../engine.js';
-import { P } from '../params.js';
+import { P, getCols } from '../params.js';
 import { modDisp } from '../envelopes.js';
 
 export const waveLines = [];
@@ -16,7 +16,7 @@ const tdEnergy  = []; // Store peak magnitude for each row
 let tdHead = 0;
 
 export function rebuildWave() {
-  const cols = Math.max(2, P.complexity * 32);
+  const cols = getCols();
   tearDownWave();
   
   const rows = Math.max(2, P.rows);
@@ -57,7 +57,7 @@ export function applyWave(tdData, dispScale, spacing) {
   const disp  = dispScale !== undefined ? dispScale : modDisp();
   const space = spacing !== undefined ? spacing : P.waveSpacing;
   const rows  = Math.max(2, P.rows);
-  const cols  = Math.max(2, P.complexity * 32);
+  const cols  = getCols();
 
   // Push latest data to ring buffer
   tdHead = (tdHead + rows - 1) % rows;
@@ -94,6 +94,20 @@ export function applyWave(tdData, dispScale, spacing) {
 export function ensureTimeDomainData(analyser) {
   // Always use the largest possible FFT size for time domain to get smooth curves
   return new Uint8Array(analyser.fftSize);
+}
+
+/**
+ * Pure position calculator — no state, safe to call from export.js.
+ * Mutates out[0..2] = [x, y, z].
+ */
+export function calcWavePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp) {
+  const isRight = c >= half;
+  const m = isRight ? cols - 1 - c : c;
+  const bin = binMap[Math.min(m, half - 1)];
+  const fv = isRight ? hrowR[bin] : hrowL[bin];
+  out[0] = (c / (cols - 1) - 0.5) * 10.0; // GRID_W
+  out[1] = (r / (rows - 1) - 0.5) * -4.0;
+  out[2] = -fv * disp * 2.0;
 }
 
 export function tearDownWave() {

@@ -27,9 +27,14 @@ A modular, real-time 3D audio visualiser inspired by Joy Division's *Unknown Ple
   - **WebCodecs Acceleration**: High-speed MP4 export with H.264 + AAC.
   - **Quality Presets**: Standard (12 Mbps), Lossless (25 Mbps), Lo-Fi PS2 (2.5 Mbps with VHS jitter).
   - **Aspect Ratios**: 16:9 or 4:3 in horizontal or vertical orientation.
-  - **Baked Overlays**: Metadata composited per-frame.
+  - **Baked Overlays**: Metadata composited per-frame; overlay colours read the active UI palette via `--ui-accent-rgb` CSS variable.
+  - **Shared Position Calculators**: Export and live vis share the same `calc*Pos()` pure functions — identical geometry, no duplication.
+  - **Export Diagnostics**: `window.checkExport()` in the browser console dumps current params, column count, camera state, and scene object counts for quick debugging.
 - **Startup Sound**: `Startup.wav` plays through the shared analyser chain on load (lowpass at 165 Hz), driving the visualiser terrain from the first moment.
 - **Boot Sequence**: Full procedural terminal boot animation inspired by 90s proprietary workstations — features detailed hardware topology scans and four distinct canvas animations (terrain materialise, waveform reveal, grid pulse, spectrum bars) with enhanced color variety, all theme-aware and skippable with `[Space]`.
+  - **Fast Boot**: Optional mode (`fastBoot` toggle in Export tab) skips the full animation — shows the landing card + 5 punchy BIOS lines then launches immediately.
+  - **ASCII Widgets**: A random decorative widget precedes the BIOS POST section each run: oscilloscope scan-line (`_scopePulse`), growing ASCII tree (`_branchTree`), or reverbing echo text (`_echoText`).
+- **Animated Favicon**: A live 12 fps wireframe sphere rotates in the browser tab, drawn to a 32 × 32 canvas via `setInterval`.
 - **Clean Mode**: Hides all UI chrome for OBS / streaming capture. Elements fade back in on hover. Activate via `?clean` or `?obs` URL parameter, or the bottom-left button.
 - **GPU Memory Hygiene**: All vis-mode tear-down functions dispose Three.js geometries and materials explicitly.
 - **Adaptive Pixel Ratio**: Renderer automatically lowers DPR when frame time exceeds 20 ms, restoring it when performance recovers.
@@ -45,10 +50,10 @@ Avatar/
 ├── audio.js            # Stereo Web Audio API: input, dual analysers, LPF/Gain chain
 ├── envelopes.js        # Envelope followers, slew logic, dual BPM LFOs, reactive cam
 ├── dsp.js              # FFT, Hann windowing, bin mapping (linear / log / dnb)
-├── params.js           # 30+ parameters, camStyles, localStorage persistence, UI bindings
+├── params.js           # 30+ parameters, camStyles, getCols(), localStorage persistence, UI bindings
 ├── export.js           # Peak detection, morphing render loop, camera drifts (reads P.camStyles)
-├── overlay.js          # 2D text compositing for export frames
-├── boot.js             # Procedural boot sequence: terminal + 4 canvas animations
+├── overlay.js          # 2D text compositing for export frames (palette-aware colours)
+├── boot.js             # Procedural boot sequence: terminal + 4 canvas animations + ASCII widgets
 ├── vis/
 │   ├── shared.js       # History buffers, A-weighting
 │   ├── bowl.js         # Scanline grid with vertex colours + visibility culling
@@ -57,7 +62,7 @@ Avatar/
 │   └── wave.js         # 3D waterfall waveform
 ├── Burden.wav          # Default demo track (m0rvidd)
 ├── Startup.wav         # Boot chord (lowpass 165 Hz, drives visualiser)
-└── tests.html          # DSP test harness (FFT, bin mapping, envelopes)
+└── tests.html          # DSP test harness (FFT, bin mapping, envelopes, geometry calcs, export cols)
 ```
 
 ---
@@ -85,6 +90,8 @@ npx serve . --listen 3000
 5. Use the **lock** toggle to fix the camera if you prefer manual placement over reactivity.
 6. Tweak camera positions in the **director** section of the Export tab.
 7. Hit **render video** — output is a dated MP4 in your chosen quality preset.
+
+> **Debugging exports**: open the browser console and call `window.checkExport()` to inspect current column count, parameter state, camera position, and scene geometry.
 
 ### Config Persistence
 - **Export config** (↓ button): saves all parameters as a `.json` file.
@@ -125,3 +132,12 @@ npx serve . --listen 3000
 - **Colours**: User-definable `colorA` / `colorB` for terrain + 8 independent UI themes.
 - **Theme**: Dark and Light modes. Palette circle (bottom-left) opens a dot-picker for instant theme switching.
 - **Boot aesthetic**: Spirit of 90s proprietary workstations (SGI, NeXT, PlayStation) rendered with modern canvas — procedural, theme-aware, unique each load.
+- **Animated favicon**: Live wireframe sphere spins in the browser tab at 12 fps.
+
+---
+
+## Architecture Notes
+
+- **`getCols()`** — single source of truth for column count (`Math.max(2, P.complexity * 32)`). All vis modules and export import from `params.js`.
+- **`calc*Pos()` pure functions** — each vis module exports a stateless position calculator (`calcBowlPos`, `calcPolarPos`, `calcSpherePos`, `calcWavePos`). The export pipeline imports these directly, guaranteeing pixel-identical geometry between live preview and rendered video.
+- **Overlay palette binding** — `overlay.js` reads `--ui-accent-rgb` at composite time so exported video text always matches the current UI palette.

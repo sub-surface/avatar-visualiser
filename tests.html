@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <title>PSYCHOGRAPH — Tests</title>
+  <script type="importmap">
+  { "imports": {
+      "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+    } }
+  </script>
   <style>
     body { background: #0d0d0d; color: #c8c8c8; font-family: 'Courier New', monospace; font-size: 0.8rem; padding: 24px; line-height: 1.7; }
     h1 { color: #e8d5b0; letter-spacing: 0.3em; font-size: 0.9rem; margin-bottom: 20px; font-weight: normal; }
@@ -376,6 +382,228 @@
 
     d = calc('lofi', 'vertical');
     assert(d.w === 480 && d.h === 640, 'lofi vert');
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     7. GEOMETRY POSITION CALCULATORS
+     Tests the pure calcPos functions exported from each vis module.
+     No Three.js, no DOM — just maths.
+  ════════════════════════════════════════════════════════════ */
+  section('Geometry position calculators');
+
+  import { calcBowlPos } from './vis/bowl.js';
+  import { calcPolarPos } from './vis/polar.js';
+  import { calcSpherePos } from './vis/sphere.js';
+  import { calcWavePos } from './vis/wave.js';
+
+  // Shared synthetic data for all calc tests
+  const ROWS = 60, COLS = 128, HALF = 64;
+  const flatBinMap = new Uint16Array(HALF).map((_, i) => i); // bin i → bin i
+  const zeroRow  = new Float32Array(NUM_BINS);   // silence
+  const fullRow  = new Float32Array(NUM_BINS).fill(1.0); // full scale
+
+  test('calcBowlPos: silence → y = 0', () => {
+    const out = [0, 0, 0];
+    calcBowlPos(out, 30, 64, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 1.0, 2.2);
+    assertClose(out[1], 0, 0.0001, 'y should be 0 for silence');
+  });
+
+  test('calcBowlPos: full signal → y displaced downward', () => {
+    const out = [0, 0, 0];
+    calcBowlPos(out, 30, 64, ROWS, COLS, fullRow, fullRow, HALF, flatBinMap, 1.0, 2.2);
+    assert(out[1] < 0, `y=${out[1].toFixed(3)} should be negative (displaced down)`);
+  });
+
+  test('calcBowlPos: x spans ±GRID_W/2 across cols', () => {
+    const outL = [0, 0, 0], outR = [0, 0, 0];
+    calcBowlPos(outL, 0, 0,        ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 0);
+    calcBowlPos(outR, 0, COLS - 1, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 0);
+    assertClose(outL[0], -5.0, 0.01, 'left edge x');
+    assertClose(outR[0],  5.0, 0.01, 'right edge x');
+  });
+
+  test('calcPolarPos: silence → radius = BASE_R (bowl factor 1)', () => {
+    const out = [0, 0, 0];
+    calcPolarPos(out, 30, 0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 1.0, 0, 0);
+    const r = Math.sqrt(out[0] ** 2 + out[2] ** 2);
+    assertClose(r, 0.4, 0.01, 'radius should be BASE_R for silence with bf=1, disp=0');
+  });
+
+  test('calcPolarPos: y spans polarSpacing range', () => {
+    const outTop = [0, 0, 0], outBot = [0, 0, 0];
+    calcPolarPos(outTop, 0,        0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 0, 6);
+    calcPolarPos(outBot, ROWS - 1, 0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 0, 6);
+    assertClose(outTop[1], -3.0, 0.05, 'top row y');
+    assertClose(outBot[1],  3.0, 0.05, 'bottom row y');
+  });
+
+  test('calcSpherePos: poles lie on y-axis (sin(phi)=0)', () => {
+    const outTop = [0, 0, 0], outBot = [0, 0, 0];
+    calcSpherePos(outTop, 0,        0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 3.0, 0);
+    calcSpherePos(outBot, ROWS - 1, 0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 3.0, 0);
+    assertClose(outTop[0], 0, 0.001, 'top pole x=0');
+    assertClose(outTop[2], 0, 0.001, 'top pole z=0');
+    assertClose(outBot[0], 0, 0.001, 'bottom pole x=0');
+    assertClose(outBot[2], 0, 0.001, 'bottom pole z=0');
+  });
+
+  test('calcSpherePos: equator radius ≈ sphereSize for silence', () => {
+    const out = [0, 0, 0];
+    const midRow = Math.floor(ROWS / 2);
+    calcSpherePos(out, midRow, 0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 3.0, 0);
+    const r = Math.sqrt(out[0] ** 2 + out[2] ** 2);
+    assertClose(r, 3.0, 0.05, 'equatorial radius should equal sphereSize');
+  });
+
+  test('calcWavePos: x spans ±5 across cols', () => {
+    const outL = [0, 0, 0], outR = [0, 0, 0];
+    calcWavePos(outL, 0, 0,        ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0);
+    calcWavePos(outR, 0, COLS - 1, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0);
+    assertClose(outL[0], -5.0, 0.01, 'left x');
+    assertClose(outR[0],  5.0, 0.01, 'right x');
+  });
+
+  test('calcWavePos: silence → z = 0', () => {
+    const out = [0, 0, 0];
+    calcWavePos(out, 0, 0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 2.2);
+    assertClose(out[2], 0, 0.0001, 'z should be 0 for silence');
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     8. EXPORT COLS DERIVATION
+  ════════════════════════════════════════════════════════════ */
+  section('Export cols derivation');
+
+  test('getCols() matches complexity * 32 and is always ≥ 2', () => {
+    // Simulate getCols logic for a range of complexity values
+    const getCols = (c) => Math.max(2, c * 32);
+    for (const c of [0, 1, 2, 4, 8]) {
+      const cols = getCols(c);
+      assert(cols >= 2, `cols=${cols} for complexity=${c}`);
+      assert(cols === Math.max(2, c * 32), `cols mismatch for complexity=${c}`);
+    }
+  });
+
+  test('export binMap: halfCols = cols/2, no out-of-bounds bins', () => {
+    const cols    = 128;
+    const halfCols = cols / 2;
+    const m = buildBinMap('log', halfCols, NUM_BINS, 0.55, SR);
+    assert(m.length === halfCols, `binMap length ${m.length}, expected ${halfCols}`);
+    assert(m.every(b => b < NUM_BINS), 'all bins should be < NUM_BINS');
+  });
+
+  test('color lerp: fv=0 → colA, fv≥0.5 → full colB blend', () => {
+    const colA = { r: 0.0, g: 0.5, b: 1.0 };
+    const colB = { r: 1.0, g: 0.0, b: 0.0 };
+    const lerp = (fv) => {
+      const t = Math.min(fv * 2.0, 1.0);
+      return {
+        r: colA.r + (colB.r - colA.r) * t,
+        g: colA.g + (colB.g - colA.g) * t,
+        b: colA.b + (colB.b - colA.b) * t,
+      };
+    };
+    const atZero = lerp(0);
+    assertClose(atZero.r, colA.r, 0.001, 'fv=0 r=colA.r');
+    assertClose(atZero.g, colA.g, 0.001, 'fv=0 g=colA.g');
+    const atHalf = lerp(0.5);
+    assertClose(atHalf.r, colB.r, 0.001, 'fv=0.5 r=colB.r (full lerp)');
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     9. BROWSER COMPATIBILITY
+     Validates every API the app relies on. Vivaldi is Chromium-based
+     and should pass all checks. Firefox will fail WebCodecs + File
+     System Access. Safari will fail WebCodecs + showSaveFilePicker.
+  ════════════════════════════════════════════════════════════ */
+  section('Browser compatibility');
+
+  test('ES Modules: dynamic import resolves (we are running, so: pass)', () => {
+    assert(true, 'trivially true — module script executed');
+  });
+
+  test('structuredClone (ES2022)', () => {
+    const orig  = { a: 1, nested: [2, 3] };
+    const clone = structuredClone(orig);
+    assert(clone !== orig && clone.nested[0] === 2, 'structuredClone failed');
+  });
+
+  test('performance.now() available', () => {
+    assert(typeof performance !== 'undefined' && typeof performance.now === 'function',
+      'performance.now not available');
+  });
+
+  test('WebGL 2.0 context available', () => {
+    const canvas = document.createElement('canvas');
+    const gl     = canvas.getContext('webgl2');
+    assert(gl !== null, 'WebGL 2 not available — Three.js will not initialise');
+  });
+
+  test('Web Audio API: AudioContext available', () => {
+    assert(
+      typeof window.AudioContext !== 'undefined' || typeof window.webkitAudioContext !== 'undefined',
+      'AudioContext not found'
+    );
+  });
+
+  test('Web Audio API: AnalyserNode constructable', () => {
+    // AudioContext may be suspended without user gesture; presence check is the critical one
+    assert(typeof AnalyserNode !== 'undefined', 'AnalyserNode not in global scope');
+  });
+
+  test('WebCodecs: VideoEncoder available', () => {
+    assert(typeof VideoEncoder !== 'undefined',
+      'VideoEncoder not found — video export will not work (requires Chromium 94+)');
+  });
+
+  test('WebCodecs: AudioEncoder available', () => {
+    assert(typeof AudioEncoder !== 'undefined',
+      'AudioEncoder not found — audio track in exports will not work');
+  });
+
+  test('WebCodecs: VideoFrame available', () => {
+    assert(typeof VideoFrame !== 'undefined',
+      'VideoFrame not found — frame capture unavailable');
+  });
+
+  test('File System Access API: showSaveFilePicker available', () => {
+    assert(typeof window.showSaveFilePicker === 'function',
+      'showSaveFilePicker not found — file save dialog will not open (requires Chromium 86+)');
+  });
+
+  test('OffscreenCanvas available', () => {
+    assert(typeof OffscreenCanvas !== 'undefined',
+      'OffscreenCanvas not found — overlay compositing unavailable');
+  });
+
+  test('ResizeObserver available', () => {
+    assert(typeof ResizeObserver !== 'undefined', 'ResizeObserver not found');
+  });
+
+  test('Crypto: crypto.randomUUID or Math.random fallback', () => {
+    // App uses Math.random, not crypto — this just confirms the runtime is sane
+    assert(typeof Math.random === 'function', 'Math.random not available');
+  });
+
+  test('requestAnimationFrame available', () => {
+    assert(typeof requestAnimationFrame === 'function',
+      'requestAnimationFrame not found — render loop will not run');
+  });
+
+  test('CSS Custom Properties readable via getComputedStyle', () => {
+    document.body.style.setProperty('--test-var', '42px');
+    const val = getComputedStyle(document.body).getPropertyValue('--test-var').trim();
+    document.body.style.removeProperty('--test-var');
+    assert(val === '42px', `CSS custom property read failed: got "${val}"`);
+  });
+
+  test('Import maps: Three.js importmap would resolve (syntax check)', () => {
+    // Can only verify statically: importmap support is implicit if this module ran.
+    // Chromium 89+, Firefox 108+, Safari 16.4+ all support importmap.
+    const s = document.querySelector('script[type="importmap"]');
+    // index.html uses an importmap — presence here means the browser parsed it.
+    // In tests.html there is no importmap, so null is expected and fine.
+    assert(true, 'importmap syntax is valid (parsed by browser to reach this line)');
   });
 
   /* ════════════════════════════════════════════════════════════

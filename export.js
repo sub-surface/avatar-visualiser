@@ -2,17 +2,17 @@
  * export.js — full WebCodecs export pipeline with text overlay and morphed mode cycling.
  */
 import * as THREE from 'three';
-import { FFT_SIZE, NUM_BINS, GRID_W, LINE_COLOR, CAM_BASE,
+import { FFT_SIZE, NUM_BINS, LINE_COLOR, CAM_BASE,
          renderer, scene, camera, material, _colA, _colB, _colScratch,
          beginExportResize, endExportResize, setColors } from './engine.js';
-import { P, setTimeDisplay, getTrackMeta } from './params.js';
+import { P, getCols, setTimeDisplay, getTrackMeta } from './params.js';
 import { computeFFTBinsInto, buildBinMap, bowlFactor } from './dsp.js';
 import { computeEnvelopesExport } from './envelopes.js';
 import { aWeightGain } from './vis/shared.js';
-import { lines, posBuffers, colBuffers, rebuildGrid, tearDownBowl } from './vis/bowl.js';
-import { polarLines, polarBufs, polarCols, rebuildPolar, tearDownPolar } from './vis/polar.js';
-import { sphereLines, sphereBufs, sphereCols, sphereBase, rebuildSphere, tearDownSphere } from './vis/sphere.js';
-import { waveLines, waveBufs, rebuildWave, tearDownWave } from './vis/wave.js';
+import { tearDownBowl, calcBowlPos } from './vis/bowl.js';
+import { tearDownPolar, calcPolarPos } from './vis/polar.js';
+import { tearDownSphere, calcSpherePos } from './vis/sphere.js';
+import { tearDownWave, calcWavePos } from './vis/wave.js';
 import { initOverlayCanvas, freeOverlayCanvas, compositeFrame } from './overlay.js';
 
 // Helper to log status to index.html's infoBox
@@ -88,65 +88,6 @@ async function encodeAudio(enc, buf) {
   await enc.flush();
 }
 
-/* ── Position Calculation Helpers (for Morphing) ─────────── */
-function calcBowlPos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, bf, disp) {
-  const isRight = c >= half;
-  const m = isRight ? cols - 1 - c : c;
-  const bin = binMap[Math.min(m, half - 1)];
-  const fv = (isRight ? hrowR[bin] : hrowL[bin]);
-  const safeCols = Math.max(2, cols);
-  const safeRows = Math.max(2, rows);
-  out[0] = (c / (safeCols - 1) - 0.5) * GRID_W;
-  out[1] = -fv * bf * disp;
-  out[2] = (r / (safeRows - 1) - 0.5) * 10.0; // GRID_D
-}
-
-function calcPolarPos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, bf, disp, space) {
-  const segs = cols;
-  const ci = c % segs;
-  const angle = (ci / segs) * Math.PI * 2;
-  const isRight = ci < segs / 2;
-  const m = ci < half ? ci : segs - 1 - ci;
-  const bin = binMap[Math.min(m, half - 1)];
-  const fv = isRight ? hrowR[bin] : hrowL[bin];
-  const radius = 0.4 + (4.5 - 0.4) * bf * (1 + fv * disp * 0.18);
-  out[0] = Math.cos(angle) * radius;
-  const safeRows = Math.max(2, rows);
-  out[1] = (r / (safeRows - 1) - 0.5) * space;
-  out[2] = Math.sin(angle) * radius;
-}
-
-function calcSpherePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp, sphereSize, rot) {
-  const safeRows = Math.max(2, rows);
-  const safeCols = Math.max(2, cols);
-  const phi = (r / (safeRows - 1)) * Math.PI;
-  const sinPhi = Math.sin(phi), cosPhi = Math.cos(phi);
-  const theta = (c / (safeCols - 1)) * Math.PI * 2;
-  const isRight = c < half;
-  const m = c < half ? c : cols - 1 - c;
-  const bin = binMap[Math.min(m, half - 1)];
-  const fv = isRight ? hrowR[bin] : hrowL[bin];
-  const push = (1 + fv * disp) * sphereSize;
-  const x = Math.cos(theta) * sinPhi * push;
-  const z = Math.sin(theta) * sinPhi * push;
-  const y = cosPhi * push;
-  out[0] = x * Math.cos(rot) - z * Math.sin(rot);
-  out[1] = y;
-  out[2] = x * Math.sin(rot) + z * Math.cos(rot);
-}
-
-function calcWavePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp, space) {
-  const isRight = c >= half;
-  const m = isRight ? cols - 1 - c : c;
-  const bin = binMap[Math.min(m, half - 1)];
-  const fv = (isRight ? hrowR[bin] : hrowL[bin]);
-  const safeCols = Math.max(2, cols);
-  const safeRows = Math.max(2, rows);
-  out[0] = (c / (safeCols - 1) - 0.5) * GRID_W;
-  out[1] = (r / (safeRows - 1) - 0.5) * -4.0; 
-  out[2] = -fv * disp * 2.0;
-}
-
 /* ── Single-pass render loop ──────────────────────────────── */
 async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) {
   const sr              = audioBuffer.sampleRate;
@@ -155,12 +96,13 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
   const totalFrames     = Math.ceil(totalSamples / samplesPerFrame);
 
   const rows = Math.max(2, P.rows);
-  const cols = Math.max(2, P.complexity * 32);
+  const cols = getCols();
 
   const chL = audioBuffer.getChannelData(0);
   const chR = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : chL;
 
-  const triggerFrames = P.cycleModes ? findModeTriggers(chL, sr, 6) : [];
+  const triggerFrames = (P.cycleMode !== 'off' && P.cycleMode !== 'static')
+    ? findModeTriggers(chL, sr, 6) : [];
   logStatus(`Detected ${triggerFrames.length} energy peaks for transitions`);
 
   tearDownBowl(); tearDownPolar(); tearDownSphere(); tearDownWave();
@@ -209,22 +151,23 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
 
     const currentSample = f * samplesPerFrame;
     if (triggerFrames.includes(currentSample)) {
-      // Always cycle camera style
-      camStyleIdx = (camStyleIdx + 1) % camStyles.length;
+      // cinematic / types / random: cut to next camera position
+      if (P.cycleMode === 'cinematic' || P.cycleMode === 'types' || P.cycleMode === 'random') {
+        camStyleIdx = (camStyleIdx + 1) % camStyles.length;
+      }
 
       if (P.cycleMode === 'types' || P.cycleMode === 'random') {
         // Cycle vis mode morph
         morphTargetIdx = (currentModeIdx + 1) % cycleList.length;
         morphAlpha = 0.0;
         logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${camStyles[camStyleIdx]} view)`);
-      } else {
-        // Normal: camera only, no vis morph
+      } else if (P.cycleMode === 'cinematic') {
         logStatus(`Peak hit! Camera cut to ${camStyles[camStyleIdx]} view`);
       }
 
-      // NEW: Randomise visual parameters if in 'random' cycle mode
+      // random: also randomise visual parameters on each peak
       if (P.cycleMode === 'random' && typeof window.randomiseParams === 'function') {
-        window.randomiseParams(); 
+        window.randomiseParams();
         logStatus('Parameters randomised for peak transition');
       }
     }
@@ -358,12 +301,12 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
         if (currentMode === 'bowl') calcBowlPos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp);
         else if (currentMode === 'polar') calcPolarPos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp, P.polarSpacing + lfo * P.lfoToPolar);
         else if (currentMode === 'sphere') calcSpherePos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.sphereSize, expSphereRot);
-        else calcWavePos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.waveSpacing);
+        else calcWavePos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp);
 
         if (targetMode === 'bowl') calcBowlPos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp);
         else if (targetMode === 'polar') calcPolarPos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp, P.polarSpacing + lfo * P.lfoToPolar);
         else if (targetMode === 'sphere') calcSpherePos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.sphereSize, expSphereRot);
-        else calcWavePos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.waveSpacing);
+        else calcWavePos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp);
 
         const x = pA[0] + (pB[0] - pA[0]) * morphAlpha;
         const y = pA[1] + (pB[1] - pA[1]) * morphAlpha;

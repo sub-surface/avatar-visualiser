@@ -20,6 +20,75 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <link id="favicon" rel="icon" type="image/png">
+
+  <!-- Animated favicon: expanding wireframe sphere, 32×32, ~12fps -->
+  <script>
+  (function() {
+    const SZ = 32, CX = 16, CY = 16, R = 11;
+    const RINGS = 6, MERIDIANS = 8;
+    const c = document.createElement('canvas');
+    c.width = c.height = SZ;
+    const ctx = c.getContext('2d');
+    const link = document.getElementById('favicon');
+    let rot = 0;
+
+    function project(x, y, z) {
+      // Simple perspective, viewer at z=40
+      const s = 40 / (40 - z);
+      return { x: CX + x * s, y: CY - y * s };
+    }
+
+    function drawFrame() {
+      ctx.clearRect(0, 0, SZ, SZ);
+      const accent = (document.body &&
+        getComputedStyle(document.body).getPropertyValue('--ui-accent').trim()) || '#e8d5b0';
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 0.9;
+
+      // Latitude rings
+      for (let i = 0; i < RINGS; i++) {
+        const phi = ((i + 1) / (RINGS + 1)) * Math.PI; // avoid poles
+        const sinP = Math.sin(phi), cosP = Math.cos(phi);
+        const segs = 32;
+        ctx.beginPath();
+        for (let j = 0; j <= segs; j++) {
+          const theta = (j / segs) * Math.PI * 2 + rot;
+          const x = Math.cos(theta) * sinP * R;
+          const z = Math.sin(theta) * sinP * R;
+          const y = cosP * R;
+          const p = project(x, y, z);
+          j === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+      }
+
+      // Meridian lines
+      for (let i = 0; i < MERIDIANS; i++) {
+        const theta = (i / MERIDIANS) * Math.PI + rot;
+        const segs = 16;
+        ctx.beginPath();
+        for (let j = 0; j <= segs; j++) {
+          const phi = (j / segs) * Math.PI;
+          const sinP = Math.sin(phi), cosP = Math.cos(phi);
+          const x = Math.cos(theta) * sinP * R;
+          const z = Math.sin(theta) * sinP * R;
+          const y = cosP * R;
+          const p = project(x, y, z);
+          j === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+      }
+
+      link.href = c.toDataURL('image/png');
+      rot += 0.04;
+    }
+
+    // 12fps — cheap, readable in a tiny favicon
+    setInterval(drawFrame, 83);
+    drawFrame();
+  })();
+  </script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1098,7 +1167,7 @@
       </div>
     </div>
   </div>
-  <div id="bootSkip">[S] skip</div>
+  <div id="bootSkip">[click] next &nbsp; [S] skip</div>
 </div>
 
 <div id="overlay">
@@ -1471,10 +1540,11 @@
         <span class="pval" id="vExportOrient">horiz</span></div>
       <div class="prow"><label title="Automated peak-triggered mode cycling behavior">cycle mode</label>
         <select class="psel" id="pCycleMode">
-          <option value="off" selected title="Disable automatic cycling">off</option>
-          <option value="normal" title="Cycle through camera positions only (keeps current vis mode)">normal</option>
-          <option value="types" title="Cycle through both camera positions and visualisation types (Sphere ⇄ Bowl ⇄ Polar ⇄ Wave)">types</option>
-          <option value="random" title="Randomise all visual parameters on every transition peak">random</option>
+          <option value="off" selected title="No automatic cycling — static vis, static camera">off</option>
+          <option value="static" title="Locks to current vis mode and camera — no cuts, no movement">static</option>
+          <option value="cinematic" title="Cuts to the next camera angle on energy peaks — vis mode unchanged">cinematic</option>
+          <option value="types" title="Morphs through vis types (Bowl ⇄ Polar ⇄ Sphere ⇄ Wave) and cuts camera on peaks">types</option>
+          <option value="random" title="Morphs vis, cuts camera, and randomises visual parameters on every peak">random</option>
         </select>
         <span class="pval" id="vCycleMode">off</span></div>
 
@@ -1526,7 +1596,8 @@
       </div>
 
       <div class="psection">debug</div>
-      <div class="prow" style="justify-content:center; padding-top:4px;">
+      <div class="prow" style="justify-content:center; gap:6px; padding-top:4px;">
+        <button class="chrome" id="btnCamReset" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Force-reset camera controls: re-enable OrbitControls, clear lock state, snap to default position for current vis mode">reset camera</button>
         <button class="chrome" id="btnTestCapture" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Perform a batch capture of all 4 visualization modes to local disk">capture tests</button>
       </div>
     </div>
@@ -1578,7 +1649,7 @@
   // ── Export diagnostics (replaces old camera debug) ───────────────────────
   // call checkExport() in the browser console to dump the current export state
   window.checkExport = () => {
-    const cols = Math.max(2, P.complexity * 32);
+    const cols = getCols();
     console.group('%c[EXPORT DIAG]', 'color:#a2b6c0;font-weight:bold');
     console.log('P.rows:', P.rows, '  P.complexity:', P.complexity, '  cols:', cols);
     console.log('P.colorA:', P.colorA, '  P.colorB:', P.colorB);
@@ -1590,7 +1661,7 @@
   };
   window.checkCamera = () => console.log({ pos: camera.position, target: controls.target, enabled: controls.enabled });
   
-  import { P, loadParams, saveParams, bindRange, bindSelect, bindText,
+  import { P, getCols, loadParams, saveParams, bindRange, bindSelect, bindText,
            updateTrackDisplay } from './params.js';
   import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioDevices } from './audio.js';
   import { env, 
@@ -1663,21 +1734,21 @@
     if (mode === 'bowl') {
       rebuildGrid();
       camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
-      camera.lookAt(0, -0.5, 0);
+      controls.target.set(0, -0.5, 0);
     } else if (mode === 'polar') {
       rebuildPolar();
       camera.position.set(0, 9, 0);
-      camera.lookAt(0, 0, 0);
+      controls.target.set(0, 0, 0);
     } else if (mode === 'sphere') {
       rebuildSphere();
-      // Center the sphere more clearly
       camera.position.set(0, 0, 12);
-      camera.lookAt(0, 0, 0);
+      controls.target.set(0, 0, 0);
     } else if (mode === 'wave') {
       rebuildWave();
       camera.position.set(0, 1, 10);
-      camera.lookAt(0, 0, 0);
+      controls.target.set(0, 0, 0);
     }
+    controls.update();
     updateParamVisibility(mode);
   }
 
@@ -2633,81 +2704,59 @@
   
   sliderElements.forEach(slider => {
     slider.addEventListener('pointerdown', e => {
-      cameraDebug.log('SLIDER_POINTERDOWN', { slider: slider.id });
       e.stopPropagation();
       isSliderBeingDragged = true;
       controls.enabled = false;
-      cameraDebug.log('CONTROLS_DISABLED', { reason: 'slider_pointerdown' });
     });
     slider.addEventListener('pointerup', e => {
-      cameraDebug.log('SLIDER_POINTERUP', { slider: slider.id });
       e.stopPropagation();
       isSliderBeingDragged = false;
       controls.enabled = true;
-      cameraDebug.log('CONTROLS_ENABLED', { reason: 'slider_pointerup' });
     });
     slider.addEventListener('pointermove', e => {
-      // Stop propagation if pointer is still being held (active slider drag)
-      if (e.buttons === 1) {
-        e.stopPropagation();
-      }
+      if (e.buttons === 1) e.stopPropagation();
     });
     // Also handle mouse events for older browsers
     slider.addEventListener('mousedown', e => {
-      cameraDebug.log('SLIDER_MOUSEDOWN', { slider: slider.id });
       e.stopPropagation();
       isSliderBeingDragged = true;
       controls.enabled = false;
-      cameraDebug.log('CONTROLS_DISABLED', { reason: 'slider_mousedown' });
     });
     slider.addEventListener('mouseup', e => {
-      cameraDebug.log('SLIDER_MOUSEUP', { slider: slider.id });
       e.stopPropagation();
       isSliderBeingDragged = false;
       controls.enabled = true;
-      cameraDebug.log('CONTROLS_ENABLED', { reason: 'slider_mouseup' });
     });
   });
 
   // Global document handlers to catch mouseup/pointerup even if mouse moves away from slider
   document.addEventListener('pointerup', () => {
-    if (isSliderBeingDragged) {
-      isSliderBeingDragged = false;
-      controls.enabled = true;
-      cameraDebug.log('CONTROLS_ENABLED', { reason: 'global_pointerup' });
-    }
+    if (isSliderBeingDragged) { isSliderBeingDragged = false; controls.enabled = true; }
   });
-  
   document.addEventListener('mouseup', () => {
-    if (isSliderBeingDragged) {
-      isSliderBeingDragged = false;
-      controls.enabled = true;
-      cameraDebug.log('CONTROLS_ENABLED', { reason: 'global_mouseup' });
-    }
+    if (isSliderBeingDragged) { isSliderBeingDragged = false; controls.enabled = true; }
   });
 
   loadDirSliders();
-  updateCamSelUI(); // Initialise UI state
+  updateCamSelUI();
 
-  // Setup OrbitControls event listeners after dirStyle is declared
+  // Global flag to track actual OrbitControls drag session
+  let _controlsActive = false;
+
   controls.addEventListener('start', () => {
-    cameraDebug.log('CONTROLS_START', { userInteracting: true });
+    _controlsActive = true;
     window.isUserInteractingWithCamera = true;
     stopCamPreview();
     updateCamSelUI();
   });
 
   controls.addEventListener('end', () => {
-    cameraDebug.log('CONTROLS_END', { userInteracting: window.isUserInteractingWithCamera });
-    // Keep interaction flag true if we want manual control to persist, 
-    // or set to false if we want it to snap back. 
-    // User requested "override until settings are changed again", 
-    // so we keep it locked in 'manual' mode.
+    _controlsActive = false;
+    // Keep interaction flag true — manual override persists until mode/preset change.
   });
-  
+
   controls.addEventListener('change', () => {
-    if (window.isUserInteractingWithCamera && !isExporting) {
-      cameraDebug.log('CONTROLS_CHANGE', { saving: true });
+    if (_controlsActive && !isExporting) {
       const cs = P.camStyles[dirStyle.value];
       cs.x = Number(camera.position.x.toFixed(2));
       cs.y = Number(camera.position.y.toFixed(2));
@@ -2756,6 +2805,44 @@
     saveParams();
     setColors(P.colorA, P.colorB);
     logStatus('Palette randomised');
+  });
+
+  // Debug: Camera reset
+  document.getElementById('btnCamReset').addEventListener('click', () => {
+    // Snapshot state before reset for console diagnostics
+    const before = {
+      enabled: controls.enabled,
+      locked: window.isUserInteractingWithCamera,
+      sliderDragged: isSliderBeingDragged,
+      pos: { x: +camera.position.x.toFixed(3), y: +camera.position.y.toFixed(3), z: +camera.position.z.toFixed(3) },
+      target: { x: +controls.target.x.toFixed(3), y: +controls.target.y.toFixed(3), z: +controls.target.z.toFixed(3) },
+    };
+
+    // Force-clear all blocking state
+    controls.enabled = true;
+    isSliderBeingDragged = false;
+    window.isUserInteractingWithCamera = false;
+
+    // Snap camera to default position for the current vis mode
+    const defaults = {
+      bowl:   { px: 0, py: CAM_BASE.y, pz: CAM_BASE.z, ty: -0.5 },
+      polar:  { px: 0, py: 9,          pz: 0,           ty: 0    },
+      sphere: { px: 0, py: 0,          pz: 12,          ty: 0    },
+      wave:   { px: 0, py: 1,          pz: 10,          ty: 0    },
+    };
+    const d = defaults[visMode] || defaults.bowl;
+    camera.position.set(d.px, d.py, d.pz);
+    controls.target.set(0, d.ty, 0);
+    controls.update();
+
+    updateCamSelUI();
+
+    console.group('%c[CAM RESET]', 'color:#a2c0b0;font-weight:bold');
+    console.log('before:', before);
+    console.log('after — pos:', camera.position, '  target:', controls.target, '  enabled:', controls.enabled);
+    console.groupEnd();
+
+    logStatus(`Camera reset (${visMode})`, { open: false });
   });
 
   // Debug: Capture tests
@@ -2907,6 +2994,8 @@
         bootTerm.style.opacity = '1';
         const runFn = _isFastBoot ? boot.runFast.bind(boot) : boot.run.bind(boot, bootEl);
         runFn().then(() => {
+          document.removeEventListener('click', bootClickHandler);
+          document.removeEventListener('keydown', bootKeyHandler);
           bootEl.classList.add('done');
           setTimeout(() => bootEl.remove(), 500);
           initApp();
@@ -2934,8 +3023,16 @@
         }
       };
 
+      // Left-click: start boot (first click) or advance to next section
+      const bootClickHandler = () => {
+        if (bootPrompt.style.display !== 'none') {
+          startBoot();
+        } else {
+          boot.advance();
+        }
+      };
       document.addEventListener('keydown', bootKeyHandler);
-      bootPrompt.addEventListener('click', startBoot, { once: true });
+      document.addEventListener('click', bootClickHandler);
 
     }).catch(() => {
       // If boot.js fails to load, just init the app

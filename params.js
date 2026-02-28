@@ -53,6 +53,9 @@ export const P = {
   },
 };
 
+/** Columns derived from complexity — use this everywhere instead of P.complexity * 32 inline. */
+export function getCols() { return Math.max(2, P.complexity * 32); }
+
 /** Validate and constrain parameters to valid ranges */
 function validateParams() {
   P.rows = Math.max(2, Math.round(P.rows));

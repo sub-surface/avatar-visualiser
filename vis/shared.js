@@ -3,15 +3,15 @@
  * History ring buffer, bin map, A-weight gains.
  */
 import { NUM_BINS, FFT_SIZE } from '../engine.js';
-import { P } from '../params.js';
+import { P, getCols } from '../params.js';
 import { buildBinMap, buildAWeightGain } from '../dsp.js';
 
 /* ── DSP tables ────────────────────────────────────────────── */
 export const aWeightGain = buildAWeightGain(NUM_BINS, FFT_SIZE, 44100);
-export let   binMap      = buildBinMap(P.freqScale, (P.complexity * 32) / 2, NUM_BINS, P.freqRange, 44100);
+export let   binMap      = buildBinMap(P.freqScale, (getCols()) / 2, NUM_BINS, P.freqRange, 44100);
 
 export function refreshBinMap() {
-  const cols = P.complexity * 32;
+  const cols = getCols();
   binMap = buildBinMap(P.freqScale, cols / 2, NUM_BINS, P.freqRange, 44100);
 }
 

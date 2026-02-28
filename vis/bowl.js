@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import { scene, material, GRID_W, GRID_D, _colA, _colB } from '../engine.js';
-import { P } from '../params.js';
+import { P, getCols } from '../params.js';
 import { bowlFactor } from '../dsp.js';
 import { histBuf, histHead, binMap, pushHistory } from './shared.js';
 import { modDisp } from '../envelopes.js';
@@ -13,7 +13,7 @@ export const posBuffers = [];
 export const colBuffers = [];
 
 export function rebuildGrid() {
-  const cols = Math.max(2, P.complexity * 32);
+  const cols = getCols();
   lines.forEach(l => scene.remove(l));
   lines.length = posBuffers.length = colBuffers.length = 0;
   const rows = Math.max(2, P.rows);
@@ -42,7 +42,7 @@ export function applyDisplacement(fdL, fdR, bowlExp, dispScale) {
   pushHistory(fdAvg);
 
   const disp = dispScale !== undefined ? dispScale : modDisp();
-  const cols = Math.max(2, P.complexity * 32);
+  const cols = getCols();
   const half = cols / 2;
   const rows = Math.max(2, P.rows);
   
@@ -100,6 +100,20 @@ export function applyDisplacement(fdL, fdR, bowlExp, dispScale) {
     lines[r].geometry.attributes.position.needsUpdate = true;
     lines[r].geometry.attributes.color.needsUpdate = true;
   }
+}
+
+/**
+ * Pure position calculator — no state, safe to call from export.js.
+ * Mutates out[0..2] = [x, y, z].
+ */
+export function calcBowlPos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, bf, disp) {
+  const isRight = c >= half;
+  const m = isRight ? cols - 1 - c : c;
+  const bin = binMap[Math.min(m, half - 1)];
+  const fv = isRight ? hrowR[bin] : hrowL[bin];
+  out[0] = (c / (cols - 1) - 0.5) * GRID_W;
+  out[1] = -fv * bf * disp;
+  out[2] = (r / (rows - 1) - 0.5) * 10.0;
 }
 
 export function tearDownBowl() {

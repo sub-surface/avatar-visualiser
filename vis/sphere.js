@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { scene, material, _colA, _colB } from '../engine.js';
-import { P } from '../params.js';
+import { P, getCols } from '../params.js';
 import { histBuf, histHead, binMap, pushHistory } from './shared.js';
 import { modDisp } from '../envelopes.js';
 
@@ -12,7 +12,7 @@ export const sphereBase  = []; // static unit-sphere points
 let sphereRotation = 0;
 
 export function rebuildSphere() {
-  const cols = P.complexity * 32;
+  const cols = getCols();
   sphereLines.forEach(l => scene.remove(l));
   sphereLines.length = sphereBufs.length = sphereCols.length = sphereBase.length = 0;
 
@@ -60,7 +60,7 @@ export function applySphere(fdL, fdR, dispScale) {
   pushHistory(fdAvg);
 
   const disp = dispScale !== undefined ? dispScale : modDisp() * 0.5;
-  const cols = Math.max(2, P.complexity * 32);
+  const cols = Math.max(2, getCols());
   const rows = Math.max(2, P.rows);
   const half = cols / 2;
 
@@ -101,6 +101,27 @@ export function applySphere(fdL, fdR, dispScale) {
     line.geometry.attributes.color.needsUpdate = true;
     line.rotation.y = sphereRotation;
   }
+}
+
+/**
+ * Pure position calculator — no state, safe to call from export.js.
+ * Mutates out[0..2] = [x, y, z].
+ */
+export function calcSpherePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp, sphereSize, rot) {
+  const phi    = (r / (rows - 1)) * Math.PI;
+  const sinPhi = Math.sin(phi), cosPhi = Math.cos(phi);
+  const theta  = (c / (cols - 1)) * Math.PI * 2;
+  const isRight = c < half;
+  const m = c < half ? c : cols - 1 - c;
+  const bin = binMap[Math.min(m, half - 1)];
+  const fv = isRight ? hrowR[bin] : hrowL[bin];
+  const push = (1 + fv * disp) * sphereSize;
+  const x = Math.cos(theta) * sinPhi * push;
+  const z = Math.sin(theta) * sinPhi * push;
+  const y = cosPhi * push;
+  out[0] = x * Math.cos(rot) - z * Math.sin(rot);
+  out[1] = y;
+  out[2] = x * Math.sin(rot) + z * Math.cos(rot);
 }
 
 export function tearDownSphere() {

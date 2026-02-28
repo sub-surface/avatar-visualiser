@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import { scene, material, _colA, _colB } from '../engine.js';
-import { P } from '../params.js';
+import { P, getCols } from '../params.js';
 import { bowlFactor } from '../dsp.js';
 import { histBuf, histHead, binMap, pushHistory } from './shared.js';
 import { modDisp } from '../envelopes.js';
@@ -13,7 +13,7 @@ export const polarBufs  = [];
 export const polarCols  = [];
 
 export function rebuildPolar() {
-  const cols = Math.max(2, P.complexity * 32);
+  const cols = getCols();
   polarLines.forEach(l => scene.remove(l));
   polarLines.length = polarBufs.length = polarCols.length = 0;
   const rows = Math.max(2, P.rows);
@@ -39,7 +39,7 @@ export function applyPolar(fdL, fdR, bowlExp, dispScale, spacing) {
 
   const disp  = dispScale !== undefined ? dispScale : modDisp();
   const space = spacing !== undefined ? spacing : P.polarSpacing;
-  const cols  = Math.max(2, P.complexity * 32);
+  const cols  = getCols();
   const half  = cols / 2;
   const segs  = cols;
   const rows  = Math.max(2, P.rows);
@@ -75,6 +75,24 @@ export function applyPolar(fdL, fdR, bowlExp, dispScale, spacing) {
     polarLines[r].geometry.attributes.position.needsUpdate = true;
     polarLines[r].geometry.attributes.color.needsUpdate = true;
   }
+}
+
+/**
+ * Pure position calculator — no state, safe to call from export.js.
+ * Mutates out[0..2] = [x, y, z].
+ */
+export function calcPolarPos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, bf, disp, space) {
+  const segs = cols;
+  const ci = c % segs;
+  const angle = (ci / segs) * Math.PI * 2;
+  const isRight = ci < segs / 2;
+  const m = ci < half ? ci : segs - 1 - ci;
+  const bin = binMap[Math.min(m, half - 1)];
+  const fv = isRight ? hrowR[bin] : hrowL[bin];
+  const radius = 0.4 + (4.5 - 0.4) * bf * (1 + fv * disp * 0.18);
+  out[0] = Math.cos(angle) * radius;
+  out[1] = (r / (rows - 1) - 0.5) * space;
+  out[2] = Math.sin(angle) * radius;
 }
 
 export function tearDownPolar() {
