@@ -455,7 +455,7 @@
     /* ── Frame render + encode loop ──────────────────────────── */
     async function runFrameLoop(videoEncoder, frameFreqData, totalFrames, fps, onProgress) {
       const frameDt        = 1 / fps;
-      const exportFreqData = new Uint8Array(256);
+      const exportFreqData = new Uint8Array(NUM_BINS); // 1024
       let   exportTimeAccum = 0;
 
       for (let f = 0; f < totalFrames; f++) {
