@@ -1115,7 +1115,7 @@
 
       const vf = new VideoFrame(renderer.domElement,
         { timestamp: Math.round(f*(1e6/fps)), duration: Math.round(1e6/fps) });
-      venc.encode(vf, { keyFrame: true });
+      venc.encode(vf, { keyFrame: f % (FPS * 2) === 0 });
       vf.close();
 
       if (f % 10 === 0) { onProgress(Math.round((f/totalFrames)*100)); await new Promise(r=>setTimeout(r,0)); }
@@ -1161,10 +1161,12 @@
 
       const venc = new VideoEncoder({
         output: (c,m)=>muxer.addVideoChunk(c,m), error: e=>console.error('VEnc:',e) });
+      // CRF 18 — visually lossless on line-art-on-black; ~10× smaller than q=0.
+      // Inter-frame compression (P-frames) handles the smooth scanline motion well.
       const vcfg = { codec:'avc1.640028', width:EXPORT_W, height:EXPORT_H,
-        framerate:FPS, bitrateMode:'quantizer', quantizer:0, latencyMode:'quality' };
+        framerate:FPS, bitrateMode:'quantizer', quantizer:18, latencyMode:'quality' };
       const sup = await VideoEncoder.isConfigSupported(vcfg);
-      if (!sup.supported) { delete vcfg.bitrateMode; delete vcfg.quantizer; delete vcfg.latencyMode; vcfg.bitrate=100e6; }
+      if (!sup.supported) { delete vcfg.bitrateMode; delete vcfg.quantizer; delete vcfg.latencyMode; vcfg.bitrate=8e6; }
       venc.configure(vcfg);
 
       const aenc = new AudioEncoder({
