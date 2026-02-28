@@ -460,7 +460,7 @@
 
       for (let f = 0; f < totalFrames; f++) {
         // Backpressure: wait until encoder queue drains before submitting more
-        while (videoEncoder.encodeQueueSize > 5) {
+        while (videoEncoder.encodeQueueSize > 2) { // tighter — lossless frames are large
           await new Promise(r => setTimeout(r, 0));
         }
 
@@ -477,7 +477,7 @@
           timestamp: Math.round(f * (1_000_000 / fps)),
           duration:  Math.round(1_000_000 / fps),
         });
-        videoEncoder.encode(videoFrame, { keyFrame: f % (fps * 2) === 0 });
+        videoEncoder.encode(videoFrame, { keyFrame: true }); // every frame = keyframe, no temporal compression
         videoFrame.close();
 
         // Yield every frame to keep browser responsive
@@ -528,18 +528,32 @@
           fastStart: 'in-memory',
         });
 
-        // 5. Configure VideoEncoder — try High Profile, fall back to Baseline
-        const makeVideoEncoder = () => new VideoEncoder({
+        // 5. Configure VideoEncoder — lossless-quality: every frame is a keyframe,
+        //    quantizer mode q=0 (lossless H.264), no inter-frame temporal compression.
+        //    This is the highest possible quality for line-art on black.
+        const videoEncoder = new VideoEncoder({
           output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
           error:  (e) => console.error('VideoEncoder error:', e),
         });
 
-        const videoCfgBase = { width: EXPORT_W, height: EXPORT_H, bitrate: 8_000_000, framerate: FPS };
-        const highSupport  = await VideoEncoder.isConfigSupported({ codec: 'avc1.640028', ...videoCfgBase });
-        const videoCodec   = highSupport.supported ? 'avc1.640028' : 'avc1.42E01E';
+        const videoCfg = {
+          codec:          'avc1.640028', // H.264 High Profile 4.0
+          width:          EXPORT_W,
+          height:         EXPORT_H,
+          framerate:      FPS,
+          bitrateMode:    'quantizer',   // CQP mode — ignores bitrate field
+          quantizer:      0,             // 0 = lossless (0–51 scale, lower = better)
+          latencyMode:    'quality',     // prioritise quality over encode speed
+        };
 
-        const videoEncoder = makeVideoEncoder();
-        videoEncoder.configure({ codec: videoCodec, ...videoCfgBase });
+        // quantizer mode may not be supported everywhere — check first
+        const qSupport = await VideoEncoder.isConfigSupported(videoCfg);
+        if (!qSupport.supported) {
+          // Fallback: very high constant bitrate (100Mbps) — still DCT but near-lossless
+          delete videoCfg.bitrateMode; delete videoCfg.quantizer; delete videoCfg.latencyMode;
+          videoCfg.bitrate = 100_000_000;
+        }
+        videoEncoder.configure(videoCfg);
 
         // 6. Configure AudioEncoder
         const audioEncoder = new AudioEncoder({
