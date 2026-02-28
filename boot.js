@@ -410,6 +410,7 @@ class BootAudio {
   constructor() {
     this.ctx = null;
     this.lpf = null;
+    this.mainLpf = null; // Reference to the main audio chain LPF
   }
 
   init() {
@@ -418,6 +419,10 @@ class BootAudio {
     this.lpf.type = 'lowpass';
     this.lpf.frequency.value = 1200; // Muffled 90s chassis sound
     this.lpf.connect(this.ctx.destination);
+  }
+
+  setMainLpf(lpfNode) {
+    this.mainLpf = lpfNode;
   }
 
   beep(freq = 880, dur = 0.1, type = 'sine') {
@@ -432,6 +437,37 @@ class BootAudio {
     g.connect(this.lpf);
     osc.start();
     osc.stop(this.ctx.currentTime + dur);
+  }
+
+  // Power-up chord sweep
+  powerUpSweep(duration = 1.5) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + duration);
+    
+    g.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+    
+    osc.connect(g);
+    g.connect(this.lpf);
+    osc.start();
+    osc.stop(this.ctx.currentTime + duration);
+  }
+
+  // LPF sweep on main audio chain (during startup sound)
+  sweepMainLpf(startFreq = 165, endFreq = 5000, duration = 3.5) {
+    if (!this.mainLpf) return Promise.resolve();
+    
+    return new Promise(resolve => {
+      const startTime = this.mainLpf.context.currentTime;
+      this.mainLpf.frequency.setValueAtTime(startFreq, startTime);
+      this.mainLpf.frequency.exponentialRampToValueAtTime(endFreq, startTime + duration);
+      setTimeout(() => resolve(), duration * 1000);
+    });
   }
 
   // Subtle HDD "chug" noise
@@ -563,6 +599,10 @@ export class BootScreen {
   async run(containerEl) {
     this.audio.init();
     this.audio.beep(880, 0.15, 'square'); // POST beep
+    await this._sleep(80);
+    this.audio.beep(1200, 0.1, 'sine');   // Secondary beep
+    await this._sleep(50);
+    this.audio.beep(660, 0.12, 'sine');   // Lower beep
 
     // Phase 0: Intro animation
     const anim = INTRO_ANIMS[Math.floor(Math.random() * INTRO_ANIMS.length)];
@@ -583,9 +623,13 @@ export class BootScreen {
     if (this.skipped) return;
 
     this._line('');
+    this.audio.beep(1100, 0.1, 'square'); // Pre-perf-tests beep
     await this._perfTests();
     await this._sleep(100);
     if (this.skipped) return;
+
+    // Add power-up sweep here
+    this.audio.powerUpSweep(1.2);
 
     // Phase 2: Logo + init steps
     this.el.innerHTML = '';
@@ -621,6 +665,7 @@ export class BootScreen {
     if (this.skipped) return;
 
     this._line('');
+    this.audio.beep(880, 0.1, 'sine');    // Final ready beep
     await this._type('  System ready. Initialising visualiser...', 4, 'boot-bright');
     await this._sleep(200);
   }

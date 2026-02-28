@@ -1041,6 +1041,36 @@
       text-transform: lowercase;
       padding-bottom: 4px;
     }
+
+    /* DOS-style landing prompt */
+    @keyframes caret-blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    #bootStartPrompt {
+      background: #000;
+      font-family: 'Courier New', monospace;
+      flex-direction: column;
+      gap: 1rem;
+      text-align: center;
+    }
+
+    #bootStartPrompt .dos-input {
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      color: var(--s-hi);
+      line-height: 1.6;
+      white-space: pre;
+    }
+
+    #bootStartPrompt .dos-caret {
+      display: inline-block;
+      width: 1ch;
+      background: var(--ui-accent);
+      margin-left: 0.1em;
+      animation: caret-blink 1s infinite;
+    }
   </style>
 
   <script src="https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
@@ -1057,7 +1087,16 @@
 <div id="bootScreen">
   <div id="bootTerminal" style="opacity:0; transition:opacity 0.5s;"></div>
   <div id="bootStartPrompt" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10000; cursor:pointer;">
-    <span class="boot-accent" style="font-family:var(--serif); font-size:1.5rem; letter-spacing:0.1em; text-shadow:0 0 20px var(--ui-accent);">click to begin boot</span>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
+      <div class="dos-input">
+        SUB-SURFACE AVATAR<br>
+        Real-time Audio Visualiser<br>
+        ────────────────────────
+      </div>
+      <div class="dos-input" style="font-size: 0.9rem; color: var(--s-mid);">
+        Press any key to continue...<span class="dos-caret">_</span>
+      </div>
+    </div>
   </div>
   <div id="bootSkip">[S] skip</div>
 </div>
@@ -2551,6 +2590,35 @@
   dirY.addEventListener('input', saveDirSliders);
   dirZ.addEventListener('input', saveDirSliders);
   dirLookY.addEventListener('input', saveDirSliders);
+
+  // Prevent camera controls from interfering when dragging slider handles
+  const sliderElements = [dirX, dirY, dirZ, dirLookY];
+  sliderElements.forEach(slider => {
+    slider.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      controls.enabled = false;
+    });
+    slider.addEventListener('pointerup', e => {
+      e.stopPropagation();
+      controls.enabled = true;
+    });
+    slider.addEventListener('pointermove', e => {
+      // Stop propagation if pointer is still being held (active slider drag)
+      if (e.buttons === 1) {
+        e.stopPropagation();
+      }
+    });
+    // Also handle mouse events for older browsers
+    slider.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      controls.enabled = false;
+    });
+    slider.addEventListener('mouseup', e => {
+      e.stopPropagation();
+      controls.enabled = true;
+    });
+  });
+
   loadDirSliders();
   updateCamSelUI(); // Initialise UI state
 
@@ -2708,7 +2776,7 @@
 
       // Initialise the analyser chain (sets audioReady = true, fills analyserL/R)
       setupAnalyser(ctx);
-      // Temporarily set the chain's LPF to 165 Hz for the warm boot chord
+      // LPF starts at 165 Hz and sweeps up during the startup chord
       const chainLpf = getLPF();
       const prevCutoff = chainLpf.frequency.value;
       chainLpf.frequency.value = 165;
@@ -2717,7 +2785,12 @@
       src.buffer = buf;
       src.connect(chainLpf); // feeds through LPF → gain → splitter → analysers → destination
 
-      const play = () => src.start(0);
+      const play = () => {
+        src.start(0);
+        // Sweep LPF from 165 Hz to 5000 Hz over 3.5 seconds
+        chainLpf.frequency.setValueAtTime(165, ctx.currentTime);
+        chainLpf.frequency.exponentialRampToValueAtTime(5000, ctx.currentTime + 3.5);
+      };
       if (ctx.state === 'suspended') {
         const resume = () => { ctx.resume().then(play); };
         document.addEventListener('click',   resume, { once: true });
