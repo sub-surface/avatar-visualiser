@@ -1,121 +1,102 @@
-# AVATAR — Web-based Audio Visualiser
+# AVATAR — Audio Visualiser
 
-A real-time 3D audio visualiser in the style of Joy Division's *Unknown Pleasures*.
-Horizontal scanlines displaced by microphone FFT data form a pulsing bowl/crater shape.
-Designed for use as a live video avatar via OBS Studio.
+A modular, real-time 3D audio visualiser inspired by Joy Division's *Unknown Pleasures* aesthetic. It features a WebGL-based rendering engine, a WebCodecs-driven export pipeline with 2D text compositing, and a reactive parameters system.
 
-## Setup
+Horizontal scanlines displaced by frequency data form pulsing shapes across four distinct visualisation modes. Designed for both live performance (via OBS Studio) and high-quality video export.
 
-ES modules are blocked by browsers when opened directly from `file://` — you must serve over HTTP.
+---
 
-1. Double-click `serve.bat` (requires Node.js) — starts a local server and opens the browser automatically
-2. Or run manually: `npx serve . --listen 3000` then open `http://localhost:3000`
-3. Click anywhere on screen and grant microphone access when prompted
+## 🚀 Features
 
-To open `tests.html`: navigate to `http://localhost:3000/tests.html`
+- **Four Visualisation Modes**: `bowl` (classic scanlines), `polar` (circular), `sphere` (3D displacement), and `wave` (time-domain).
+- **Dual Operating Modes**:
+  - **Live Mode**: Uses microphone input for real-time performance. Supports an `?obs=1` URL parameter for a UI-free browser source.
+  - **Export Mode**: High-quality MP4 export (Lossless, Standard, or Lo-Fi) with baked-in text overlays (artist, title, BPM).
+- **Advanced DSP**: Custom FFT implementation with configurable frequency scaling (`dnb`, `log`, `linear`), A-weighting, and envelope followers for sub-bass, kick, mids, and highs.
+- **Reactive Parameters**: 20+ real-time tweakable parameters (displacement, LFO, smoothing, modulation depths) with `localStorage` persistence.
+- **QoL**: Drag-and-drop audio files, keyboard shortcuts (Space for mode toggle, 1-4 for vis modes, F for fullscreen), and mobile-responsive CSS.
 
-## OBS Capture
+---
 
-### Option A — Browser Source via local server (recommended)
-1. Run `serve.bat`
-2. Add a **Browser Source** in OBS, set URL to `http://localhost:3000/index.html`
-3. Click **Interact** in the source properties, then click inside it to start
+## 🏗️ Project Structure & Architecture
 
-### Option B — Local file (only works if --allow-file-access-from-files is set)
-1. Launch your browser with the `--allow-file-access-from-files` flag
-2. Add a **Browser Source** in OBS
-3. Set URL to: `file:///C:/Users/Leon/Desktop/Psychograph/Avatar/index.html`
-
-### Tips
-- Resolution: 1920×1080 recommended
-- Background is near-black (`#0d0d0d`) — no chroma key needed for dark overlays
-- For true transparency: set `alpha: true` in `WebGLRenderer` and use OBS colour key
-
-## Parameters Panel
-
-Click **parameters** in the top-right widget to expand the live control panel. Changes take effect immediately on both the live visualiser and any subsequent export.
-
-| Parameter | Default | Range | Effect |
-|---|---|---|---|
-| freq scale | `dnb` | linear / log / dnb | Frequency mapping curve (see below) |
-| freq range | 0.55 | 0.2–1.0 | Upper frequency cutoff as fraction of Nyquist |
-| smoothing | 0.55 | 0.10–0.95 | EMA temporal smoothing (higher = more inertia) |
-| displacement | 2.2 | 0.5–5.0 | Maximum vertical displacement of scanlines |
-| bowl shape | 2.0 | 0.5–4.0 | Exponent controlling bowl curvature (2=gentle, 4=sharp crater) |
-| rows | 60 | 20–120 | Number of horizontal scanlines |
-| cols | 128 | 64–256 | Vertices per line (higher = smoother curves) |
-
-Changing **rows** or **cols** rebuilds the Three.js geometry on the fly.
-
-## Frequency Scales
-
-The **freq scale** parameter controls how FFT bins are distributed across the visual width.
-
-### `linear`
-Uniform Hz/column spacing. Simple — but compresses most musical content into a narrow low-frequency cluster since the ear is logarithmic.
-
-### `log`
-Logarithmic spacing from 20Hz to the freq range cutoff. Matches how the ear hears pitch — octaves appear equally wide. Good for general music.
-
-### `dnb` (default — recommended for Jungle/DnB)
-A piecewise curve optimised for the spectral signature of Jungle and Drum & Bass:
-
-| Screen region | Frequency range | Content |
-|---|---|---|
-| Left 25% | 40–180 Hz | Sub-bass, kick body, bass wobble |
-| Middle 50% | 500Hz–6kHz (log) | Amen break, snare crack, hi-hat |
-| Right 25% | 6kHz–16kHz | Hi-hat shimmer, top-end air |
-
-This prevents the amen break and sub energy from fighting for the same few columns.
-
-## Export
-
-Click **parameters → load & export** to render a WAV file to MP4:
-
-1. Click **load & export** and select a WAV file
-2. The visualiser re-renders offline at 1920×1080, 30fps
-3. A download is triggered automatically when encoding finishes
-4. Output is lossless H.264 (quantizer=0, every frame a keyframe) — no temporal compression artefacts on thin line art
-
-Parameters are baked in at export time — set them before clicking export.
-
-## Tests
-
-Run `serve.bat` then open `http://localhost:3000/tests.html` in your browser. All pure functions (`applyHannWindow`, `fftRadix2`, `computeFFTBins`, `buildBinMap`, `bowlFactor`, `buildAWeightGain`) are tested in isolation without a DOM or WebGL context.
-
-Test groups:
-- **FFT correctness** — Hann window normalisation, DC bin, 440Hz dominant bin, silence → zero bins
-- **Bin mapping** — linear/log/dnb monotonicity, boundary values, DnB band allocation (first 25% in 40–180Hz, middle 50% in 500–6kHz)
-- **Bowl factor** — centre=1.0, edges≈0.0, higher exponent gives steeper falloff
-- **A-weighting** — gain range 0.5–1.0, peak near 3.5kHz
-- **Export EMA smoothing** — step response follows expected decay curve
-
-## Tuning for DnB/Jungle
-
-Recommended starting point:
-
-| Parameter | Value | Reason |
-|---|---|---|
-| freq scale | `dnb` | Genre-tuned band allocation |
-| freq range | 0.55 | Cuts ultrasonic bins; DnB content sits below ~12kHz |
-| smoothing | 0.45–0.55 | Preserves transient snap of amen break |
-| displacement | 2.5–3.0 | More dramatic movement on kick hits |
-| bowl shape | 2.5 | Slightly sharper crater accentuates mid-energy peaks |
-
-## Architecture
+The project is modularised for maintainability and clear separation of concerns:
 
 ```
 Avatar/
-├── index.html   — Three.js visualiser + WebCodecs export + params panel
-├── dsp.js       — Pure ES module: FFT, windowing, bin mapping, bowl factor, A-weighting
-├── tests.html   — In-browser test suite (no framework)
-└── README.md
+├── index.html          # Entry point: HTML/CSS + Module wiring
+├── engine.js           # Three.js core: renderer, scene, camera, and fade transitions
+├── audio.js            # Web Audio API: Mic/File input, analyser, and raw frequency data
+├── envelopes.js        # DSP: Envelope followers (sub, kick, etc.) and LFO logic
+├── dsp.js              # Pure math: FFT, Hann windowing, bin mapping, and A-weighting
+├── params.js           # State: Parameter definitions, persistence, and DOM bindings
+├── export.js           # Pipeline: WebCodecs encoding (VideoEncoder/AudioEncoder)
+├── overlay.js          # Compositing: Canvas 2D text rendering for export frames
+├── vis/                # Visualisation-specific modules
+│   ├── shared.js       # Shared buffers (history, bin maps) and A-weighting gains
+│   ├── bowl.js         # Scanline grid geometry and displacement
+│   ├── polar.js        # Circular geometry
+│   ├── sphere.js       # 3D sphere displacement
+│   └── wave.js         # Time-domain waveform rendering
+└── tests.html          # Browser-based test suite for DSP and logic
 ```
 
-`dsp.js` has no DOM, Three.js, or side-effect dependencies — all functions are pure and exported.
+---
 
-## Requirements
+## 🛠️ Setup & Usage
 
-- Chrome 94+ (WebCodecs export) or Chrome 89+ (live visualiser only)
-- Microphone permission
-- Internet connection (Three.js loaded from unpkg CDN)
+### Local Development
+ES modules are blocked by browsers when opened directly from `file://` — you must serve over HTTP.
+
+1. Double-click `serve.bat` (requires Node.js) — starts a local server and opens the browser automatically.
+2. Or run manually: `npx serve . --listen 3000` then open `http://localhost:3000`.
+
+### Live Mode (OBS Capture)
+1. Add a **Browser Source** in OBS, set URL to `http://localhost:3000/index.html?obs=1`.
+2. The `?obs=1` parameter hides all UI chrome for a clean capture.
+3. Click **Interact** in the source properties, then click inside it to grant microphone access.
+
+### Export Mode
+1. Switch to **export** mode in the top-right toggle.
+2. Drag and drop an audio file (WAV, MP3, etc.) onto the window or click **load file**.
+3. Adjust track metadata (Title, Artist, BPM) in the parameters panel.
+4. Click **render video**. The render happens offline (frame-by-frame) and will prompt for a save location.
+5. **Baked Overlays**: The export pipeline uses `overlay.js` to composite metadata directly onto the video frames.
+
+---
+
+## 🎹 Keyboard Shortcuts
+
+| Key | Action |
+|---|---|
+| `Space` | Toggle between **Live** and **Export** modes |
+| `1` – `4` | Switch Visualisation Modes (`bowl`, `polar`, `sphere`, `wave`) |
+| `P` | Toggle Parameters Panel |
+| `F` | Toggle Fullscreen |
+
+---
+
+## 📈 Frequency Scales
+
+The **freq scale** parameter controls how FFT bins are distributed across the visual width.
+
+- **`linear`**: Uniform Hz/column spacing.
+- **`log` (Default)**: Logarithmic spacing matching human hearing perception.
+
+---
+
+## 🧪 Testing
+
+Open `http://localhost:3000/tests.html` to run the test suite. It covers:
+- **FFT Accuracy**: Hann windowing and magnitude correctness.
+- **Bin Mapping**: Monotonicity and frequency band allocation for `dnb` scale.
+- **Envelope Logic**: Slew rate (attack/release) timing for reactive elements.
+- **A-Weighting**: Human hearing perception normalisation.
+
+---
+
+## 🎨 Visual Identity
+
+- **Typography**: *DM Serif Display* (editorial serif) and *DM Mono* (technical metadata).
+- **Colors**: Strict two-color scheme of Slate (`--s-hi`) and Mauve (`--m-hi`) on a deep black background (`#0d0d0d`).
+- **Scanlines**: Gold base (`0xe8d5b0`) with Mauve peaks (`0xb090c8`).

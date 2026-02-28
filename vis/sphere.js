@@ -1,51 +1,106 @@
-/**
- * vis/sphere.js — subdivided sphere, vertex displacement outward by FFT.
- */
 import * as THREE from 'three';
-import { scene, LINE_COLOR } from '../engine.js';
+import { scene, material, _colA, _colB } from '../engine.js';
 import { P } from '../params.js';
-import { binMap } from './shared.js';
+import { histBuf, histHead, binMap, pushHistory } from './shared.js';
 import { modDisp } from '../envelopes.js';
 
-const SPHERE_SEGS = 48;
-export let sphereGeo = null, sphereMesh = null, sphereBasePts = null;
+export const sphereLines = [];
+export const sphereBufs  = [];
+export const sphereCols  = [];
+export const sphereBase  = []; // static unit-sphere points
+
+let sphereRotation = 0;
 
 export function rebuildSphere() {
-  if (sphereMesh) scene.remove(sphereMesh);
-  sphereGeo = new THREE.SphereGeometry(3, SPHERE_SEGS, SPHERE_SEGS);
-  const wireMat = new THREE.MeshBasicMaterial({
-    color: LINE_COLOR, wireframe: true, transparent: true, opacity: 0.7,
-  });
-  sphereMesh = new THREE.Mesh(sphereGeo, wireMat);
-  scene.add(sphereMesh);
-  sphereBasePts = new Float32Array(sphereGeo.attributes.position.array);
+  sphereLines.forEach(l => scene.remove(l));
+  sphereLines.length = sphereBufs.length = sphereCols.length = sphereBase.length = 0;
+
+  const rows = P.rows;
+  const cols = P.cols;
+
+  for (let r = 0; r < rows; r++) {
+    const phi = (r / (rows - 1)) * Math.PI; // 0 to PI (top to bottom)
+    const sinPhi = Math.sin(phi);
+    const cosPhi = Math.cos(phi);
+
+    const positions = new Float32Array(cols * 3);
+    const colors    = new Float32Array(cols * 3);
+    const basePts   = new Float32Array(cols * 3);
+
+    for (let c = 0; c < cols; c++) {
+      const theta = (c / (cols - 1)) * Math.PI * 2;
+      const x = Math.cos(theta) * sinPhi;
+      const z = Math.sin(theta) * sinPhi;
+      const y = cosPhi;
+
+      // Base unit sphere shape
+      basePts[c * 3]     = x * P.sphereSize;
+      basePts[c * 3 + 1] = y * P.sphereSize;
+      basePts[c * 3 + 2] = z * P.sphereSize;
+
+      positions.set(basePts.subarray(c * 3, c * 3 + 3), c * 3);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+    const line = new THREE.LineLoop(geo, material);
+    
+    scene.add(line);
+    sphereLines.push(line);
+    sphereBufs.push(positions);
+    sphereCols.push(colors);
+    sphereBase.push(basePts);
+  }
 }
 
-export function applySphere(fd, dispScale) {
-  if (!sphereMesh) return;
-  const disp  = dispScale !== undefined ? dispScale : modDisp() * 0.4;
-  const pos   = sphereGeo.attributes.position;
-  const arr   = pos.array;
-  const half  = P.cols / 2;
-  const count = arr.length / 3;
-  for (let i = 0; i < count; i++) {
-    const bx = sphereBasePts[i * 3];
-    const by = sphereBasePts[i * 3 + 1];
-    const bz = sphereBasePts[i * 3 + 2];
-    const az = Math.atan2(bz, bx);
-    const t  = (az / (Math.PI * 2) + 0.5);
-    const ci = Math.floor(t * (P.cols - 1));
-    const m  = ci < half ? ci : P.cols - 1 - ci;
-    const fv = fd[binMap[Math.min(m, half - 1)]] / 255;
-    const push = 1 + fv * disp;
-    arr[i * 3]     = bx * push;
-    arr[i * 3 + 1] = by * push;
-    arr[i * 3 + 2] = bz * push;
+export function applySphere(fdL, fdR, dispScale) {
+  const fdAvg = new Uint8Array(fdL.length);
+  for(let i=0; i<fdL.length; i++) fdAvg[i] = (fdL[i] + fdR[i]) / 2;
+  pushHistory(fdAvg);
+
+  const disp = dispScale !== undefined ? dispScale : modDisp() * 0.5;
+  const half = P.cols / 2;
+
+  // Ambient spin
+  sphereRotation += 0.005;
+
+  for (let r = 0; r < P.rows; r++) {
+    const pos  = sphereBufs[r];
+    const col  = sphereCols[r];
+    const base = sphereBase[r];
+    const line = sphereLines[r];
+    
+    const midIdx = Math.floor(P.rows / 2);
+    const distFromMid = Math.abs(r - midIdx);
+    const hrow = histBuf[(histHead + distFromMid) % P.rows];
+
+    for (let c = 0; c < P.cols; c++) {
+      const isRight = c < half; 
+      const m  = c < half ? c : P.cols - 1 - c;
+      const bin = binMap[Math.min(m, half - 1)];
+      
+      const fv = (r === midIdx) ? ((isRight ? fdR[bin] : fdL[bin]) / 255) : hrow[bin];
+      
+      const push = 1 + fv * disp;
+      pos[c * 3]     = base[c * 3]     * push;
+      pos[c * 3 + 1] = base[c * 3 + 1] * push;
+      pos[c * 3 + 2] = base[c * 3 + 2] * push;
+
+      // Update vertex color
+      const lerpVal = Math.min(fv * 2.0, 1.0);
+      col[c * 3]     = _colA.r + (_colB.r - _colA.r) * lerpVal;
+      col[c * 3 + 1] = _colA.g + (_colB.g - _colA.g) * lerpVal;
+      col[c * 3 + 2] = _colA.b + (_colB.b - _colA.b) * lerpVal;
+    }
+    
+    line.geometry.attributes.position.needsUpdate = true;
+    line.geometry.attributes.color.needsUpdate = true;
+    line.rotation.y = sphereRotation;
   }
-  pos.needsUpdate = true;
-  sphereGeo.computeVertexNormals();
 }
 
 export function tearDownSphere() {
-  if (sphereMesh) { scene.remove(sphereMesh); sphereMesh = null; }
+  sphereLines.forEach(l => scene.remove(l));
+  sphereLines.length = sphereBufs.length = sphereCols.length = sphereBase.length = 0;
 }

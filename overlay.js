@@ -38,9 +38,13 @@ export function freeOverlayCanvas() {
  * @param {{ artist?:string, title?:string, bpm?:string, genre?:string }} meta
  * @param {number} time     - current playback time in seconds
  * @param {number} duration - total duration in seconds
+ * @param {string} visMode  - current visualisation mode (bowl, polar, sphere, wave)
  * @returns {HTMLCanvasElement} the composited 2D canvas
  */
-export function compositeFrame(glCanvas, meta, time, duration) {
+export function compositeFrame(glCanvas, meta, time, duration, visMode) {
+  // Auto-init if not already allocated (e.g. for test captures)
+  if (!_compCanvas) initOverlayCanvas(glCanvas.width, glCanvas.height);
+
   const w   = _compCanvas.width;
   const h   = _compCanvas.height;
   const ctx = _compCtx;
@@ -51,51 +55,91 @@ export function compositeFrame(glCanvas, meta, time, duration) {
   // 2. Draw text overlay if there's any metadata to show
   if (!meta.artist && !meta.title && !meta.bpm && !meta.genre) return _compCanvas;
 
-  const cx    = w / 2;
   const scale = h / 1080;
-  let y = h * 0.10;
+  let cx = w / 2;
+  let y  = h * 0.10;
+  let align = 'center';
+  const isLowRes = h < 600;
 
-  // Artist — small mono, uppercase, mauve
-  if (meta.artist) {
-    ctx.font      = `300 ${Math.round(13 * scale)}px "DM Mono", "Courier New", monospace`;
-    ctx.fillStyle = 'rgba(192, 162, 184, 0.80)';
-    ctx.textAlign = 'center';
-    ctx.fillText(meta.artist.toUpperCase(), cx, y);
-    y += Math.round(10 * scale);
+  // Layout overrides for export
+  if (visMode === 'wave') {
+    y = h * 0.82; // Move to bottom
+  } else if (visMode === 'sphere' && w > h) {
+    // Side-by-side layout: text left, visualiser right
+    cx = w * 0.08; 
+    y  = h * 0.45;
+    align = 'left';
   }
 
-  // Title — large serif, slate
+  const drawText = (txt, x, y, font, style) => {
+    ctx.font = font;
+    ctx.fillStyle = style;
+    ctx.textAlign = align;
+    
+    if (isLowRes) {
+      // Punchy shadow for low-res legibility
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 4 * (h/480);
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+    }
+    
+    ctx.fillText(txt, x, y);
+    
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  };
+
+  const monoSmall = `${isLowRes ? '400' : '300'} ${Math.round(13 * (isLowRes ? scale * 1.5 : scale))}px "DM Mono", "Courier New", monospace`;
+  const serifLarge = `italic ${isLowRes ? '500' : '400'} ${Math.round(34 * (isLowRes ? scale * 1.5 : scale))}px "DM Serif Display", Georgia, serif`;
+  const monoTiny = `${isLowRes ? '400' : '300'} ${Math.round(11 * (isLowRes ? scale * 1.5 : scale))}px "DM Mono", "Courier New", monospace`;
+
+  // Colors: brighter for low-res
+  const colMauve = isLowRes ? 'rgba(230, 200, 220, 0.95)' : 'rgba(192, 162, 184, 0.80)';
+  const colSlate = isLowRes ? 'rgba(210, 230, 240, 0.95)' : 'rgba(162, 182, 192, 0.85)';
+  const colRule  = isLowRes ? 'rgba(230, 200, 220, 0.40)' : 'rgba(192, 162, 184, 0.20)';
+  const colPills = isLowRes ? 'rgba(210, 230, 240, 0.70)' : 'rgba(162, 182, 192, 0.45)';
+
+  // Artist
+  if (meta.artist) {
+    drawText(meta.artist.toUpperCase(), cx, y, monoSmall, colMauve);
+    y += Math.round(20 * scale);
+  }
+
+  // Title
   if (meta.title) {
-    const titleSize = Math.round(34 * scale);
-    ctx.font      = `italic ${titleSize}px "DM Serif Display", Georgia, serif`;
-    ctx.fillStyle = 'rgba(162, 182, 192, 0.85)';
-    ctx.textAlign = 'center';
-    ctx.fillText(meta.title, cx, y + titleSize);
+    const titleSize = Math.round(34 * (isLowRes ? scale * 1.5 : scale));
+    drawText(meta.title, cx, y + titleSize, serifLarge, colSlate);
     y += titleSize + Math.round(14 * scale);
   }
 
-  // Hairline rule — mauve
+  // Hairline rule
   if (meta.title || meta.artist) {
-    const ruleW = Math.round(100 * scale);
-    ctx.strokeStyle = 'rgba(192, 162, 184, 0.20)';
-    ctx.lineWidth   = 1;
+    const ruleW = Math.round(100 * (isLowRes ? scale * 1.5 : scale));
+    ctx.strokeStyle = colRule;
+    ctx.lineWidth   = isLowRes ? 2 : 1;
     ctx.beginPath();
-    ctx.moveTo(cx - ruleW / 2, y);
-    ctx.lineTo(cx + ruleW / 2, y);
+    if (align === 'center') {
+      ctx.moveTo(cx - ruleW / 2, y);
+      ctx.lineTo(cx + ruleW / 2, y);
+    } else {
+      ctx.moveTo(cx, y);
+      ctx.lineTo(cx + ruleW, y);
+    }
     ctx.stroke();
-    y += Math.round(18 * scale);
+    y += Math.round(22 * scale);
   }
 
-  // Metadata pills: time · bpm · genre
+  // Metadata pills
   const pills = [];
   if (time !== undefined && duration) pills.push(`${fmtTime(time)} / ${fmtTime(duration)}`);
   if (meta.bpm)   pills.push(`${meta.bpm} bpm`);
   if (meta.genre) pills.push(meta.genre);
   if (pills.length) {
-    ctx.font      = `300 ${Math.round(11 * scale)}px "DM Mono", "Courier New", monospace`;
-    ctx.fillStyle = 'rgba(162, 182, 192, 0.45)';
-    ctx.textAlign = 'center';
-    ctx.fillText(pills.join('  ·  '), cx, y);
+    drawText(pills.join('  ·  '), cx, y, monoTiny, colPills);
   }
 
   return _compCanvas;

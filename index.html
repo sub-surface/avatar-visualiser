@@ -43,8 +43,29 @@
       --m-rule:  rgba(192, 162, 184, 0.20);
 
       --bg:      #0d0d0d;
+      --panel-bg:   rgba(15, 18, 22, 0.45);
+      --panel-shd:  rgba(0, 0, 0, 0.5);
+      --btn-hi-txt: #ffffff;
+
       --serif:  'DM Serif Display', Georgia, serif;
       --mono:   'DM Mono', 'Courier New', monospace;
+    }
+
+    body.light-mode {
+      --bg:      #f4f4f4;
+      --panel-bg:   rgba(255, 255, 255, 0.35);
+      --panel-shd:  rgba(0, 0, 0, 0.12);
+      --btn-hi-txt: #f4f4f4;
+
+      --s-hi:    rgba(20, 30, 40, 0.95);
+      --s-mid:   rgba(20, 30, 40, 0.65);
+      --s-lo:    rgba(20, 30, 40, 0.45);
+      --s-rule:  rgba(20, 30, 40, 0.15);
+
+      --m-hi:    rgba(120, 40, 100, 0.85);
+      --m-mid:   rgba(120, 40, 100, 0.55);
+      --m-lo:    rgba(120, 40, 100, 0.25);
+      --m-rule:  rgba(120, 40, 100, 0.20);
     }
 
     body {
@@ -52,11 +73,32 @@
       overflow: hidden;
       width: 100vw;
       height: 100vh;
+      transition: background 0.5s ease;
     }
     canvas {
       display: block;
       width: 100vw !important;
       height: 100vh !important;
+    }
+
+    /* ── Custom Scrollbar ───────────────────────────────────── */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--m-hi) transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--s-lo);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--m-hi);
     }
 
     /* ── Start / loading overlay ────────────────────────────── */
@@ -156,6 +198,55 @@
       z-index: 5;
       pointer-events: none;
       user-select: none;
+      transition: all 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    /* ── Mode-specific layout overrides ──────────────────────── */
+    
+    /* Wave: Text at bottom */
+    body.vis-wave #trackInfo {
+      top: auto;
+      bottom: 12vh;
+    }
+
+    /* Sphere: Side-by-side (details left, vis right) */
+    @media (min-aspect-ratio: 1/1) {
+      body.vis-sphere #trackInfo {
+        left: 8%;
+        transform: none;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 35%;
+        text-align: left;
+      }
+    }
+
+    /* Scrub Bar UI styling */
+    #scrubContainer {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      pointer-events: auto;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    body.has-file #scrubContainer { opacity: 1; }
+
+    #previewScrub {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 1px;
+      background: var(--s-lo);
+      outline: none;
+    }
+    #previewScrub::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      background: var(--m-hi);
+      border-radius: 50%;
+      cursor: pointer;
     }
 
     /* Artist — small mono label above the title */
@@ -241,12 +332,12 @@
       display: flex;
       flex-direction: column;
       gap: 0;
-      max-width: 240px;
+      width: 320px;
     }
     #infoToggle {
       font-family: var(--mono);
       font-weight: 300;
-      font-size: 0.65rem;
+      font-size: 0.75rem;
       letter-spacing: 0.18em;
       color: var(--s-lo);
       text-transform: lowercase;
@@ -264,7 +355,7 @@
     #infoToggle:hover { color: var(--s-mid); }
     #infoToggle::before {
       content: '▸';
-      font-size: 0.5rem;
+      font-size: 0.55rem;
       transition: transform 0.2s;
       display: inline-block;
     }
@@ -274,22 +365,35 @@
       flex-direction: column;
       gap: 8px;
       margin-top: 10px;
-      padding: 12px;
-      background: hsl(220 12% 7% / 0.82);
-      box-shadow: 0 8px 32px hsl(0 0% 0% / 0.7), 0 2px 8px hsl(0 0% 0% / 0.5);
-      backdrop-filter: blur(6px);
+      padding: 14px;
+      background: var(--panel-bg);
+      box-shadow: 0 8px 32px var(--panel-shd), 0 2px 8px var(--panel-shd);
+      backdrop-filter: blur(10px);
       border-radius: 2px;
     }
     #infoBox.open #infoBody { display: flex; }
+    
+    #infoHead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    #infoNext {
+      font-size: 0.55rem !important;
+      opacity: 0.6;
+    }
+    #infoNext:hover { opacity: 1; }
+
     .info-heading {
       font-family: var(--serif);
-      font-size: 0.78rem;
+      font-size: 0.95rem;
       color: var(--s-hi);
       letter-spacing: 0.02em;
     }
     .info-sub {
       font-family: var(--mono);
-      font-size: 0.58rem;
+      font-size: 0.65rem;
       font-weight: 300;
       color: var(--m-hi);
       letter-spacing: 0.12em;
@@ -301,7 +405,7 @@
     }
     .info-body {
       font-family: var(--mono);
-      font-size: 0.58rem;
+      font-size: 0.68rem;
       font-weight: 300;
       color: var(--s-mid);
       letter-spacing: 0.06em;
@@ -313,7 +417,7 @@
     }
     #infoBox a.info-link {
       font-family: var(--mono);
-      font-size: 0.58rem;
+      font-size: 0.65rem;
       font-weight: 300;
       color: var(--s-lo);
       text-decoration: none;
@@ -321,6 +425,23 @@
       transition: color 0.2s;
     }
     #infoBox a.info-link:hover { color: var(--s-mid); }
+
+    /* Status Log Area */
+    #statusLog {
+      margin-top: 10px;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      line-height: 1.4;
+      color: var(--m-hi);
+      max-height: 60px;
+      overflow-y: auto;
+      border-top: 1px solid var(--s-rule);
+      padding-top: 8px;
+      display: none;
+    }
+    #statusLog.has-content { display: block; }
+    .status-msg { margin-bottom: 2px; }
+    .status-msg b { color: var(--s-hi); }
 
     /* ── Top-right chrome (mode toggle + export actions) ──────── */
     #topRight {
@@ -355,6 +476,14 @@
     .mode-btn:hover:not(:disabled) { color: var(--s-mid); }
     .mode-btn.active { color: var(--m-hi); }
     .mode-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    
+    .btn-active-highlight {
+      border: 1px solid var(--m-hi) !important;
+      padding: 0px 4px !important;
+      color: var(--btn-hi-txt) !important;
+      text-shadow: 0 0 8px var(--m-hi);
+    }
+
     #modeSep, .mode-sep {
       font-family: var(--mono);
       font-size: 0.55rem;
@@ -395,6 +524,25 @@
       pointer-events: none;
     }
 
+    /* ── OBS / Clean mode ────────────────────────────────────── */
+    body.obs-active #infoBox,
+    body.obs-active #visStrip,
+    body.obs-active #controls,
+    body.obs-active #trackInfo,
+    body.obs-active #overlay {
+      display: none !important;
+    }
+    body.obs-active #modeToggle {
+      display: none !important;
+    }
+    body.obs-active #topRight {
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    body.obs-active #topRight:hover {
+      opacity: 1;
+    }
+
     /* ── Fade-transition overlay ───────────────────────────────── */
     #fadeVeil {
       position: fixed;
@@ -426,12 +574,15 @@
     .chrome:hover:not(:disabled) { color: var(--s-mid); }
     .chrome:disabled { opacity: 0.25; cursor: not-allowed; }
 
-    /* Bottom-left: branding */
-    #brandLink {
+    /* Bottom-left: branding + actions */
+    #bottomLeft {
       position: fixed;
       bottom: 22px;
       left: 28px;
       z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     /* Bottom-right: controls */
@@ -464,16 +615,49 @@
       display: none;
       flex-direction: column;
       gap: 4px;
-      width: 248px;
-      padding: 10px 12px;
+      width: 290px;
+      padding: 0;
       border-bottom: 1px solid var(--s-rule);
       text-align: left;
-      background: hsl(220 12% 7% / 0.82);
-      box-shadow: 0 8px 32px hsl(0 0% 0% / 0.7), 0 2px 8px hsl(0 0% 0% / 0.5);
-      backdrop-filter: blur(6px);
+      background: var(--panel-bg);
+      box-shadow: 0 8px 32px var(--panel-shd), 0 2px 8px var(--panel-shd);
+      backdrop-filter: blur(10px);
       border-radius: 2px;
+      overflow: hidden;
     }
     #paramsPanel.open { display: flex; }
+
+    /* Tab navigation */
+    .ptab-row {
+      display: flex;
+      border-bottom: 1px solid var(--s-rule);
+      background: rgba(0,0,0,0.2);
+    }
+    .ptab-btn {
+      flex: 1;
+      padding: 8px 0;
+      font-family: var(--mono);
+      font-size: 0.52rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--s-lo);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      border-right: 1px solid var(--s-rule);
+      transition: all 0.2s;
+    }
+    .ptab-btn:last-child { border-right: none; }
+    .ptab-btn:hover { color: var(--s-mid); background: rgba(255,255,255,0.03); }
+    .ptab-btn.active { color: var(--m-hi); background: rgba(255,255,255,0.05); }
+
+    .ptab-content {
+      padding: 12px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .ptab-content.active { display: flex; }
 
     .psection {
       font-family: var(--mono);
@@ -482,24 +666,30 @@
       letter-spacing: 0.24em;
       color: var(--s-lo);
       text-transform: uppercase;
-      margin-top: 6px;
-      margin-bottom: 1px;
+      margin-top: 8px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--s-lo);
+      padding-bottom: 2px;
     }
 
     .prow {
       display: flex;
       align-items: center;
-      gap: 5px;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 24px;
     }
     .prow label {
       font-family: var(--mono);
       font-weight: 300;
       color: var(--s-mid);
       font-size: 0.6rem;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.05em;
       white-space: nowrap;
-      width: 76px;
       flex-shrink: 0;
+      width: 85px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .prow .pval {
       font-family: var(--mono);
@@ -507,9 +697,19 @@
       color: var(--s-hi);
       font-size: 0.6rem;
       letter-spacing: 0.04em;
-      width: 32px;
+      width: 35px;
       text-align: right;
       flex-shrink: 0;
+    }
+
+    #lfoMonitor {
+      width: 100%;
+      height: 40px;
+      max-height: 40px;
+      margin: 8px 0;
+      background: rgba(0,0,0,0.1);
+      border: 1px solid var(--s-rule);
+      display: block;
     }
 
     /* Text inputs */
@@ -606,30 +806,59 @@
       <span class="mval" id="dispGenre"></span>
     </div>
   </div>
+  <div id="scrubContainer">
+    <input type="range" id="previewScrub" min="0" max="1" step="0.001" value="0">
+  </div>
 </div>
 
 <!-- ── Fade veil for visualiser transitions ────────────────────── -->
 <div id="fadeVeil"></div>
 
 <!-- ── Top-left: info box ──────────────────────────────────────── -->
-<div id="infoBox">
+<div id="infoBox" class="open">
   <button id="infoToggle">avatar visualiser</button>
   <div id="infoBody">
-    <div class="info-heading">AVATAR VISUALISER</div>
-    <div class="info-sub">developed by sub-surface</div>
-    <div class="info-rule"></div>
-    <div class="info-body">
-      Real-time 3D audio visualiser in the style of Joy Division's <i>Unknown Pleasures</i>.
-      Scanlines are displaced by live FFT data.
+    <div id="infoHead">
+      <div class="info-heading" id="infoTitleText">AVATAR VISUALISER</div>
+      <button id="infoNext" class="chrome" style="letter-spacing:0.1em">page 1/3 ▸</button>
+    </div>
+
+    <div id="infoPage1">
+      <div class="info-sub">developed by sub-surface</div>
+      <div class="info-rule"></div>
+      <div class="info-body">
+        Real-time 3D audio visualiser in the style of Joy Division's <i>Unknown Pleasures</i>.
+        Scanlines are displaced by live FFT data.
+      </div>
+    </div>
+    <div id="infoPage2" style="display:none">
+      <div class="info-sub">control map</div>
+      <div class="info-rule"></div>
+      <div class="info-body">
+        <b>1—4</b> &nbsp; switch vis modes<br>
+        <b>space</b> &nbsp; toggle export/live<br>
+        <b>f</b> &nbsp; fullscreen &nbsp; | &nbsp; <b>p</b> &nbsp; params<br>
+        <b>esc</b> &nbsp; exit obs / clean mode
+      </div>
+    </div>
+    <div id="infoPage3" style="display:none">
+      <div class="info-sub">workflow & integration</div>
+      <div class="info-rule"></div>
+      <div class="info-body">
+        <b>export</b> — drag & drop audio or load via menu. Renders MP4 with 
+        baked metadata overlays.
+      </div>
+      <div class="info-rule"></div>
+      <div class="info-body">
+        <b>live</b> — click to grant mic access. Optimized for OBS via 
+        <code>?obs=1</code> URL parameter.
+      </div>
     </div>
     <div class="info-rule"></div>
-    <div class="info-body">
-      <b>export</b> — switch to export mode, click <i>load file</i>, pick a WAV or MP3.
-      The video saves automatically when encoding is complete.<br><br>
-      <b>live</b> — switch to live mode, click the screen to grant mic access.
-      Use as an OBS browser source at <code>localhost:3000</code>.
+    <div style="display:flex; justify-content:flex-end;">
+      <a class="info-link" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
     </div>
-    <a class="info-link" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
+    <div id="statusLog"></div>
   </div>
 </div>
 
@@ -641,9 +870,14 @@
     <button class="mode-btn" id="btnLive" data-mode="live">live</button>
   </div>
   <div id="exportActions">
-    <button class="mode-btn" id="topLoadBtn">load file</button>
+    <button class="mode-btn btn-active-highlight" id="topLoadBtn">load file</button>
+    <span class="mode-sep" id="sepPreview" style="display:none">·</span>
+    <button class="mode-btn" id="topPreviewBtn" style="display:none">preview</button>
     <span class="mode-sep">·</span>
     <button class="mode-btn" id="topRenderBtn" disabled>render video</button>
+  </div>
+  <div id="liveActions" style="display:none">
+    <button class="mode-btn" id="btnObs">obs mode</button>
   </div>
 </div>
 
@@ -658,92 +892,197 @@
   <button class="vis-btn" data-vis="wave">wave</button>
 </div>
 
+<!-- ── Bottom-left: actions ────────────────────────────────────── -->
+<div id="bottomLeft">
+  <a class="chrome" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
+  <span class="mode-sep">·</span>
+  <button class="chrome" id="btnTheme">theme</button>
+</div>
+
 <!-- ── Bottom-right: controls + params panel ───────────────────── -->
 <div id="controls">
 
   <div id="paramsPanel">
+    <div class="ptab-row">
+      <button class="ptab-btn active" data-tab="tTrack">track</button>
+      <button class="ptab-btn" data-tab="tAudio">audio</button>
+      <button class="ptab-btn" data-tab="tVisual">visual</button>
+      <button class="ptab-btn" data-tab="tMod">mod</button>
+      <button class="ptab-btn" data-tab="tExport">export</button>
+    </div>
 
-    <div class="psection">track</div>
-    <div class="prow"><label>title</label>
-      <input type="text" class="ptxt" id="pTitle" placeholder="—" maxlength="60"></div>
-    <div class="prow"><label>artist</label>
-      <input type="text" class="ptxt" id="pArtist" placeholder="—" maxlength="60"></div>
-    <div class="prow"><label>bpm</label>
-      <input type="text" class="ptxt" id="pBpm" placeholder="—" maxlength="8"></div>
-    <div class="prow"><label>genre</label>
-      <input type="text" class="ptxt" id="pGenre" placeholder="—" maxlength="30"></div>
+    <!-- Track Tab -->
+    <div id="tTrack" class="ptab-content active" data-modes="all">
+      <div class="prow"><label>title</label>
+        <input type="text" class="ptxt" id="pTitle" placeholder="—" maxlength="60"></div>
+      <div class="prow"><label>artist</label>
+        <input type="text" class="ptxt" id="pArtist" placeholder="—" maxlength="60"></div>
+      <div class="prow"><label>bpm</label>
+        <input type="text" class="ptxt" id="pBpm" placeholder="—" maxlength="8"></div>
+      <div class="prow"><label>genre</label>
+        <input type="text" class="ptxt" id="pGenre" placeholder="—" maxlength="30"></div>
+    </div>
 
-    <div class="psection">dsp</div>
-    <div class="prow"><label>freq scale</label>
-      <select class="psel" id="pFreqScale">
-        <option value="dnb" selected>dnb</option>
-        <option value="log">log</option>
-        <option value="linear">linear</option>
-      </select>
-      <span class="pval" id="vFreqScale">dnb</span></div>
-    <div class="prow"><label>freq range</label>
-      <input type="range" id="pFreqRange" min="0.2" max="1.0" step="0.05" value="0.55">
-      <span class="pval" id="vFreqRange">0.55</span></div>
-    <div class="prow"><label>smoothing</label>
-      <input type="range" id="pSmoothing" min="0.1" max="0.95" step="0.05" value="0.55">
-      <span class="pval" id="vSmoothing">0.55</span></div>
+    <!-- Audio Tab -->
+    <div id="tAudio" class="ptab-content" data-modes="all">
+      <div class="prow"><label>input</label>
+        <select class="psel" id="pAudioDevice" style="max-width:140px;">
+          <option value="">default</option>
+        </select></div>
+      <div class="prow"><label>low pass</label>
+        <input type="range" id="pLpfCutoff" min="0" max="1" step="0.001" value="1">
+        <span class="pval" id="vLpfCutoff">20k</span></div>
+      <div class="prow"><label>volume</label>
+        <input type="range" id="pGain" min="0" max="2.0" step="0.1" value="1.0">
+        <span class="pval" id="vGain">1.0</span></div>
+      <div class="prow"><label>smoothing</label>
+        <input type="range" id="pSmoothing" min="0.1" max="0.95" step="0.05" value="0.55">
+        <span class="pval" id="vSmoothing">0.55</span></div>
+    </div>
 
-    <div class="psection">shape</div>
-    <div class="prow"><label>displacement</label>
-      <input type="range" id="pMaxDisp" min="0.5" max="5.0" step="0.1" value="2.2">
-      <span class="pval" id="vMaxDisp">2.2</span></div>
-    <div class="prow"><label>bowl shape</label>
-      <input type="range" id="pBowlExp" min="0.5" max="4.0" step="0.1" value="2.0">
-      <span class="pval" id="vBowlExp">2.0</span></div>
-    <div class="prow"><label>lfo depth</label>
-      <input type="range" id="pLfoDepth" min="0.0" max="2.0" step="0.05" value="0.0">
-      <span class="pval" id="vLfoDepth">0.0</span></div>
-    <div class="prow"><label>lfo rate</label>
-      <input type="range" id="pLfoRate" min="0.02" max="1.0" step="0.02" value="0.12">
-      <span class="pval" id="vLfoRate">0.12</span></div>
+    <!-- Visual Tab -->
+    <div id="tVisual" class="ptab-content">
+      <div class="psection">palette</div>
+      <div class="prow"><label>base color</label>
+        <input type="color" id="pColorA" value="#e8d5b0" style="width:40px; height:18px; border:none; background:none; cursor:pointer;"></div>
+      <div class="prow"><label>peak color</label>
+        <input type="color" id="pColorB" value="#b090c8" style="width:40px; height:18px; border:none; background:none; cursor:pointer;"></div>
+      <div class="prow"><label>color cycle</label>
+        <input type="range" id="pColorCycle" min="0" max="1.0" step="0.05" value="0.0">
+        <span class="pval" id="vColorCycle">0.0</span></div>
 
-    <div class="psection">modulation</div>
-    <div class="prow"><label>sub→disp</label>
-      <input type="range" id="pModSub" min="0" max="1.0" step="0.05" value="0.5">
-      <span class="pval" id="vModSub">0.5</span></div>
-    <div class="prow"><label>kick→cam</label>
-      <input type="range" id="pModKick" min="0" max="2.0" step="0.1" value="0.8">
-      <span class="pval" id="vModKick">0.8</span></div>
-    <div class="prow"><label>mid→lift</label>
-      <input type="range" id="pModMid" min="0" max="1.5" step="0.05" value="0.6">
-      <span class="pval" id="vModMid">0.6</span></div>
-    <div class="prow"><label>high→bowl</label>
-      <input type="range" id="pModHigh" min="0" max="1.5" step="0.05" value="0.8">
-      <span class="pval" id="vModHigh">0.8</span></div>
-    <div class="prow"><label>rms→zoom</label>
-      <input type="range" id="pModRms" min="0" max="1.5" step="0.05" value="0.5">
-      <span class="pval" id="vModRms">0.5</span></div>
-    <div class="prow"><label>trans→opacity</label>
-      <input type="range" id="pModTrans" min="0" max="1.0" step="0.05" value="0.4">
-      <span class="pval" id="vModTrans">0.4</span></div>
+      <div class="psection">dsp</div>
+      <div class="prow"><label>freq scale</label>
+        <select class="psel" id="pFreqScale">
+          <option value="log" selected>log</option>
+          <option value="linear">linear</option>
+        </select>
+        <span class="pval" id="vFreqScale">log</span></div>
+      <div class="prow"><label>freq range</label>
+        <input type="range" id="pFreqRange" min="0.2" max="1.0" step="0.05" value="0.55">
+        <span class="pval" id="vFreqRange">0.55</span></div>
 
-    <div class="psection">grid</div>
-    <div class="prow"><label>rows</label>
-      <input type="range" id="pRows" min="20" max="120" step="10" value="60">
-      <span class="pval" id="vRows">60</span></div>
-    <div class="prow"><label>cols</label>
-      <input type="range" id="pCols" min="64" max="256" step="32" value="128">
-      <span class="pval" id="vCols">128</span></div>
+      <div class="psection">shape</div>
+      <div class="prow"><label>displacement</label>
+        <input type="range" id="pMaxDisp" min="0.5" max="5.0" step="0.1" value="2.2">
+        <span class="pval" id="vMaxDisp">2.2</span></div>
+      <div class="prow" data-modes="bowl,polar"><label>bowl shape</label>
+        <input type="range" id="pBowlExp" min="0.5" max="4.0" step="0.1" value="2.0">
+        <span class="pval" id="vBowlExp">2.0</span></div>
+      
+      <div class="prow" data-modes="sphere"><label>sphere size</label>
+        <input type="range" id="pSphereSize" min="1.0" max="6.0" step="0.1" value="3.0">
+        <span class="pval" id="vSphereSize">3.0</span></div>
+      <div class="prow" data-modes="wave"><label>wave spacing</label>
+        <input type="range" id="pWaveSpacing" min="0.1" max="1.5" step="0.05" value="0.4">
+        <span class="pval" id="vWaveSpacing">0.4</span></div>
+      <div class="prow" data-modes="polar"><label>polar lift</label>
+        <input type="range" id="pPolarSpacing" min="-6.0" max="0.0" step="0.2" value="-3.0">
+        <span class="pval" id="vPolarSpacing">-3.0</span></div>
 
-    <div class="psection">export</div>
-    <div class="prow"><label>preset</label>
-      <select class="psel" id="pExportPreset">
-        <option value="lossless">lossless</option>
-        <option value="standard" selected>standard</option>
-        <option value="lofi">lo-fi ps2</option>
-      </select>
-      <span class="pval" id="vExportPreset">standard</span></div>
-    <div class="prow"><label>aspect</label>
-      <select class="psel" id="pExportOrient">
-        <option value="horizontal" selected>horizontal</option>
-        <option value="vertical">vertical</option>
-      </select>
-      <span class="pval" id="vExportOrient">horiz</span></div>
+      <div class="psection">geometry</div>
+      <div class="prow" data-modes="bowl,polar"><label>rows</label>
+        <input type="range" id="pRows" min="20" max="120" step="10" value="60">
+        <span class="pval" id="vRows">60</span></div>
+      <div class="prow"><label>cols</label>
+        <input type="range" id="pCols" min="64" max="256" step="32" value="128">
+        <span class="pval" id="vCols">128</span></div>
+    </div>
+
+    <!-- Modulation Tab -->
+    <div id="tMod" class="ptab-content">
+      <canvas id="lfoMonitor" width="500" height="80"></canvas>
+      
+      <div class="prow"><label>lfo shape</label>
+        <select class="psel" id="pLfoWaveform">
+          <option value="sine">sine</option>
+          <option value="square">square</option>
+          <option value="sawtooth">sawtooth</option>
+          <option value="triangle">triangle</option>
+        </select>
+        <span class="pval" id="vLfoWaveform">sine</span></div>
+
+      <div class="prow"><label>lfo rate</label>
+        <input type="range" id="pLfoRate" min="0.01" max="1.0" step="0.01" value="0.15">
+        <span class="pval" id="vLfoRate">0.15</span></div>
+      
+      <div class="prow"><label>lfo depth</label>
+        <input type="range" id="pLfoDepth" min="0" max="2.0" step="0.05" value="1.0">
+        <span class="pval" id="vLfoDepth">1.0</span></div>
+
+      <div class="prow"><label>lfo offset</label>
+        <input type="range" id="pLfoOffset" min="-1.0" max="1.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfoOffset">0.0</span></div>
+
+      <div class="psection">links</div>
+      <div class="prow"><label>lfo→disp</label>
+        <input type="range" id="pLfoToDisp" min="0" max="1.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfoToDisp">0.0</span></div>
+      <div class="prow" data-modes="bowl,polar"><label>lfo→bowl</label>
+        <input type="range" id="pLfoToBowl" min="0" max="2.0" step="0.05" value="0.5">
+        <span class="pval" id="vLfoToBowl">0.5</span></div>
+      <div class="prow" data-modes="polar"><label>lfo→polar_lift</label>
+        <input type="range" id="pLfoToPolar" min="0" max="2.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfoToPolar">0.0</span></div>
+      <div class="prow" data-modes="wave"><label>lfo→wave_gap</label>
+        <input type="range" id="pLfoToWave" min="0" max="1.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfoToWave">0.0</span></div>
+      <div class="prow" data-modes="all"><label>lfo→zoom</label>
+        <input type="range" id="pLfoToZoom" min="0" max="5.0" step="0.1" value="0.0">
+        <span class="pval" id="vLfoToZoom">0.0</span></div>
+      <div class="prow"><label>lfo→opacity</label>
+        <input type="range" id="pLfoToOpacity" min="0" max="1.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfoToOpacity">0.0</span></div>
+
+      <div class="psection">audio envs</div>
+      <div class="prow"><label>sub→disp</label>
+        <input type="range" id="pModSub" min="0" max="1.0" step="0.05" value="0.5">
+        <span class="pval" id="vModSub">0.5</span></div>
+      <div class="prow"><label>kick→cam</label>
+        <input type="range" id="pModKick" min="0" max="2.0" step="0.1" value="0.8">
+        <span class="pval" id="vModKick">0.8</span></div>
+      <div class="prow"><label>mid→lift</label>
+        <input type="range" id="pModMid" min="0" max="1.5" step="0.05" value="0.6">
+        <span class="pval" id="vModMid">0.6</span></div>
+      <div class="prow"><label>high→bowl</label>
+        <input type="range" id="pModHigh" min="0" max="1.5" step="0.05" value="0.8">
+        <span class="pval" id="vModHigh">0.8</span></div>
+      <div class="prow"><label>rms→zoom</label>
+        <input type="range" id="pModRms" min="0" max="1.5" step="0.05" value="0.5">
+        <span class="pval" id="vModRms">0.5</span></div>
+      <div class="prow"><label>trans→opacity</label>
+        <input type="range" id="pModTrans" min="0" max="1.0" step="0.05" value="0.4">
+        <span class="pval" id="vModTrans">0.4</span></div>
+
+      <div class="psection">interface</div>
+      <div class="prow"><label>ui reactivity</label>
+        <input type="range" id="pUiReactivity" min="0" max="1.0" step="0.05" value="0.5">
+        <span class="pval" id="vUiReactivity">0.5</span></div>
+    </div>
+
+    <!-- Export Tab -->
+    <div id="tExport" class="ptab-content" data-modes="all">
+      <div class="prow"><label>preset</label>
+        <select class="psel" id="pExportPreset">
+          <option value="lossless">lossless</option>
+          <option value="standard" selected>standard</option>
+          <option value="lofi">lo-fi ps2</option>
+        </select>
+        <span class="pval" id="vExportPreset">standard</span></div>
+      <div class="prow"><label>aspect</label>
+        <select class="psel" id="pExportOrient">
+          <option value="horizontal" selected>horizontal</option>
+          <option value="vertical">vertical</option>
+        </select>
+        <span class="pval" id="vExportOrient">horiz</span></div>
+      <div class="prow"><label>cycle modes</label>
+        <input type="checkbox" id="pCycleModes" style="cursor:pointer; width:12px; height:12px; margin-left:auto;"></div>
+
+      <div class="psection">debug</div>
+      <div class="prow" style="justify-content:center; padding-top:4px;">
+        <button class="chrome" id="btnTestCapture" style="border:1px solid var(--s-lo); padding:2px 8px;">capture tests</button>
+      </div>
+    </div>
 
   </div><!-- /paramsPanel -->
 
@@ -756,11 +1095,11 @@
 
 <script type="module">
   import * as THREE from 'three';
-  import { renderer, scene, camera, CAM_BASE, fadeOut, fadeIn } from './engine.js';
-  import { P, loadParams, bindRange, bindSelect, bindText,
+  import { renderer, scene, camera, CAM_BASE, fadeOut, fadeIn, setTheme, setColors } from './engine.js';
+  import { P, loadParams, saveParams, bindRange, bindSelect, bindText,
            updateTrackDisplay } from './params.js';
-  import { initAudio, stopAudio, getAnalyser, getFreqData, isAudioReady } from './audio.js';
-  import { computeEnvelopes, applyModulation, lfoTick, modBowlExp, bpmTick } from './envelopes.js';
+  import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioDevices } from './audio.js';
+  import { env, computeEnvelopes, applyModulation, modBowlExp, bpmTick, lfoTick, getLfoVal, modPolarSpacing, modWaveSpacing } from './envelopes.js';
   import { refreshBinMap, rebuildHistory } from './vis/shared.js';
   import { rebuildGrid, applyDisplacement, tearDownBowl } from './vis/bowl.js';
   import { rebuildPolar, applyPolar, tearDownPolar } from './vis/polar.js';
@@ -770,6 +1109,29 @@
 
   /* ── Visualiser mode switching ──────────────────────────── */
   let visMode = 'bowl';
+
+  // Tab switching
+  document.querySelectorAll('.ptab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ptab-btn, .ptab-content').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+      const target = document.getElementById(btn.dataset.tab);
+      target.classList.add('active');
+      // If we switch to modulation tab, ensure canvas size is correct
+      if (btn.dataset.tab === 'tMod') modDims = setupSharpCanvas(modCanvas, modCtx);
+    });
+  });
+
+  function updateParamVisibility(mode) {
+    // Show/hide specific rows or sections based on mode
+    document.querySelectorAll('.psection, .prow').forEach(el => {
+      if (el.dataset.modes) {
+        const modes = el.dataset.modes.split(',');
+        const visible = modes.includes('all') || modes.includes(mode);
+        el.style.display = visible ? '' : 'none';
+      }
+    });
+  }
 
   function tearDownVis() {
     tearDownBowl();
@@ -790,23 +1152,33 @@
       camera.lookAt(0, 0, 0);
     } else if (mode === 'sphere') {
       rebuildSphere();
-      camera.position.set(0, 0, 12);
-      camera.lookAt(0, 0, 0);
+      // Offset camera to the left so visualiser appears on the right
+      camera.position.set(-4.5, 0, 12);
+      camera.lookAt(-4.5, 0, 0);
     } else if (mode === 'wave') {
       rebuildWave();
       camera.position.set(0, 1, 10);
       camera.lookAt(0, 0, 0);
     }
+    updateParamVisibility(mode);
   }
 
   async function setVisMode(mode) {
     if (mode === visMode) return;
     await fadeOut();
+    
+    document.body.classList.remove(`vis-${visMode}`);
     visMode = mode;
+    document.body.classList.add(`vis-${mode}`);
+    
     buildVis(mode);
     document.querySelectorAll('.vis-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.vis === mode);
     });
+    // Refresh monitor if we're on the mod tab
+    if (document.getElementById('tMod').classList.contains('active')) {
+      modDims = setupSharpCanvas(modCanvas, modCtx);
+    }
     fadeIn();
   }
 
@@ -815,9 +1187,54 @@
     btn.addEventListener('click', () => setVisMode(btn.dataset.vis));
   });
 
-  // Info box toggle
+  // Info box toggle & paging
+  const infoBox = document.getElementById('infoBox');
   document.getElementById('infoToggle').addEventListener('click', () => {
-    document.getElementById('infoBox').classList.toggle('open');
+    infoBox.classList.toggle('open');
+  });
+
+  const p1 = document.getElementById('infoPage1');
+  const p2 = document.getElementById('infoPage2');
+  const p3 = document.getElementById('infoPage3');
+  const nextBtn = document.getElementById('infoNext');
+  const infoTitleText = document.getElementById('infoTitleText');
+  const statusLog = document.getElementById('statusLog');
+  let curPage = 1;
+  nextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    curPage = (curPage % 3) + 1;
+    p1.style.display = curPage === 1 ? 'block' : 'none';
+    p2.style.display = curPage === 2 ? 'block' : 'none';
+    p3.style.display = curPage === 3 ? 'block' : 'none';
+    
+    // Update shared header
+    nextBtn.textContent = `page ${curPage}/3 ▸`;
+    if (curPage === 1) infoTitleText.textContent = 'AVATAR VISUALISER';
+    if (curPage === 2) infoTitleText.textContent = 'HOTKEYS';
+    if (curPage === 3) infoTitleText.textContent = 'MODES & EXPORT';
+  });
+
+  export function logStatus(msg) {
+    const div = document.createElement('div');
+    div.className = 'status-msg';
+    div.innerHTML = `<b>[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}]</b> ${msg}`;
+    statusLog.appendChild(div);
+    statusLog.classList.add('has-content');
+    statusLog.scrollTop = statusLog.scrollHeight;
+    // Ensure infoBox is open to see the message
+    infoBox.classList.add('open');
+  }
+
+  // Listen for status updates from other modules (like export.js)
+  window.addEventListener('avatar-status', e => logStatus(e.detail));
+  window.addEventListener('avatar-rebuild-vis', () => buildVis(visMode));
+
+  // Theme toggle
+  document.getElementById('btnTheme').addEventListener('click', () => {
+    const isLight = document.body.classList.toggle('light-mode');
+    import('./engine.js').then(m => m.setTheme(isLight));
+    saveParams();
+    logStatus(`Theme switched to ${isLight ? 'Light' : 'Dark'}`);
   });
 
   /* ── App mode (export | live) ──────────────────────────── */
@@ -828,8 +1245,29 @@
   const loadBar       = document.getElementById('loadBar');
   const topLoadBtn    = document.getElementById('topLoadBtn');
   const topRenderBtn  = document.getElementById('topRenderBtn');
+  const topPreviewBtn = document.getElementById('topPreviewBtn');
+  const sepPreview    = document.getElementById('sepPreview');
+  const previewScrub  = document.getElementById('previewScrub');
   const exportActions = document.getElementById('exportActions');
+  const liveActions   = document.getElementById('liveActions');
   const livePrompt    = document.getElementById('livePrompt');
+
+  let previewCtx     = null;
+  let previewBuffer  = null;
+  let previewSource  = null;
+  let previewStartedAt = 0;
+  let previewPausedAt  = 0;
+  let isPreviewPlaying = false;
+
+  // Scrub bar logic
+  previewScrub.addEventListener('input', () => {
+    if (!previewBuffer) return;
+    previewPausedAt = previewScrub.value * previewBuffer.duration;
+    if (isPreviewPlaying) {
+      stopPreview();
+      startPreview(previewPausedAt);
+    }
+  });
 
   function overlayReady() {
     loadBar.classList.add('done');
@@ -840,15 +1278,31 @@
   function _updateModeOverlay() {
     if (appMode === 'export') {
       exportActions.style.display = 'flex';
+      liveActions.style.display   = 'none';
       livePrompt.style.display    = 'none';
       overlay.classList.remove('ready');
       overlay.classList.remove('hidden');
     } else {
       exportActions.style.display = 'none';
+      liveActions.style.display   = 'flex';
       livePrompt.style.display    = 'inline';
       overlay.classList.add('ready');
     }
+    
+    // Always show preview if file loaded
+    if (selectedWavFile) {
+      topPreviewBtn.style.display = 'inline';
+      sepPreview.style.display    = 'inline';
+    }
   }
+
+  // OBS mode toggle
+  const btnObs = document.getElementById('btnObs');
+  btnObs.addEventListener('click', () => {
+    const active = document.body.classList.toggle('obs-active');
+    btnObs.textContent = active ? 'exit obs' : 'obs mode';
+    logStatus(`OBS mode ${active ? 'enabled' : 'disabled'}`);
+  });
 
   // Live mode: click to grant mic
   let liveStarted = false;
@@ -857,7 +1311,15 @@
     if (!overlay.classList.contains('ready') || liveStarted) return;
     liveStarted = true;
     overlay.classList.add('hidden');
-    try { await initAudio(); } catch (err) { console.error('Audio init:', err); }
+    try { 
+      // Populate devices on first start if empty
+      if (document.getElementById('pAudioDevice').options.length <= 1) await refreshAudioDevices();
+      
+      await initAudio(document.getElementById('pAudioDevice').value); 
+      logStatus('Microphone access granted');
+    } catch (err) { 
+      logStatus(`Audio init error: ${err.message}`);
+    }
   });
 
   const wavInput = document.getElementById('wavInput');
@@ -870,31 +1332,112 @@
   });
 
   let selectedWavFile = null;
-  wavInput.addEventListener('change', e => {
+  wavInput.addEventListener('change', async e => {
     const f = e.target.files[0];
     if (f) {
       selectedWavFile = f;
       topRenderBtn.disabled = false;
+      topRenderBtn.classList.add('btn-active-highlight');
+      topLoadBtn.classList.remove('btn-active-highlight');
+      document.body.classList.add('has-file');
+      
+      topPreviewBtn.style.display = 'inline';
+      sepPreview.style.display = 'inline';
+
       document.getElementById('paramsPanel').classList.add('open');
-      console.log('File loaded:', f.name, '. Adjust parameters then click render.');
+      logStatus(`Loaded: ${f.name}`);
+      
+      // Load into preview buffer
+      try {
+        const ab = await f.arrayBuffer();
+        if (!previewCtx) previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+        previewBuffer = await previewCtx.decodeAudioData(ab);
+        logStatus('Audio decoded for preview');
+      } catch (err) { 
+        logStatus(`Preview load error: ${err.message}`);
+      }
     }
   });
 
+  topPreviewBtn.addEventListener('click', () => togglePreview());
+
+  function togglePreview() {
+    if (!previewBuffer) return;
+    if (isPreviewPlaying) {
+      previewPausedAt = previewCtx.currentTime - previewStartedAt;
+      stopPreview();
+    } else {
+      startPreview(previewPausedAt % previewBuffer.duration);
+    }
+  }
+
+  function startPreview(startTime = 0) {
+    if (isPreviewPlaying || !previewBuffer) return;
+    previewSource = previewCtx.createBufferSource();
+    previewSource.buffer = previewBuffer;
+    previewSource.loop = true;
+    
+    setupAnalyser(previewCtx);
+    
+    // Chain: Source -> LPF -> Gain -> Splitter -> Analysers -> Destination
+    previewSource.connect(getLPF());
+    
+    const aL = getAnalyserL();
+    const aR = getAnalyserR();
+    aL.connect(previewCtx.destination);
+    aR.connect(previewCtx.destination);
+    
+    previewSource.start(0, startTime);
+    previewStartedAt = previewCtx.currentTime - startTime;
+    isPreviewPlaying = true;
+    topPreviewBtn.textContent = 'pause';
+  }
+
+  function stopPreview() {
+    if (previewSource) {
+      try { previewSource.stop(); } catch(e){}
+      previewSource = null;
+    }
+    isPreviewPlaying = false;
+    topPreviewBtn.textContent = 'preview';
+  }
+
   topRenderBtn.addEventListener('click', () => {
-    if (selectedWavFile && !isExporting) startExport(selectedWavFile, visMode);
+    if (selectedWavFile && !isExporting) {
+      stopPreview();
+      logStatus(`Starting export: ${selectedWavFile.name}`);
+      startExport(selectedWavFile, visMode);
+    }
   });
 
   // Drag-and-drop audio file
   document.body.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-  document.body.addEventListener('drop', e => {
+  document.body.addEventListener('drop', async e => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('audio/')) {
       selectedWavFile = file;
       topRenderBtn.disabled = false;
+      topRenderBtn.classList.add('btn-active-highlight');
+      topLoadBtn.classList.remove('btn-active-highlight');
+      document.body.classList.add('has-file');
+      
+      topPreviewBtn.style.display = 'inline';
+      sepPreview.style.display = 'inline';
+
       overlay.classList.add('hidden');
       document.getElementById('paramsPanel').classList.add('open');
-      console.log('File dropped:', file.name);
+      logStatus(`Dropped: ${file.name}`);
+
+      // Load into preview buffer
+      try {
+        const ab = await file.arrayBuffer();
+        if (!previewCtx) previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+        previewBuffer = await previewCtx.decodeAudioData(ab);
+        logStatus('Audio decoded for preview');
+      } catch (err) { 
+        logStatus(`Preview load error: ${err.message}`);
+      }
     }
   });
 
@@ -905,10 +1448,27 @@
   function setAppMode(mode) {
     if (mode === appMode) return;
     if (appMode === 'live') { stopAudio(); liveStarted = false; }
+    if (appMode === 'export') { stopPreview(); }
+    
+    document.body.classList.remove('obs-active');
+    btnObs.textContent = 'obs mode';
+    
     appMode = mode;
     document.getElementById('btnExport').classList.toggle('active', mode === 'export');
     document.getElementById('btnLive').classList.toggle('active',   mode === 'live');
     _updateModeOverlay();
+    
+    // Reset highlights
+    if (mode === 'export' && !selectedWavFile) {
+      topLoadBtn.classList.add('btn-active-highlight');
+      topRenderBtn.classList.remove('btn-active-highlight');
+    } else if (mode === 'export' && selectedWavFile) {
+      topLoadBtn.classList.remove('btn-active-highlight');
+      topRenderBtn.classList.add('btn-active-highlight');
+    } else {
+      topLoadBtn.classList.remove('btn-active-highlight');
+      topRenderBtn.classList.remove('btn-active-highlight');
+    }
   }
   document.getElementById('btnExport').classList.add('active');
 
@@ -921,35 +1481,115 @@
 
   /* ── OBS mode ──────────────────────────────────────────── */
   if (new URLSearchParams(location.search).has('obs')) {
-    document.querySelectorAll('#infoBox, #topRight, #visStrip, #controls, #trackInfo, #overlay').forEach(
-      el => el.style.display = 'none'
-    );
+    document.body.classList.add('obs-active');
+    btnObs.textContent = 'exit obs';
   }
 
   /* ── Animation loop ────────────────────────────────────── */
   const clock = new THREE.Clock();
+  const modCanvas = document.getElementById('lfoMonitor');
+  const modCtx = modCanvas.getContext('2d');
+  const modHistory = new Float32Array(500).fill(0);
+  let modIdx = 0;
+
+  // Sharp canvas helper
+  function setupSharpCanvas(canvas, ctx) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return { w: canvas.width / dpr, h: canvas.height / dpr };
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    return { w: rect.width, h: rect.height };
+  }
+  let modDims = setupSharpCanvas(modCanvas, modCtx);
+
   function animate() {
     requestAnimationFrame(animate);
-    if (document.visibilityState === 'hidden') return;
+    if (document.visibilityState === 'hidden' || isExporting) return;
     const dt = clock.getDelta();
     lfoTick(dt);
+
+    // Update modulation monitor (Visualising raw LFO)
+    if (document.getElementById('paramsPanel').classList.contains('open') && 
+        document.getElementById('tMod').classList.contains('active')) {
+      
+      modHistory[modIdx] = getLfoVal();
+      modIdx = (modIdx + 1) % modHistory.length;
+      
+      modCtx.clearRect(0, 0, modDims.w, modDims.h);
+      modCtx.beginPath();
+      modCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--m-hi');
+      modCtx.lineWidth = 1.5;
+      
+      for (let i = 0; i < modDims.w; i++) {
+        const hIdx = (modIdx + Math.floor(i * (modHistory.length / modDims.w))) % modHistory.length;
+        const val = modHistory[hIdx];
+        // Normalise LFO (-1 to 1) to canvas height
+        const y = modDims.h * 0.5 - val * (modDims.h * 0.4);
+        if (i === 0) modCtx.moveTo(i, y);
+        else modCtx.lineTo(i, y);
+      }
+      modCtx.stroke();
+    }
+
+    if (isPreviewPlaying && previewBuffer) {
+      const cur = (previewCtx.currentTime - previewStartedAt) % previewBuffer.duration;
+      previewScrub.value = cur / previewBuffer.duration;
+    }
+
     if (isAudioReady()) {
-      const analyser = getAnalyser();
-      const freqData = getFreqData();
-      analyser.getByteFrequencyData(freqData);
-      computeEnvelopes(freqData);
+      const aL = getAnalyserL();
+      const aR = getAnalyserR();
+      const fdL = getFreqDataL();
+      const fdR = getFreqDataR();
+      aL.getByteFrequencyData(fdL);
+      aR.getByteFrequencyData(fdR);
+
+      // Compute envelopes using stereo average
+      computeEnvelopes(fdL, fdR);
       bpmTick(dt);
       applyModulation();
+
+      const lfo = getLfoVal(); // -1 to 1
+
+      // Color Cycle: Oscillation between colorA and colorB driven by LFO
+      if (P.colorCycle > 0) {
+        // Shift base/peak colours based on LFO and cycle amount
+        const shift = (lfo + 1) * 0.5 * P.colorCycle; // 0 to colorCycle
+        const colA = new THREE.Color(P.colorA).lerp(new THREE.Color(P.colorB), shift);
+        const colB = new THREE.Color(P.colorB).lerp(new THREE.Color(P.colorA), shift);
+        setColors(colA, colB);
+      } else {
+        // Just apply static user colours if cycle is off
+        setColors(P.colorA, P.colorB);
+      }
+
+      // UI Reactivity
+      if (P.uiReactivity > 0) {
+        const energy = env.rms * P.uiReactivity;
+        const col = new THREE.Color(P.colorA).lerp(new THREE.Color(P.colorB), Math.min(energy * 2.5, 1));
+        const css = col.getStyle();
+        document.documentElement.style.setProperty('--m-hi', css);
+        const col2 = col.clone().offsetHSL(0, 0, 0.1);
+        document.documentElement.style.setProperty('--s-hi', col2.getStyle());
+      } else {
+        // Reset to user base colors if reactivity is off
+        document.documentElement.style.setProperty('--m-hi', P.colorB);
+        document.documentElement.style.setProperty('--s-hi', P.colorA);
+      }
+
       if (visMode === 'bowl') {
-        applyDisplacement(freqData, modBowlExp());
+        applyDisplacement(fdL, fdR, modBowlExp());
       } else if (visMode === 'polar') {
-        applyPolar(freqData, modBowlExp());
+        applyPolar(fdL, fdR, modBowlExp(), undefined, modPolarSpacing());
       } else if (visMode === 'sphere') {
-        applySphere(freqData);
+        applySphere(fdL, fdR);
       } else if (visMode === 'wave') {
-        const td = ensureTimeDomainData(analyser);
-        analyser.getByteTimeDomainData(td);
-        applyWave(td);
+        const td = ensureTimeDomainData(aL); // Just use L for simplicity or mix?
+        aL.getByteTimeDomainData(td);
+        applyWave(td, undefined, modWaveSpacing());
       }
     }
     renderer.render(scene, camera);
@@ -957,7 +1597,8 @@
 
   /* ── Parameters panel ──────────────────────────────────── */
   document.getElementById('paramsToggle').addEventListener('click', () => {
-    document.getElementById('paramsPanel').classList.toggle('open');
+    const open = document.getElementById('paramsPanel').classList.toggle('open');
+    if (open) modDims = setupSharpCanvas(modCanvas, modCtx);
   });
 
   bindText('pTitle',  updateTrackDisplay);
@@ -965,13 +1606,84 @@
   bindText('pBpm',    updateTrackDisplay);
   bindText('pGenre',  updateTrackDisplay);
 
+  // Audio Device Handling
+  const pAudioDevice = document.getElementById('pAudioDevice');
+  async function refreshAudioDevices() {
+    try {
+      const devices = await getAudioDevices();
+      const current = pAudioDevice.value;
+      pAudioDevice.innerHTML = '<option value="">default</option>';
+      devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || `Device ${d.deviceId.slice(0,5)}...`;
+        pAudioDevice.appendChild(opt);
+      });
+      if (current) pAudioDevice.value = current;
+    } catch (e) { console.error('Device enum error', e); }
+  }
+  // Refresh devices when opening the Audio tab
+  document.querySelector('.ptab-btn[data-tab="tAudio"]').addEventListener('click', refreshAudioDevices);
+  
+  pAudioDevice.addEventListener('change', async () => {
+    if (appMode === 'live' && isAudioReady()) {
+      logStatus('Switching audio input...');
+      try {
+        await initAudio(pAudioDevice.value);
+        logStatus('Input switched');
+      } catch (e) { logStatus(`Switch failed: ${e.message}`); }
+    }
+  });
+
   bindSelect('pFreqScale', 'vFreqScale', 'freqScale', () => refreshBinMap());
   bindRange ('pFreqRange', 'vFreqRange', 'freqRange', () => refreshBinMap());
-  bindRange ('pSmoothing', 'vSmoothing', 'smoothing', v => { const a = getAnalyser(); if (a) a.smoothingTimeConstant = v; });
+
+  // Palette bindings
+  const pColorA = document.getElementById('pColorA');
+  const pColorB = document.getElementById('pColorB');
+  pColorA.addEventListener('input', () => { 
+    P.colorA = pColorA.value; 
+    setColors(P.colorA, P.colorB);
+    saveParams(); 
+  });
+  pColorB.addEventListener('input', () => { 
+    P.colorB = pColorB.value; 
+    setColors(P.colorA, P.colorB);
+    saveParams(); 
+  });
+  bindRange('pColorCycle', 'vColorCycle', 'colorCycle');
+  bindRange('pUiReactivity', 'vUiReactivity', 'uiReactivity');
+
+  bindRange('pSmoothing', 'vSmoothing', 'smoothing', v => { 
+    const aL = getAnalyserL(); if (aL) aL.smoothingTimeConstant = v; 
+    const aR = getAnalyserR(); if (aR) aR.smoothingTimeConstant = v; 
+  });
+      bindRange('pLpfCutoff', 'vLpfCutoff', 'lpfCutoff', v => { 
+        // Log mapping from 0.0-1.0 to 200-20000 Hz
+        const freq = Math.round(200 * Math.pow(100, v));
+        P.lpfCutoff = freq; // Ensure real frequency is stored in P
+        const lpf = getLPF(); 
+        if (lpf) lpf.frequency.setTargetAtTime(freq, previewCtx ? previewCtx.currentTime : 0, 0.03); 
+        document.getElementById('vLpfCutoff').textContent = freq >= 1000 ? (freq/1000).toFixed(freq >= 10000 ? 0 : 1)+'k' : freq;
+      });
+      bindRange('pGain', 'vGain', 'gain', v => { 
+        const g = getGainNode(); if (g) g.gain.setTargetAtTime(v, previewCtx ? previewCtx.currentTime : 0, 0.03); 
+      });
   bindRange('pMaxDisp',  'vMaxDisp',  'maxDisp');
   bindRange('pBowlExp',  'vBowlExp',  'bowlExp');
-  bindRange('pLfoDepth', 'vLfoDepth', 'lfoDepth');
-  bindRange('pLfoRate',  'vLfoRate',  'lfoRate');
+  
+  bindSelect('pLfoWaveform', 'vLfoWaveform', 'lfoWaveform');
+  bindRange('pLfoRate',   'vLfoRate',   'lfoRate');
+  bindRange('pLfoDepth',  'vLfoDepth',  'lfoDepth');
+  bindRange('pLfoOffset', 'vLfoOffset', 'lfoOffset');
+
+  bindRange('pLfoToDisp',    'vLfoToDisp',    'lfoToDisp');
+  bindRange('pLfoToBowl',    'vLfoToBowl',    'lfoToBowl');
+  bindRange('pLfoToZoom',    'vLfoToZoom',    'lfoToZoom');
+  bindRange('pLfoToOpacity', 'vLfoToOpacity', 'lfoToOpacity');
+  bindRange('pLfoToPolar',   'vLfoToPolar',   'lfoToPolar');
+  bindRange('pLfoToWave',    'vLfoToWave',    'lfoToWave');
+
   bindRange('pModSub',   'vModSub',   'modSub');
   bindRange('pModKick',  'vModKick',  'modKick');
   bindRange('pModMid',   'vModMid',   'modMid');
@@ -979,27 +1691,75 @@
   bindRange('pModRms',   'vModRms',   'modRms');
   bindRange('pModTrans', 'vModTrans', 'modTrans');
   bindRange('pRows', 'vRows', 'rows', () => {
-    P.rows = parseInt(document.getElementById('pRows').value);
-    rebuildGrid(); rebuildHistory(); refreshBinMap();
+    rebuildHistory(); refreshBinMap(); buildVis(visMode);
   });
   bindRange('pCols', 'vCols', 'cols', () => {
-    P.cols = parseInt(document.getElementById('pCols').value);
-    rebuildGrid(); refreshBinMap();
+    refreshBinMap(); buildVis(visMode);
   });
+  bindRange('pSphereSize', 'vSphereSize', 'sphereSize', () => buildVis(visMode));
+  bindRange('pWaveSpacing', 'vWaveSpacing', 'waveSpacing', () => buildVis(visMode));
+  bindRange('pPolarSpacing', 'vPolarSpacing', 'polarSpacing', () => buildVis(visMode));
 
   bindSelect('pExportPreset', 'vExportPreset', 'exportPreset');
   bindSelect('pExportOrient', 'vExportOrient', 'exportOrientation', (v) => {
     document.getElementById('vExportOrient').textContent = v === 'horizontal' ? 'horiz' : 'vert';
   });
+  document.getElementById('pCycleModes').addEventListener('change', e => {
+    P.cycleModes = e.target.checked;
+    saveParams();
+    logStatus(`Mode cycling ${P.cycleModes ? 'enabled' : 'disabled'}`);
+  });
 
-  loadParams(rebuildGrid, rebuildHistory, refreshBinMap);
+  loadParams(() => buildVis(visMode), rebuildHistory, refreshBinMap);
+  setColors(P.colorA, P.colorB);
+  if (document.body.classList.contains('light-mode')) {
+    import('./engine.js').then(m => m.setTheme(true));
+  }
   refreshBinMap();
+
+  // Debug: Capture tests
+  document.getElementById('btnTestCapture').addEventListener('click', async () => {
+    const originalMode = visMode;
+    const modes = ['bowl', 'polar', 'sphere', 'wave'];
+    const meta = { title: 'TEST PATTERN', artist: 'VISUALISER DEBUG', bpm: '120', genre: 'ELECTRONIC' };
+    
+    const { compositeFrame, initOverlayCanvas, freeOverlayCanvas } = await import('./overlay.js');
+    initOverlayCanvas(renderer.domElement.width, renderer.domElement.height);
+    
+    logStatus('Starting test captures...');
+    
+    for (const m of modes) {
+      logStatus(`Capturing ${m}...`);
+      await setVisMode(m);
+      
+      // Wait for transitions and potential geometry rebuilds
+      await new Promise(r => setTimeout(r, 800));
+      renderer.render(scene, camera);
+      
+      const canvas = compositeFrame(renderer.domElement, meta, 125, 300, m);
+      const link = document.createElement('a');
+      link.download = `test_${m}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      // Significant delay to prevent browser download throttling
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    
+    freeOverlayCanvas();
+    await setVisMode(originalMode);
+    logStatus('Test captures complete');
+  });
 
   /* ── Keyboard shortcuts ────────────────────────────────── */
   document.addEventListener('keydown', e => {
     // Ignore when typing in an input
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     switch (e.key) {
+      case 'Escape': 
+        document.body.classList.remove('obs-active'); 
+        btnObs.textContent = 'obs mode';
+        break;
       case ' ':  e.preventDefault(); setAppMode(appMode === 'export' ? 'live' : 'export'); break;
       case '1':  setVisMode('bowl');   break;
       case '2':  setVisMode('polar');  break;
@@ -1017,7 +1777,9 @@
     topRenderBtn.disabled = true;
   }
 
+  document.body.classList.add('vis-bowl');
   rebuildGrid();
+  updateParamVisibility(visMode);
   animate();
   overlayReady();
 

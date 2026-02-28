@@ -114,25 +114,11 @@ export function buildBinMap(scale, halfCols, numBins, freqRange, sr) {
     if (scale === 'linear') {
       f = t * freqRange * nyq;
 
-    } else if (scale === 'log') {
+    } else {
+      // 'log'
       const fMin = 20;
       const fMax = freqRange * nyq;
       f = fMin * Math.pow(fMax / fMin, t);
-
-    } else {
-      // 'dnb' — piecewise curve tuned for Jungle/DnB:
-      //   0.00–0.25 → 40–180 Hz   (sub/kick body)
-      //   0.25–0.75 → 500–6000 Hz (amen, snare, hats) — log within segment
-      //   0.75–1.00 → 6000–16000 Hz (air, top-end shimmer)
-      if (t < 0.25) {
-        f = 40 + (t / 0.25) * (180 - 40);
-      } else if (t < 0.75) {
-        const s = (t - 0.25) / 0.5;
-        f = 500 * Math.pow(6000 / 500, s);
-      } else {
-        const s = (t - 0.75) / 0.25;
-        f = 6000 + s * (16000 - 6000);
-      }
     }
 
     const bin = Math.round(f / hzPerBin);
@@ -153,7 +139,17 @@ export function buildBinMap(scale, halfCols, numBins, freqRange, sr) {
 export function bowlFactor(r, totalRows, exp) {
   const t    = r / (totalRows - 1);             // 0..1
   const dist = Math.abs(t - 0.5) * 2;           // 0=centre, 1=edges
-  return Math.pow(1.0 - dist, exp);
+  
+  // Base power curve
+  let f = Math.pow(1.0 - dist, exp);
+  
+  // Complexity: as exp increases beyond 2.5, introduce a "plateau" or "double-peak" effect
+  if (exp > 2.5) {
+    const mesa = Math.sin(dist * Math.PI);
+    f *= (1.0 + (exp - 2.5) * 0.3 * mesa);
+  }
+  
+  return Math.max(0, Math.min(1, f));
 }
 
 /* ── A-weighting gain curve ──────────────────────────────────── */

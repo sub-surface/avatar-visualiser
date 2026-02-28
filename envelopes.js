@@ -25,7 +25,11 @@ export const REL = {
   high:  0.90, rms:   0.97, trans: 0.60,
 };
 
-export function computeEnvelopes(fd) {
+export function computeEnvelopes(fdL, fdR) {
+  // Average L/R for global envelopes
+  const fd = new Uint8Array(NUM_BINS);
+  for (let k = 0; k < NUM_BINS; k++) fd[k] = (fdL[k] + fdR[k]) / 2;
+
   let subSum = 0;
   for (let k = 1; k <= 6; k++) subSum += fd[k];
   const subRaw = subSum / (6 * 255);
@@ -81,22 +85,50 @@ export function computeEnvelopesExport(fd, expEnv, expPrevRms) {
 }
 
 /* ── Modulation ────────────────────────────────────────────── */
+let lfoPhase = 0;
+export function lfoTick(dt) { 
+  lfoPhase = (lfoPhase + 2 * Math.PI * P.lfoRate * dt) % (2 * Math.PI); 
+}
+
+export function getLfoVal() {
+  const t = lfoPhase / (2 * Math.PI); // 0..1
+  let raw = 0;
+  
+  if (P.lfoWaveform === 'sine') {
+    raw = Math.sin(lfoPhase);
+  } else if (P.lfoWaveform === 'square') {
+    raw = t < 0.5 ? 1 : -1;
+  } else if (P.lfoWaveform === 'sawtooth') {
+    raw = (t * 2) - 1;
+  } else if (P.lfoWaveform === 'triangle') {
+    raw = t < 0.5 ? (t * 4) - 1 : 3 - (t * 4);
+  }
+  
+  // Apply depth and offset
+  return (raw * P.lfoDepth) + P.lfoOffset;
+}
+
 export function applyModulation() {
+  const lfo = getLfoVal();
   camera.position.y    = CAM_BASE.y + env.mid * P.modMid;
-  camera.position.z    = CAM_BASE.z - env.rms * P.modRms + env.kick * P.modKick;
+  camera.position.z    = CAM_BASE.z - (env.rms * P.modRms + lfo * P.lfoToZoom) + env.kick * P.modKick;
   camera.lookAt(0, -0.5, 0);
-  material.opacity     = 0.6 + env.trans * P.modTrans;
+  
+  const targetOp       = 0.6 + env.trans * P.modTrans + lfo * P.lfoToOpacity * 0.3;
+  material.opacity     = Math.max(0.1, Math.min(1, targetOp));
   material.transparent = true;
   _colScratch.lerpColors(_colA, _colB, Math.min(env.mid * 3.5, 1));
   material.color.copy(_colScratch);
 }
 
-export function modDisp()    { return P.maxDisp * (1 + env.sub * P.modSub); }
+export function modDisp() { 
+  return P.maxDisp * (1 + env.sub * P.modSub + getLfoVal() * P.lfoToDisp); 
+}
 
-/* ── LFO ───────────────────────────────────────────────────── */
-export let lfoPhase = 0;
-export function lfoTick(dt) { lfoPhase = (lfoPhase + 2 * Math.PI * P.lfoRate * dt) % (2 * Math.PI); }
-export function modBowlExp() { return P.bowlExp + P.lfoDepth * Math.sin(lfoPhase) - env.high * P.modHigh; }
+export function modBowlExp() { return P.bowlExp - env.high * P.modHigh + getLfoVal() * P.lfoToBowl; }
+
+export function modPolarSpacing() { return P.polarSpacing + getLfoVal() * P.lfoToPolar; }
+export function modWaveSpacing() { return P.waveSpacing + getLfoVal() * P.lfoToWave; }
 
 /* ── BPM auto-detection ───────────────────────────────────── */
 const BPM_ONSET_THRESH = 0.35;

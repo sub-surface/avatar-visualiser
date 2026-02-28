@@ -28,10 +28,22 @@ camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
 camera.lookAt(0, -0.5, 0);
 
 /* ── Shared material + colour scratch ──────────────────────── */
-export const material    = new THREE.LineBasicMaterial({ color: LINE_COLOR });
+export const material    = new THREE.LineBasicMaterial({ vertexColors: true });
 export const _colA       = new THREE.Color(LINE_COLOR);
 export const _colB       = new THREE.Color(LINE_COLOR2);
 export const _colScratch = new THREE.Color();
+
+export function setColors(hexA, hexB) {
+  _colA.set(hexA);
+  _colB.set(hexB);
+  material.color.copy(_colA);
+}
+
+export function setTheme(isLight) {
+  const bg = isLight ? 0xf0f0f0 : 0x0d0d0d;
+  renderer.setClearColor(bg, 1);
+  // We keep _colA and _colB as per user setting, but could dim them if needed
+}
 
 /* ── Fade veil ─────────────────────────────────────────────── */
 const fadeVeil = document.getElementById('fadeVeil');

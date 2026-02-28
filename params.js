@@ -6,14 +6,33 @@
 export const P = {
   rows: 60, cols: 128,
   maxDisp: 2.2, bowlExp: 2.0,
-  lfoDepth: 0.0, lfoRate: 0.12,
-  smoothing: 0.55, freqScale: 'dnb', freqRange: 0.55,
+  smoothing: 0.55, freqScale: 'log', freqRange: 0.55,
   modSub:   0.5,
   modKick:  0.8,
   modMid:   0.6,
   modHigh:  0.8,
   modRms:   0.5,
   modTrans: 0.4,
+  sphereSize: 3.0,
+  waveSpacing: 0.4,
+  polarSpacing: -3.0,
+  lpfCutoff: 20000,
+  gain: 1.0,
+  lfoWaveform: 'sine',
+  lfoRate: 0.15,
+  lfoDepth: 1.0,
+  lfoOffset: 0.0,
+  lfoToDisp: 0.0,
+  lfoToBowl: 0.5,
+  lfoToZoom: 0.0,
+  lfoToOpacity: 0.0,
+  lfoToPolar: 0.0,
+  lfoToWave: 0.0,
+  colorA: '#e8d5b0', // Default gold/slate
+  colorB: '#b090c8', // Default mauve
+  colorCycle: 0.0,
+  uiReactivity: 0.5,
+  cycleModes: false,
   exportPreset: 'standard',
   exportOrientation: 'horizontal',
 };
@@ -27,6 +46,7 @@ export function saveParams() {
     artist: document.getElementById('pArtist').value,
     bpm:    document.getElementById('pBpm').value,
     genre:  document.getElementById('pGenre').value,
+    isLight: document.body.classList.contains('light-mode')
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...P, ...meta }));
 }
@@ -34,12 +54,20 @@ export function saveParams() {
 export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    const numKeys = ['rows','cols','maxDisp','bowlExp','lfoDepth','lfoRate','smoothing','freqRange',
-                     'modSub','modKick','modMid','modHigh','modRms','modTrans'];
+    const numKeys = ['rows','cols','maxDisp','bowlExp','smoothing','freqRange',
+                     'modSub','modKick','modMid','modHigh','modRms','modTrans',
+                     'sphereSize', 'waveSpacing', 'polarSpacing', 'lpfCutoff', 'gain',
+                     'lfoRate', 'lfoDepth', 'lfoOffset', 'lfoToDisp', 'lfoToBowl', 
+                     'lfoToZoom', 'lfoToOpacity', 'lfoToPolar', 'lfoToWave', 
+                     'uiReactivity', 'colorCycle'];
     for (const k of numKeys) if (saved[k] !== undefined) P[k] = +saved[k];
+    if (saved.colorA) P.colorA = saved.colorA;
+    if (saved.colorB) P.colorB = saved.colorB;
     if (saved.freqScale) P.freqScale = saved.freqScale;
     if (saved.exportPreset) P.exportPreset = saved.exportPreset;
     if (saved.exportOrientation) P.exportOrientation = saved.exportOrientation;
+
+    if (saved.isLight) document.body.classList.add('light-mode');
 
     const si = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
     const ss = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
@@ -48,8 +76,19 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pSmoothing', P.smoothing); ss('vSmoothing', P.smoothing);
     si('pMaxDisp',   P.maxDisp);   ss('vMaxDisp',   P.maxDisp);
     si('pBowlExp',   P.bowlExp);   ss('vBowlExp',   P.bowlExp);
-    si('pLfoDepth',  P.lfoDepth);  ss('vLfoDepth',  P.lfoDepth);
+    
+    si('pLfoWaveform', P.lfoWaveform);
     si('pLfoRate',   P.lfoRate);   ss('vLfoRate',   P.lfoRate);
+    si('pLfoDepth',  P.lfoDepth);  ss('vLfoDepth',  P.lfoDepth);
+    si('pLfoOffset', P.lfoOffset); ss('vLfoOffset', P.lfoOffset);
+
+    si('pLfoToDisp', P.lfoToDisp); ss('vLfoToDisp', P.lfoToDisp);
+    si('pLfoToBowl', P.lfoToBowl); ss('vLfoToBowl', P.lfoToBowl);
+    si('pLfoToZoom', P.lfoToZoom); ss('vLfoToZoom', P.lfoToZoom);
+    si('pLfoToOpacity', P.lfoToOpacity); ss('vLfoToOpacity', P.lfoToOpacity);
+    si('pLfoToPolar', P.lfoToPolar); ss('vLfoToPolar', P.lfoToPolar);
+    si('pLfoToWave', P.lfoToWave); ss('vLfoToWave', P.lfoToWave);
+
     si('pRows',      P.rows);      ss('vRows',      P.rows);
     si('pCols',      P.cols);      ss('vCols',      P.cols);
     si('pModSub',    P.modSub);    ss('vModSub',    P.modSub);
@@ -58,11 +97,37 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pModHigh',   P.modHigh);   ss('vModHigh',   P.modHigh);
     si('pModRms',    P.modRms);    ss('vModRms',    P.modRms);
     si('pModTrans',  P.modTrans);  ss('vModTrans',  P.modTrans);
+    
+    si('pSphereSize', P.sphereSize);   ss('vSphereSize', P.sphereSize);
+    si('pWaveSpacing', P.waveSpacing); ss('vWaveSpacing', P.waveSpacing);
+    si('pPolarSpacing', P.polarSpacing); ss('vPolarSpacing', P.polarSpacing);
+
+    // Map frequency back to 0.0-1.0 for the slider
+    const lpfPos = Math.log10(P.lpfCutoff / 200) / Math.log10(20000 / 200);
+    si('pLpfCutoff', lpfPos); 
+    ss('vLpfCutoff', P.lpfCutoff >= 1000 ? (P.lpfCutoff/1000).toFixed(P.lpfCutoff >= 10000 ? 0 : 1)+'k' : P.lpfCutoff);
+    
+    si('pGain', P.gain); ss('vGain', P.gain);
+    si('pColorA', P.colorA);
+    si('pColorB', P.colorB);
+    si('pColorCycle', P.colorCycle); ss('vColorCycle', P.colorCycle);
+    si('pUiReactivity', P.uiReactivity); ss('vUiReactivity', P.uiReactivity);
+
+    if (saved.cycleModes !== undefined) {
+      P.cycleModes = !!saved.cycleModes;
+      const el = document.getElementById('pCycleModes');
+      if (el) el.checked = P.cycleModes;
+    }
+
     si('pExportPreset', P.exportPreset); ss('vExportPreset', P.exportPreset);
     si('pExportOrient', P.exportOrientation); ss('vExportOrient', P.exportOrientation);
 
     if (saved.title)  si('pTitle',  saved.title);
+    else si('pTitle', '[TITLE]');
+    
     if (saved.artist) si('pArtist', saved.artist);
+    else si('pArtist', '[ARTIST]');
+    
     if (saved.bpm)    si('pBpm',    saved.bpm);
     if (saved.genre)  si('pGenre',  saved.genre);
     updateTrackDisplay();
