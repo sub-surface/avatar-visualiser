@@ -1130,6 +1130,7 @@
     if (isExporting) return;
     isExporting = true; exportBtn.disabled = true;
     const FPS = 30;
+    let writable = null;
     try {
       progressEl.textContent = 'decoding...';
       const ab  = await wavFile.arrayBuffer();
@@ -1141,12 +1142,22 @@
       allocExportScratch();
       beginExportResize();
 
-      const { Muxer, ArrayBufferTarget } = Mp4Muxer;
-      const target = new ArrayBufferTarget();
+      // Pick save location up front — streams chunks directly to disk,
+      // no RAM accumulation (avoids ArrayBuffer limit on long tracks)
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: `${wavFile.name.replace(/\.[^.]+$/,'')}_psychograph.mp4`,
+        types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
+      });
+      writable = await fileHandle.createWritable();
+
+      const { Muxer, StreamTarget } = Mp4Muxer;
+      const target = new StreamTarget({
+        onData: (data, position) => writable.write({ type:'write', data, position }),
+      });
       const muxer  = new Muxer({ target,
         video: { codec:'avc', width:EXPORT_W, height:EXPORT_H },
         audio: { codec:'aac', sampleRate:buf.sampleRate, numberOfChannels:buf.numberOfChannels },
-        fastStart: 'in-memory' });
+        fastStart: false });
 
       const venc = new VideoEncoder({
         output: (c,m)=>muxer.addVideoChunk(c,m), error: e=>console.error('VEnc:',e) });
@@ -1171,18 +1182,13 @@
       progressEl.textContent = 'muxing...';
       await venc.flush();
       muxer.finalize();
-
-      const blob = new Blob([target.buffer], { type:'video/mp4' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = `${wavFile.name.replace(/\.[^.]+$/,'')}_psychograph.mp4`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+      await writable.close();
       progressEl.textContent = 'done.';
 
     } catch (err) {
       console.error('Export failed:', err);
       progressEl.textContent = `err: ${err.message??err}`;
+      try { await writable?.abort(); } catch (_) {}
     } finally {
       freeExportScratch();
       endExportResize();
