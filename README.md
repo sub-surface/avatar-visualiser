@@ -1,4 +1,4 @@
-# PSYCHOGRAPH — Audio Visualiser Avatar
+# AVATAR — Web-based Audio Visualiser
 
 A real-time 3D audio visualiser in the style of Joy Division's *Unknown Pleasures*.
 Horizontal scanlines displaced by microphone FFT data form a pulsing bowl/crater shape.
