@@ -400,6 +400,26 @@
       <input type="range" id="pLfoRate" min="0.02" max="1.0" step="0.02" value="0.12">
       <span class="pval" id="vLfoRate">0.12</span></div>
 
+    <div class="psection">modulation</div>
+    <div class="prow"><label>sub→disp</label>
+      <input type="range" id="pModSub" min="0" max="1.0" step="0.05" value="0.5">
+      <span class="pval" id="vModSub">0.5</span></div>
+    <div class="prow"><label>kick→cam</label>
+      <input type="range" id="pModKick" min="0" max="2.0" step="0.1" value="0.8">
+      <span class="pval" id="vModKick">0.8</span></div>
+    <div class="prow"><label>mid→lift</label>
+      <input type="range" id="pModMid" min="0" max="1.5" step="0.05" value="0.6">
+      <span class="pval" id="vModMid">0.6</span></div>
+    <div class="prow"><label>high→bowl</label>
+      <input type="range" id="pModHigh" min="0" max="1.5" step="0.05" value="0.8">
+      <span class="pval" id="vModHigh">0.8</span></div>
+    <div class="prow"><label>rms→zoom</label>
+      <input type="range" id="pModRms" min="0" max="1.5" step="0.05" value="0.5">
+      <span class="pval" id="vModRms">0.5</span></div>
+    <div class="prow"><label>trans→opacity</label>
+      <input type="range" id="pModTrans" min="0" max="1.0" step="0.05" value="0.4">
+      <span class="pval" id="vModTrans">0.4</span></div>
+
     <div class="psection">grid</div>
     <div class="prow"><label>rows</label>
       <input type="range" id="pRows" min="20" max="120" step="10" value="60">
@@ -431,6 +451,13 @@
     maxDisp: 2.2, bowlExp: 2.0,
     lfoDepth: 0.0, lfoRate: 0.12,
     smoothing: 0.55, freqScale: 'dnb', freqRange: 0.55,
+    // Modulation depths (0 = off)
+    modSub:   0.5,   // sub RMS  → maxDisp boost
+    modKick:  0.8,   // kick peak → camera Z push
+    modMid:   0.6,   // mid mean  → camera Y lift
+    modHigh:  0.8,   // high mean → bowlExp soften
+    modRms:   0.5,   // full RMS  → camera Z breath
+    modTrans: 0.4,   // transient → opacity flash
   };
 
   /* ── localStorage persistence ─────────────────────────────── */
@@ -449,7 +476,8 @@
   function loadParams() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      const numKeys = ['rows','cols','maxDisp','bowlExp','lfoDepth','lfoRate','smoothing','freqRange'];
+      const numKeys = ['rows','cols','maxDisp','bowlExp','lfoDepth','lfoRate','smoothing','freqRange',
+                       'modSub','modKick','modMid','modHigh','modRms','modTrans'];
       for (const k of numKeys) if (saved[k] !== undefined) P[k] = +saved[k];
       if (saved.freqScale) P.freqScale = saved.freqScale;
 
@@ -464,6 +492,12 @@
       si('pLfoRate',   P.lfoRate);   ss('vLfoRate',   P.lfoRate);
       si('pRows',      P.rows);      ss('vRows',      P.rows);
       si('pCols',      P.cols);      ss('vCols',      P.cols);
+      si('pModSub',    P.modSub);    ss('vModSub',    P.modSub);
+      si('pModKick',   P.modKick);   ss('vModKick',   P.modKick);
+      si('pModMid',    P.modMid);    ss('vModMid',    P.modMid);
+      si('pModHigh',   P.modHigh);   ss('vModHigh',   P.modHigh);
+      si('pModRms',    P.modRms);    ss('vModRms',    P.modRms);
+      si('pModTrans',  P.modTrans);  ss('vModTrans',  P.modTrans);
       if (saved.title)  si('pTitle',  saved.title);
       if (saved.artist) si('pArtist', saved.artist);
       if (saved.bpm)    si('pBpm',    saved.bpm);
@@ -542,7 +576,137 @@
   /* ── LFO ──────────────────────────────────────────────────── */
   let lfoPhase = 0;
   function lfoTick(dt) { lfoPhase = (lfoPhase + 2 * Math.PI * P.lfoRate * dt) % (2 * Math.PI); }
-  function currentBowlExp() { return P.bowlExp + P.lfoDepth * Math.sin(lfoPhase); }
+
+  /* ══════════════════════════════════════════════════════════
+     AUDIO-REACTIVE MODULATION
+     Each feature is extracted per-frame then fed through an
+     asymmetric slew limiter (fast attack, slower release) so
+     modulation tracks transients snappily but decays smoothly.
+
+     All values are ADDITIVE offsets on top of P.* so sliders
+     always act as the base level. Nothing is overwritten.
+
+     Bin ranges (sr=44100, FFT_SIZE=2048, hzPerBin≈21.5Hz):
+       sub      20–120Hz   bins  1–6
+       kick     80–200Hz   bins  4–9   (overlap intentional)
+       mid     500–4kHz    bins 23–186
+       high    6–14kHz     bins 279–651
+  ══════════════════════════════════════════════════════════ */
+
+  // Slew-limited follower: fast attack, slower release
+  // attack/release are per-frame coefficients (0=instant, 0.99=very slow)
+  function slew(current, target, attack, release) {
+    return target > current
+      ? current + (1 - attack)  * (target - current)
+      : current + (1 - release) * (target - current);
+  }
+
+  // Envelope followers (0..1)
+  const env = {
+    sub:    0,   // 20–120Hz RMS   → maxDisp boost
+    kick:   0,   // 80–200Hz peak  → camera Z punch
+    mid:    0,   // 500–4kHz mean  → camera Y lift
+    high:   0,   // 6–14kHz mean   → bowlExp soften
+    rms:    0,   // full-spectrum  → slow camera breath
+    trans:  0,   // frame Δ RMS    → opacity flash
+  };
+
+  // Previous RMS for transient detection
+  let prevRms = 0;
+
+  // Slew rate constants (per-frame, at 60fps approx)
+  const ATK  = 0.05;   // ~1 frame attack
+  const REL  = {
+    sub:   0.82,   // 18-frame release  (~0.3s)
+    kick:  0.70,   // 10-frame release  (~0.16s)
+    mid:   0.88,   // 25-frame release  (~0.4s)
+    high:  0.90,   // 30-frame release  (~0.5s)
+    rms:   0.97,   // 100-frame release (~1.7s)
+    trans: 0.60,   // 5-frame release   (~0.08s) — sharp flash
+  };
+
+  // Base camera position — modulation adds offsets
+  const CAM_BASE = { y: 5.5, z: 9.0 };
+
+  function computeEnvelopes(fd) {
+    // fd is Uint8Array[NUM_BINS], values 0–255
+
+    // Sub: bins 1–6 (~20–130Hz)
+    let subSum = 0;
+    for (let k = 1; k <= 6; k++) subSum += fd[k];
+    const subRaw = subSum / (6 * 255);
+
+    // Kick: bins 4–9 peak (~80–200Hz) — use max not mean for punchy tracking
+    let kickPeak = 0;
+    for (let k = 4; k <= 9; k++) if (fd[k] > kickPeak) kickPeak = fd[k];
+    const kickRaw = kickPeak / 255;
+
+    // Mid: bins 23–186 (~500Hz–4kHz) mean
+    let midSum = 0;
+    for (let k = 23; k <= 186; k++) midSum += fd[k];
+    const midRaw = midSum / (164 * 255);
+
+    // High: bins 279–651 (~6kHz–14kHz) mean
+    let highSum = 0;
+    for (let k = 279; k <= 651; k++) highSum += fd[k];
+    const highRaw = highSum / (373 * 255);
+
+    // Full-spectrum RMS
+    let sq = 0;
+    for (let k = 0; k < NUM_BINS; k++) sq += (fd[k] / 255) ** 2;
+    const rmsRaw = Math.sqrt(sq / NUM_BINS);
+
+    // Transient: positive-only delta RMS (attack detector)
+    const delta  = Math.max(0, rmsRaw - prevRms);
+    prevRms = rmsRaw;
+    const transRaw = Math.min(delta * 8, 1);  // scale up, clamp
+
+    // Update followers
+    env.sub   = slew(env.sub,   subRaw,   ATK, REL.sub);
+    env.kick  = slew(env.kick,  kickRaw,  ATK, REL.kick);
+    env.mid   = slew(env.mid,   midRaw,   ATK, REL.mid);
+    env.high  = slew(env.high,  highRaw,  ATK, REL.high);
+    env.rms   = slew(env.rms,   rmsRaw,   ATK, REL.rms);
+    env.trans = slew(env.trans, transRaw, ATK, REL.trans);
+  }
+
+  function applyModulation() {
+    const camY = CAM_BASE.y + env.mid  * P.modMid;
+    const camZ = CAM_BASE.z - env.rms  * P.modRms + env.kick * P.modKick;
+    camera.position.y    = camY;
+    camera.position.z    = camZ;
+    camera.lookAt(0, -0.5, 0);
+    material.opacity     = 0.6 + env.trans * P.modTrans;
+    material.transparent = true;
+  }
+
+  function modDisp()    { return P.maxDisp * (1 + env.sub * P.modSub); }
+  function modBowlExp() { return P.bowlExp + P.lfoDepth * Math.sin(lfoPhase) - env.high * P.modHigh; }
+
+  // Export-compatible version: same math on pre-computed envelopes
+  function computeEnvelopesExport(fd, expEnv, expPrevRms) {
+    let subSum = 0; for (let k = 1; k <= 6; k++) subSum += fd[k];
+    const subRaw = subSum / (6 * 255);
+    let kickPeak = 0; for (let k = 4; k <= 9; k++) if (fd[k] > kickPeak) kickPeak = fd[k];
+    const kickRaw = kickPeak / 255;
+    let midSum = 0; for (let k = 23; k <= 186; k++) midSum += fd[k];
+    const midRaw = midSum / (164 * 255);
+    let highSum = 0; for (let k = 279; k <= 651; k++) highSum += fd[k];
+    const highRaw = highSum / (373 * 255);
+    let sq = 0; for (let k = 0; k < NUM_BINS; k++) sq += (fd[k]/255)**2;
+    const rmsRaw = Math.sqrt(sq / NUM_BINS);
+    const transRaw = Math.min(Math.max(0, rmsRaw - expPrevRms) * 8, 1);
+
+    expEnv.sub   = slew(expEnv.sub,   subRaw,   ATK, REL.sub);
+    expEnv.kick  = slew(expEnv.kick,  kickRaw,  ATK, REL.kick);
+    expEnv.mid   = slew(expEnv.mid,   midRaw,   ATK, REL.mid);
+    expEnv.high  = slew(expEnv.high,  highRaw,  ATK, REL.high);
+    expEnv.rms   = slew(expEnv.rms,   rmsRaw,   ATK, REL.rms);
+    expEnv.trans = slew(expEnv.trans, transRaw, ATK, REL.trans);
+    return rmsRaw;  // return for next frame's transient detection
+  }
+
+  function currentBowlExp() { return modBowlExp(); }
 
   /* ── Live audio ───────────────────────────────────────────── */
   let analyser = null, freqData = null, audioReady = false;
@@ -583,8 +747,9 @@
     for (let k = 0; k < NUM_BINS; k++) row[k] = (fd[k] / 255) * aWeightGain[k];
   }
 
-  function applyDisplacement(fd, bowlExp) {
+  function applyDisplacement(fd, bowlExp, dispScale) {
     pushHistory(fd);
+    const disp = dispScale !== undefined ? dispScale : modDisp();
     const half = P.cols / 2;
     for (let r = 0; r < P.rows; r++) {
       const pos  = posBuffers[r];
@@ -592,7 +757,7 @@
       const bf   = bowlFactor(r, P.rows, bowlExp);
       for (let c = 0; c < P.cols; c++) {
         const m = c < half ? c : P.cols - 1 - c;
-        pos[c * 3 + 1] = -hrow[binMap[Math.min(m, half - 1)]] * bf * P.maxDisp;
+        pos[c * 3 + 1] = -hrow[binMap[Math.min(m, half - 1)]] * bf * disp;
       }
       lines[r].geometry.attributes.position.needsUpdate = true;
     }
@@ -646,6 +811,8 @@
     lfoTick(dt);
     if (audioReady) {
       analyser.getByteFrequencyData(freqData);
+      computeEnvelopes(freqData);
+      applyModulation();
       applyDisplacement(freqData, currentBowlExp());
     }
     renderer.render(scene, camera);
@@ -694,6 +861,12 @@
   bindRange('pBowlExp',  'vBowlExp',  'bowlExp');
   bindRange('pLfoDepth', 'vLfoDepth', 'lfoDepth');
   bindRange('pLfoRate',  'vLfoRate',  'lfoRate');
+  bindRange('pModSub',   'vModSub',   'modSub');
+  bindRange('pModKick',  'vModKick',  'modKick');
+  bindRange('pModMid',   'vModMid',   'modMid');
+  bindRange('pModHigh',  'vModHigh',  'modHigh');
+  bindRange('pModRms',   'vModRms',   'modRms');
+  bindRange('pModTrans', 'vModTrans', 'modTrans');
   bindRange('pRows', 'vRows', 'rows', () => {
     P.rows = parseInt(document.getElementById('pRows').value);
     rebuildGrid(); rebuildHistory(); refreshBinMap();
@@ -772,16 +945,29 @@
     const expFreq    = new Uint8Array(NUM_BINS);
     const expHist    = Array.from({length:P.rows}, ()=>new Float32Array(NUM_BINS));
     const expBinMap  = buildBinMap(P.freqScale, P.cols/2, NUM_BINS, P.freqRange, 44100);
-    let   expHead    = 0, expLfo = 0;
+    let   expHead    = 0, expLfo = 0, expPrevRms = 0;
+    const expEnv     = { sub:0, kick:0, mid:0, high:0, rms:0, trans:0 };
     const dt         = 1 / fps;
 
     for (let f = 0; f < totalFrames; f++) {
       while (venc.encodeQueueSize > 2) await new Promise(r => setTimeout(r, 0));
 
       expLfo = (expLfo + 2*Math.PI*P.lfoRate*dt) % (2*Math.PI);
-      const be = P.bowlExp + P.lfoDepth * Math.sin(expLfo);
 
       expFreq.set(frameFreqData[f]);
+      expPrevRms = computeEnvelopesExport(expFreq, expEnv, expPrevRms);
+
+      // Modulated parameters for this export frame
+      const be   = P.bowlExp + P.lfoDepth * Math.sin(expLfo) - expEnv.high * P.modHigh;
+      const disp = P.maxDisp * (1 + expEnv.sub * P.modSub);
+
+      // Apply modulated camera
+      camera.position.y = CAM_BASE.y + expEnv.mid  * P.modMid;
+      camera.position.z = CAM_BASE.z - expEnv.rms  * P.modRms + expEnv.kick * P.modKick;
+      camera.lookAt(0, -0.5, 0);
+      material.opacity = 0.6 + expEnv.trans * P.modTrans;
+      material.transparent = true;
+
       expHead = (expHead + P.rows - 1) % P.rows;
       const row = expHist[expHead];
       for (let k = 0; k < NUM_BINS; k++) row[k] = (expFreq[k]/255) * aWeightGain[k];
@@ -793,7 +979,7 @@
         const bf   = bowlFactor(r, P.rows, be);
         for (let c = 0; c < P.cols; c++) {
           const m = c < half ? c : P.cols-1-c;
-          pos[c*3+1] = -hrow[expBinMap[Math.min(m,half-1)]] * bf * P.maxDisp;
+          pos[c*3+1] = -hrow[expBinMap[Math.min(m,half-1)]] * bf * disp;
         }
         lines[r].geometry.attributes.position.needsUpdate = true;
       }
@@ -872,7 +1058,14 @@
       console.error('Export failed:', err);
       progressEl.textContent = `err: ${err.message??err}`;
     } finally {
-      endExportResize(); isExporting = false; exportBtn.disabled = false; setTimeDisplay(0,0);
+      endExportResize();
+      // Restore camera and opacity to base values
+      camera.position.y = CAM_BASE.y;
+      camera.position.z = CAM_BASE.z;
+      camera.lookAt(0, -0.5, 0);
+      material.opacity = 1.0;
+      material.transparent = false;
+      isExporting = false; exportBtn.disabled = false; setTimeDisplay(0,0);
     }
   }
 
