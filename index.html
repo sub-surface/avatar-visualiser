@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AVATAR — Audio Visualiser</title>
 
+  <!-- Open Graph / Social Preview -->
+  <meta property="og:title" content="AVATAR — Audio Visualiser">
+  <meta property="og:description" content="Real-time 3D audio visualiser in the style of Joy Division's Unknown Pleasures.">
+  <meta property="og:image" content="preview.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+
   <!--
     DM Serif Display — modern editorial serif, geometric construction,
     high stroke contrast. Used in contemporary music/media branding.
@@ -101,6 +108,38 @@
       to   { transform: translateX(210%); }
     }
     #loadBar.done { display: none; }
+    #loadFileBtn {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      color: var(--s-mid);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+      padding: 0;
+      text-shadow:
+        0 0  40px hsl(205 18% 68% / 0.35),
+        0 0  80px hsl(205 18% 68% / 0.18),
+        0 0 140px hsl(205 18% 68% / 0.10),
+        0 2px  4px hsl(0 0% 0% / 0.8);
+      transition: color 0.2s;
+    }
+    #loadFileBtn:hover { color: var(--s-hi); }
+    #livePrompt {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      color: var(--s-mid);
+      user-select: none;
+      text-shadow:
+        0 0  40px hsl(205 18% 68% / 0.35),
+        0 0  80px hsl(205 18% 68% / 0.18),
+        0 0 140px hsl(205 18% 68% / 0.10),
+        0 2px  4px hsl(0 0% 0% / 0.8);
+    }
 
     /* ═══════════════════════════════════════════════════════════
        TRACK INFO CARD
@@ -193,6 +232,181 @@
        FIXED CHROME — bottom-left and bottom-right
     ═══════════════════════════════════════════════════════════ */
 
+    /* ── Info box (top-left, expandable) ──────────────────────── */
+    #infoBox {
+      position: fixed;
+      top: 22px;
+      left: 28px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 240px;
+    }
+    #infoToggle {
+      font-family: var(--mono);
+      font-weight: 300;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      color: var(--s-lo);
+      text-transform: lowercase;
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      text-align: left;
+      transition: color 0.2s;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #infoToggle:hover { color: var(--s-mid); }
+    #infoToggle::before {
+      content: '▸';
+      font-size: 0.5rem;
+      transition: transform 0.2s;
+      display: inline-block;
+    }
+    #infoBox.open #infoToggle::before { transform: rotate(90deg); }
+    #infoBody {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 12px;
+      background: hsl(220 12% 7% / 0.82);
+      box-shadow: 0 8px 32px hsl(0 0% 0% / 0.7), 0 2px 8px hsl(0 0% 0% / 0.5);
+      backdrop-filter: blur(6px);
+      border-radius: 2px;
+    }
+    #infoBox.open #infoBody { display: flex; }
+    .info-heading {
+      font-family: var(--serif);
+      font-size: 0.78rem;
+      color: var(--s-hi);
+      letter-spacing: 0.02em;
+    }
+    .info-sub {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      font-weight: 300;
+      color: var(--m-hi);
+      letter-spacing: 0.12em;
+      text-transform: lowercase;
+    }
+    .info-rule {
+      height: 1px;
+      background: var(--s-rule);
+    }
+    .info-body {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      font-weight: 300;
+      color: var(--s-mid);
+      letter-spacing: 0.06em;
+      line-height: 1.7;
+    }
+    .info-body b {
+      color: var(--s-hi);
+      font-weight: 400;
+    }
+    #infoBox a.info-link {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      font-weight: 300;
+      color: var(--s-lo);
+      text-decoration: none;
+      letter-spacing: 0.12em;
+      transition: color 0.2s;
+    }
+    #infoBox a.info-link:hover { color: var(--s-mid); }
+
+    /* ── Top-right chrome (mode toggle + export actions) ──────── */
+    #topRight {
+      position: fixed;
+      top: 22px;
+      right: 28px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    #modeToggle, #exportActions {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+    .mode-btn {
+      font-family: var(--mono);
+      font-weight: 300;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: lowercase;
+      background: transparent;
+      border: none;
+      padding: 2px 6px;
+      cursor: pointer;
+      color: var(--s-lo);
+      transition: color 0.2s;
+      user-select: none;
+    }
+    .mode-btn:hover:not(:disabled) { color: var(--s-mid); }
+    .mode-btn.active { color: var(--m-hi); }
+    .mode-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    #modeSep, .mode-sep {
+      font-family: var(--mono);
+      font-size: 0.55rem;
+      color: var(--s-rule);
+    }
+
+    /* ── Visualiser mode strip (bottom-centre) ─────────────────── */
+    #visStrip {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+    .vis-btn {
+      font-family: var(--mono);
+      font-weight: 300;
+      font-size: 0.62rem;
+      letter-spacing: 0.16em;
+      text-transform: lowercase;
+      background: transparent;
+      border: none;
+      padding: 2px 7px;
+      cursor: pointer;
+      color: var(--s-lo);
+      transition: color 0.2s;
+      user-select: none;
+    }
+    .vis-btn:hover { color: var(--s-mid); }
+    .vis-btn.active { color: var(--m-hi); }
+    .vis-sep {
+      font-family: var(--mono);
+      font-size: 0.5rem;
+      color: var(--s-rule);
+      pointer-events: none;
+    }
+
+    /* ── Fade-transition overlay ───────────────────────────────── */
+    #fadeVeil {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+    #fadeVeil.fading { opacity: 1; }
+
     /* Shared chrome link / button style */
     .chrome {
       font-family: var(--mono);
@@ -237,7 +451,7 @@
       font-weight: 300;
       font-size: 0.58rem;
       letter-spacing: 0.1em;
-      color: var(--s-lo);
+      color: var(--s-hi);
       text-align: right;
       min-height: 0.75em;
     }
@@ -365,6 +579,10 @@
 <div id="overlay">
   <div id="loadBar"></div>
   <span id="overlayMsg">loading…</span>
+  <!-- shown in export mode once ready -->
+  <button id="loadFileBtn" style="display:none">load file</button>
+  <!-- shown in live mode once ready -->
+  <span id="livePrompt" style="display:none">click to begin</span>
 </div>
 
 <!-- ── Track info card — centred, left-aligned within ──────────── -->
@@ -390,8 +608,55 @@
   </div>
 </div>
 
-<!-- ── Bottom-left: branding ───────────────────────────────────── -->
-<a class="chrome" id="brandLink" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
+<!-- ── Fade veil for visualiser transitions ────────────────────── -->
+<div id="fadeVeil"></div>
+
+<!-- ── Top-left: info box ──────────────────────────────────────── -->
+<div id="infoBox">
+  <button id="infoToggle">avatar visualiser</button>
+  <div id="infoBody">
+    <div class="info-heading">AVATAR VISUALISER</div>
+    <div class="info-sub">developed by sub-surface</div>
+    <div class="info-rule"></div>
+    <div class="info-body">
+      Real-time 3D audio visualiser in the style of Joy Division's <i>Unknown Pleasures</i>.
+      Scanlines are displaced by live FFT data.
+    </div>
+    <div class="info-rule"></div>
+    <div class="info-body">
+      <b>export</b> — switch to export mode, click <i>load file</i>, pick a WAV or MP3.
+      The video saves automatically when encoding is complete.<br><br>
+      <b>live</b> — switch to live mode, click the screen to grant mic access.
+      Use as an OBS browser source at <code>localhost:3000</code>.
+    </div>
+    <a class="info-link" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
+  </div>
+</div>
+
+<!-- ── Top-right: app mode toggle & export actions ───────────── -->
+<div id="topRight">
+  <div id="modeToggle">
+    <button class="mode-btn" id="btnExport" data-mode="export">export</button>
+    <span id="modeSep">·</span>
+    <button class="mode-btn" id="btnLive" data-mode="live">live</button>
+  </div>
+  <div id="exportActions">
+    <button class="mode-btn" id="topLoadBtn">load file</button>
+    <span class="mode-sep">·</span>
+    <button class="mode-btn" id="topRenderBtn" disabled>render video</button>
+  </div>
+</div>
+
+<!-- ── Bottom-centre: visualiser type strip ────────────────────── -->
+<div id="visStrip">
+  <button class="vis-btn active" data-vis="bowl">bowl</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="polar">polar</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="sphere">sphere</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="wave">wave</button>
+</div>
 
 <!-- ── Bottom-right: controls + params panel ───────────────────── -->
 <div id="controls">
@@ -465,10 +730,24 @@
       <input type="range" id="pCols" min="64" max="256" step="32" value="128">
       <span class="pval" id="vCols">128</span></div>
 
+    <div class="psection">export</div>
+    <div class="prow"><label>preset</label>
+      <select class="psel" id="pExportPreset">
+        <option value="lossless">lossless</option>
+        <option value="standard" selected>standard</option>
+        <option value="lofi">lo-fi ps2</option>
+      </select>
+      <span class="pval" id="vExportPreset">standard</span></div>
+    <div class="prow"><label>aspect</label>
+      <select class="psel" id="pExportOrient">
+        <option value="horizontal" selected>horizontal</option>
+        <option value="vertical">vertical</option>
+      </select>
+      <span class="pval" id="vExportOrient">horiz</span></div>
+
   </div><!-- /paramsPanel -->
 
   <button class="chrome" id="paramsToggle">parameters</button>
-  <button class="chrome" id="exportBtn">load &amp; export</button>
   <div id="progress"></div>
 
 </div>
@@ -477,372 +756,161 @@
 
 <script type="module">
   import * as THREE from 'three';
-  import {
-    applyHannWindow, fftRadix2, computeFFTBins,
-    computeFFTBinsInto, buildBinMap, bowlFactor, buildAWeightGain
-  } from './dsp.js';
+  import { renderer, scene, camera, CAM_BASE, fadeOut, fadeIn } from './engine.js';
+  import { P, loadParams, bindRange, bindSelect, bindText,
+           updateTrackDisplay } from './params.js';
+  import { initAudio, stopAudio, getAnalyser, getFreqData, isAudioReady } from './audio.js';
+  import { computeEnvelopes, applyModulation, lfoTick, modBowlExp, bpmTick } from './envelopes.js';
+  import { refreshBinMap, rebuildHistory } from './vis/shared.js';
+  import { rebuildGrid, applyDisplacement, tearDownBowl } from './vis/bowl.js';
+  import { rebuildPolar, applyPolar, tearDownPolar } from './vis/polar.js';
+  import { rebuildSphere, applySphere, tearDownSphere } from './vis/sphere.js';
+  import { rebuildWave, applyWave, ensureTimeDomainData, tearDownWave } from './vis/wave.js';
+  import { startExport, isExporting } from './export.js';
 
-  /* ── Parameters ───────────────────────────────────────────── */
-  const P = {
-    rows: 60, cols: 128,
-    maxDisp: 2.2, bowlExp: 2.0,
-    lfoDepth: 0.0, lfoRate: 0.12,
-    smoothing: 0.55, freqScale: 'dnb', freqRange: 0.55,
-    // Modulation depths (0 = off)
-    modSub:   0.5,   // sub RMS  → maxDisp boost
-    modKick:  0.8,   // kick peak → camera Z push
-    modMid:   0.6,   // mid mean  → camera Y lift
-    modHigh:  0.8,   // high mean → bowlExp soften
-    modRms:   0.5,   // full RMS  → camera Z breath
-    modTrans: 0.4,   // transient → opacity flash
-  };
+  /* ── Visualiser mode switching ──────────────────────────── */
+  let visMode = 'bowl';
 
-  /* ── localStorage persistence ─────────────────────────────── */
-  const STORAGE_KEY = 'psychograph_params';
-
-  function saveParams() {
-    const meta = {
-      title:  document.getElementById('pTitle').value,
-      artist: document.getElementById('pArtist').value,
-      bpm:    document.getElementById('pBpm').value,
-      genre:  document.getElementById('pGenre').value,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...P, ...meta }));
+  function tearDownVis() {
+    tearDownBowl();
+    tearDownPolar();
+    tearDownSphere();
+    tearDownWave();
   }
 
-  function loadParams() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      const numKeys = ['rows','cols','maxDisp','bowlExp','lfoDepth','lfoRate','smoothing','freqRange',
-                       'modSub','modKick','modMid','modHigh','modRms','modTrans'];
-      for (const k of numKeys) if (saved[k] !== undefined) P[k] = +saved[k];
-      if (saved.freqScale) P.freqScale = saved.freqScale;
-
-      const si = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
-      const ss = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      si('pFreqScale', P.freqScale); ss('vFreqScale', P.freqScale);
-      si('pFreqRange', P.freqRange); ss('vFreqRange', P.freqRange);
-      si('pSmoothing', P.smoothing); ss('vSmoothing', P.smoothing);
-      si('pMaxDisp',   P.maxDisp);   ss('vMaxDisp',   P.maxDisp);
-      si('pBowlExp',   P.bowlExp);   ss('vBowlExp',   P.bowlExp);
-      si('pLfoDepth',  P.lfoDepth);  ss('vLfoDepth',  P.lfoDepth);
-      si('pLfoRate',   P.lfoRate);   ss('vLfoRate',   P.lfoRate);
-      si('pRows',      P.rows);      ss('vRows',      P.rows);
-      si('pCols',      P.cols);      ss('vCols',      P.cols);
-      si('pModSub',    P.modSub);    ss('vModSub',    P.modSub);
-      si('pModKick',   P.modKick);   ss('vModKick',   P.modKick);
-      si('pModMid',    P.modMid);    ss('vModMid',    P.modMid);
-      si('pModHigh',   P.modHigh);   ss('vModHigh',   P.modHigh);
-      si('pModRms',    P.modRms);    ss('vModRms',    P.modRms);
-      si('pModTrans',  P.modTrans);  ss('vModTrans',  P.modTrans);
-      if (saved.title)  si('pTitle',  saved.title);
-      if (saved.artist) si('pArtist', saved.artist);
-      if (saved.bpm)    si('pBpm',    saved.bpm);
-      if (saved.genre)  si('pGenre',  saved.genre);
-      updateTrackDisplay();
-      // Rebuild geometry to match restored rows/cols
+  function buildVis(mode) {
+    tearDownVis();
+    if (mode === 'bowl') {
       rebuildGrid();
-      rebuildHistory();
-    } catch (_) {}
-  }
-
-  /* ── Fixed constants ──────────────────────────────────────── */
-  const FFT_SIZE   = 2048;
-  const NUM_BINS   = FFT_SIZE / 2;
-  const GRID_W     = 10;
-  const GRID_D     = 10;
-  const LINE_COLOR  = 0xe8d5b0;   // warm gold (base)
-  const LINE_COLOR2 = 0xb090c8;   // cool mauve (peak mids)
-  const BG_COLOR   = 0x0d0d0d;
-  const EXPORT_W   = 1920;
-  const EXPORT_H   = 1080;
-  let   isExporting = false;
-
-  /* ── Renderer ─────────────────────────────────────────────── */
-  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(BG_COLOR, 1);
-  document.body.appendChild(renderer.domElement);
-
-  /* ── Scene & Camera ───────────────────────────────────────── */
-  const scene  = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.set(0, 5.5, 9);
-  camera.lookAt(0, -0.5, 0);
-
-  /* ── Grid ─────────────────────────────────────────────────── */
-  const lines = [], posBuffers = [];
-  const material    = new THREE.LineBasicMaterial({ color: LINE_COLOR });
-  const _colA       = new THREE.Color(LINE_COLOR);   // warm gold
-  const _colB       = new THREE.Color(LINE_COLOR2);  // cool mauve
-  const _colScratch = new THREE.Color();
-
-  function rebuildGrid() {
-    lines.forEach(l => scene.remove(l));
-    lines.length = posBuffers.length = 0;
-    for (let r = 0; r < P.rows; r++) {
-      const z = (r / (P.rows - 1) - 0.5) * GRID_D;
-      const positions = new Float32Array(P.cols * 3);
-      for (let c = 0; c < P.cols; c++) {
-        positions[c * 3]     = (c / (P.cols - 1) - 0.5) * GRID_W;
-        positions[c * 3 + 2] = z;
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const line = new THREE.Line(geo, material);
-      scene.add(line);
-      lines.push(line);
-      posBuffers.push(positions);
-    }
-  }
-  rebuildGrid();
-
-  /* ── History ring buffer ──────────────────────────────────── */
-  const histBuf = [];
-  let histHead = 0;
-
-  function rebuildHistory() {
-    histBuf.length = 0;
-    for (let i = 0; i < P.rows; i++) histBuf.push(new Float32Array(NUM_BINS));
-    histHead = 0;
-  }
-  rebuildHistory();
-
-  /* ── DSP tables ───────────────────────────────────────────── */
-  const aWeightGain = buildAWeightGain(NUM_BINS, FFT_SIZE, 44100);
-  let binMap = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
-
-  function refreshBinMap() {
-    binMap = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
-  }
-
-  /* ── LFO ──────────────────────────────────────────────────── */
-  let lfoPhase = 0;
-  function lfoTick(dt) { lfoPhase = (lfoPhase + 2 * Math.PI * P.lfoRate * dt) % (2 * Math.PI); }
-
-  /* ══════════════════════════════════════════════════════════
-     AUDIO-REACTIVE MODULATION
-     Each feature is extracted per-frame then fed through an
-     asymmetric slew limiter (fast attack, slower release) so
-     modulation tracks transients snappily but decays smoothly.
-
-     All values are ADDITIVE offsets on top of P.* so sliders
-     always act as the base level. Nothing is overwritten.
-
-     Bin ranges (sr=44100, FFT_SIZE=2048, hzPerBin≈21.5Hz):
-       sub      20–120Hz   bins  1–6
-       kick     80–200Hz   bins  4–9   (overlap intentional)
-       mid     500–4kHz    bins 23–186
-       high    6–14kHz     bins 279–651
-  ══════════════════════════════════════════════════════════ */
-
-  // Slew-limited follower: fast attack, slower release
-  // attack/release are per-frame coefficients (0=instant, 0.99=very slow)
-  function slew(current, target, attack, release) {
-    return target > current
-      ? current + (1 - attack)  * (target - current)
-      : current + (1 - release) * (target - current);
-  }
-
-  // Envelope followers (0..1)
-  const env = {
-    sub:    0,   // 20–120Hz RMS   → maxDisp boost
-    kick:   0,   // 80–200Hz peak  → camera Z punch
-    mid:    0,   // 500–4kHz mean  → camera Y lift
-    high:   0,   // 6–14kHz mean   → bowlExp soften
-    rms:    0,   // full-spectrum  → slow camera breath
-    trans:  0,   // frame Δ RMS    → opacity flash
-  };
-
-  // Previous RMS for transient detection
-  let prevRms = 0;
-
-  // Slew rate constants (per-frame, at 60fps approx)
-  const ATK  = 0.05;   // ~1 frame attack
-  const REL  = {
-    sub:   0.82,   // 18-frame release  (~0.3s)
-    kick:  0.70,   // 10-frame release  (~0.16s)
-    mid:   0.88,   // 25-frame release  (~0.4s)
-    high:  0.90,   // 30-frame release  (~0.5s)
-    rms:   0.97,   // 100-frame release (~1.7s)
-    trans: 0.60,   // 5-frame release   (~0.08s) — sharp flash
-  };
-
-  // Base camera position — modulation adds offsets
-  const CAM_BASE = { y: 5.5, z: 9.0 };
-
-  function computeEnvelopes(fd) {
-    // fd is Uint8Array[NUM_BINS], values 0–255
-
-    // Sub: bins 1–6 (~20–130Hz)
-    let subSum = 0;
-    for (let k = 1; k <= 6; k++) subSum += fd[k];
-    const subRaw = subSum / (6 * 255);
-
-    // Kick: bins 4–9 peak (~80–200Hz) — use max not mean for punchy tracking
-    let kickPeak = 0;
-    for (let k = 4; k <= 9; k++) if (fd[k] > kickPeak) kickPeak = fd[k];
-    const kickRaw = kickPeak / 255;
-
-    // Mid: bins 23–186 (~500Hz–4kHz) mean
-    let midSum = 0;
-    for (let k = 23; k <= 186; k++) midSum += fd[k];
-    const midRaw = midSum / (164 * 255);
-
-    // High: bins 279–651 (~6kHz–14kHz) mean
-    let highSum = 0;
-    for (let k = 279; k <= 651; k++) highSum += fd[k];
-    const highRaw = highSum / (373 * 255);
-
-    // Full-spectrum RMS
-    let sq = 0;
-    for (let k = 0; k < NUM_BINS; k++) sq += (fd[k] / 255) ** 2;
-    const rmsRaw = Math.sqrt(sq / NUM_BINS);
-
-    // Transient: positive-only delta RMS (attack detector)
-    const delta  = Math.max(0, rmsRaw - prevRms);
-    prevRms = rmsRaw;
-    const transRaw = Math.min(delta * 8, 1);  // scale up, clamp
-
-    // Update followers
-    env.sub   = slew(env.sub,   subRaw,   ATK, REL.sub);
-    env.kick  = slew(env.kick,  kickRaw,  ATK, REL.kick);
-    env.mid   = slew(env.mid,   midRaw,   ATK, REL.mid);
-    env.high  = slew(env.high,  highRaw,  ATK, REL.high);
-    env.rms   = slew(env.rms,   rmsRaw,   ATK, REL.rms);
-    env.trans = slew(env.trans, transRaw, ATK, REL.trans);
-  }
-
-  function applyModulation() {
-    const camY = CAM_BASE.y + env.mid  * P.modMid;
-    const camZ = CAM_BASE.z - env.rms  * P.modRms + env.kick * P.modKick;
-    camera.position.y    = camY;
-    camera.position.z    = camZ;
-    camera.lookAt(0, -0.5, 0);
-    material.opacity     = 0.6 + env.trans * P.modTrans;
-    material.transparent = true;
-    // Colour: gold → mauve driven by mid energy
-    _colScratch.lerpColors(_colA, _colB, Math.min(env.mid * 3.5, 1));
-    material.color.copy(_colScratch);
-  }
-
-  function modDisp()    { return P.maxDisp * (1 + env.sub * P.modSub); }
-  function modBowlExp() { return P.bowlExp + P.lfoDepth * Math.sin(lfoPhase) - env.high * P.modHigh; }
-
-  // Export-compatible version: same math on pre-computed envelopes
-  function computeEnvelopesExport(fd, expEnv, expPrevRms) {
-    let subSum = 0; for (let k = 1; k <= 6; k++) subSum += fd[k];
-    const subRaw = subSum / (6 * 255);
-    let kickPeak = 0; for (let k = 4; k <= 9; k++) if (fd[k] > kickPeak) kickPeak = fd[k];
-    const kickRaw = kickPeak / 255;
-    let midSum = 0; for (let k = 23; k <= 186; k++) midSum += fd[k];
-    const midRaw = midSum / (164 * 255);
-    let highSum = 0; for (let k = 279; k <= 651; k++) highSum += fd[k];
-    const highRaw = highSum / (373 * 255);
-    let sq = 0; for (let k = 0; k < NUM_BINS; k++) sq += (fd[k]/255)**2;
-    const rmsRaw = Math.sqrt(sq / NUM_BINS);
-    const transRaw = Math.min(Math.max(0, rmsRaw - expPrevRms) * 8, 1);
-
-    expEnv.sub   = slew(expEnv.sub,   subRaw,   ATK, REL.sub);
-    expEnv.kick  = slew(expEnv.kick,  kickRaw,  ATK, REL.kick);
-    expEnv.mid   = slew(expEnv.mid,   midRaw,   ATK, REL.mid);
-    expEnv.high  = slew(expEnv.high,  highRaw,  ATK, REL.high);
-    expEnv.rms   = slew(expEnv.rms,   rmsRaw,   ATK, REL.rms);
-    expEnv.trans = slew(expEnv.trans, transRaw, ATK, REL.trans);
-    return rmsRaw;  // return for next frame's transient detection
-  }
-
-  function currentBowlExp() { return modBowlExp(); }
-
-  /* ── BPM auto-detection ───────────────────────────────────── */
-  // Onset detection on the kick envelope. Collects inter-onset intervals,
-  // takes the median, converts to BPM. Only writes to the field if the
-  // user hasn't manually focused/edited it.
-  const BPM_ONSET_THRESH = 0.35;  // kick env must exceed this to count as a beat
-  const BPM_REFRACTORY   = 0.25;  // seconds to ignore after an onset (min ~240 BPM)
-  const BPM_HISTORY      = 24;    // intervals to keep for median
-  const BPM_MIN          = 60;
-  const BPM_MAX          = 200;
-
-  let _bpmPrevKick    = 0;
-  let _bpmLastOnset   = 0;   // timestamp of last accepted onset (seconds)
-  let _bpmIntervals   = [];  // ring of recent inter-onset intervals
-  let _bpmSmoothed    = 0;
-  let _bpmUserEdited  = false;
-  let _bpmClockSec    = 0;   // elapsed seconds tracked manually
-
-  const pBpmEl = document.getElementById('pBpm');
-  pBpmEl.addEventListener('focus', () => { _bpmUserEdited = true; });
-  pBpmEl.addEventListener('input', () => { if (!pBpmEl.value.trim()) { _bpmUserEdited = false; _bpmSmoothed = 0; _bpmIntervals = []; } });
-
-  function bpmTick(dt) {
-    _bpmClockSec += dt;
-    const kick = env.kick;
-
-    // Rising edge above threshold (onset)
-    if (kick > BPM_ONSET_THRESH && _bpmPrevKick <= BPM_ONSET_THRESH) {
-      const gap = _bpmClockSec - _bpmLastOnset;
-      if (gap > BPM_REFRACTORY && _bpmLastOnset > 0) {
-        _bpmIntervals.push(gap);
-        if (_bpmIntervals.length > BPM_HISTORY) _bpmIntervals.shift();
-      }
-      _bpmLastOnset = _bpmClockSec;
-    }
-    _bpmPrevKick = kick;
-
-    // Compute BPM from median interval once we have enough samples
-    if (_bpmIntervals.length >= 4 && !_bpmUserEdited) {
-      const sorted = [..._bpmIntervals].sort((a, b) => a - b);
-      const median = sorted[Math.floor(sorted.length / 2)];
-      let bpm = 60 / median;
-      // Fold into 60–200 range (halve/double for half/double-time)
-      while (bpm < BPM_MIN) bpm *= 2;
-      while (bpm > BPM_MAX) bpm /= 2;
-      // EMA smooth
-      _bpmSmoothed = _bpmSmoothed ? _bpmSmoothed * 0.85 + bpm * 0.15 : bpm;
-      const rounded = Math.round(_bpmSmoothed);
-      if (pBpmEl.value !== String(rounded)) {
-        pBpmEl.value = rounded;
-        updateTrackDisplay();
-      }
+      camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
+      camera.lookAt(0, -0.5, 0);
+    } else if (mode === 'polar') {
+      rebuildPolar();
+      camera.position.set(0, 9, 0);
+      camera.lookAt(0, 0, 0);
+    } else if (mode === 'sphere') {
+      rebuildSphere();
+      camera.position.set(0, 0, 12);
+      camera.lookAt(0, 0, 0);
+    } else if (mode === 'wave') {
+      rebuildWave();
+      camera.position.set(0, 1, 10);
+      camera.lookAt(0, 0, 0);
     }
   }
 
-  /* ── Live audio ───────────────────────────────────────────── */
-  let analyser = null, freqData = null, audioReady = false;
-
-  async function initAudio() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    const ctx    = new AudioContext();
-    const src    = ctx.createMediaStreamSource(stream);
-    analyser     = ctx.createAnalyser();
-    analyser.fftSize               = FFT_SIZE;
-    analyser.smoothingTimeConstant = P.smoothing;
-    src.connect(analyser);
-    freqData   = new Uint8Array(analyser.frequencyBinCount);
-    audioReady = true;
+  async function setVisMode(mode) {
+    if (mode === visMode) return;
+    await fadeOut();
+    visMode = mode;
+    buildVis(mode);
+    document.querySelectorAll('.vis-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.vis === mode);
+    });
+    fadeIn();
   }
 
-  /* ── Start / loading overlay ──────────────────────────────── */
-  const overlay    = document.getElementById('overlay');
-  const overlayMsg = document.getElementById('overlayMsg');
-  const loadBar    = document.getElementById('loadBar');
-  let started = false;
+  // Wire up vis strip
+  document.querySelectorAll('.vis-btn').forEach(btn => {
+    btn.addEventListener('click', () => setVisMode(btn.dataset.vis));
+  });
 
-  // Mark ready once Three.js scene is initialised (end of this script)
+  // Info box toggle
+  document.getElementById('infoToggle').addEventListener('click', () => {
+    document.getElementById('infoBox').classList.toggle('open');
+  });
+
+  /* ── App mode (export | live) ──────────────────────────── */
+  let appMode = 'export';
+
+  const overlay       = document.getElementById('overlay');
+  const overlayMsg    = document.getElementById('overlayMsg');
+  const loadBar       = document.getElementById('loadBar');
+  const topLoadBtn    = document.getElementById('topLoadBtn');
+  const topRenderBtn  = document.getElementById('topRenderBtn');
+  const exportActions = document.getElementById('exportActions');
+  const livePrompt    = document.getElementById('livePrompt');
+
   function overlayReady() {
     loadBar.classList.add('done');
-    overlayMsg.textContent = 'click to begin';
-    overlay.classList.add('ready');
+    overlayMsg.style.display = 'none';
+    _updateModeOverlay();
   }
 
+  function _updateModeOverlay() {
+    if (appMode === 'export') {
+      exportActions.style.display = 'flex';
+      livePrompt.style.display    = 'none';
+      overlay.classList.remove('ready');
+      overlay.classList.remove('hidden');
+    } else {
+      exportActions.style.display = 'none';
+      livePrompt.style.display    = 'inline';
+      overlay.classList.add('ready');
+    }
+  }
+
+  // Live mode: click to grant mic
+  let liveStarted = false;
   overlay.addEventListener('click', async () => {
-    if (!overlay.classList.contains('ready') || started) return;
-    started = true;
+    if (appMode !== 'live') return;
+    if (!overlay.classList.contains('ready') || liveStarted) return;
+    liveStarted = true;
     overlay.classList.add('hidden');
-    try { await initAudio(); } catch (e) { console.error('Audio init:', e); }
+    try { await initAudio(); } catch (err) { console.error('Audio init:', err); }
   });
+
+  const wavInput = document.getElementById('wavInput');
+
+  // Export mode: load-file triggers file picker
+  topLoadBtn.addEventListener('click', () => {
+    if (isExporting) return;
+    overlay.classList.add('hidden');
+    wavInput.click();
+  });
+
+  let selectedWavFile = null;
+  wavInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) {
+      selectedWavFile = f;
+      topRenderBtn.disabled = false;
+      document.getElementById('paramsPanel').classList.add('open');
+      console.log('File loaded:', f.name, '. Adjust parameters then click render.');
+    }
+  });
+
+  topRenderBtn.addEventListener('click', () => {
+    if (selectedWavFile && !isExporting) startExport(selectedWavFile, visMode);
+  });
+
+  // Drag-and-drop audio file
+  document.body.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  document.body.addEventListener('drop', e => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('audio/')) {
+      selectedWavFile = file;
+      topRenderBtn.disabled = false;
+      overlay.classList.add('hidden');
+      document.getElementById('paramsPanel').classList.add('open');
+      console.log('File dropped:', file.name);
+    }
+  });
+
+  // Mode toggle buttons
+  document.getElementById('btnExport').addEventListener('click', () => setAppMode('export'));
+  document.getElementById('btnLive').addEventListener('click',   () => setAppMode('live'));
+
+  function setAppMode(mode) {
+    if (mode === appMode) return;
+    if (appMode === 'live') { stopAudio(); liveStarted = false; }
+    appMode = mode;
+    document.getElementById('btnExport').classList.toggle('active', mode === 'export');
+    document.getElementById('btnLive').classList.toggle('active',   mode === 'live');
+    _updateModeOverlay();
+  }
+  document.getElementById('btnExport').classList.add('active');
 
   window.addEventListener('resize', () => {
     if (isExporting) return;
@@ -851,117 +919,46 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  /* ── Displacement ─────────────────────────────────────────── */
-  function pushHistory(fd) {
-    histHead = (histHead + P.rows - 1) % P.rows;
-    const row = histBuf[histHead];
-    for (let k = 0; k < NUM_BINS; k++) row[k] = (fd[k] / 255) * aWeightGain[k];
+  /* ── OBS mode ──────────────────────────────────────────── */
+  if (new URLSearchParams(location.search).has('obs')) {
+    document.querySelectorAll('#infoBox, #topRight, #visStrip, #controls, #trackInfo, #overlay').forEach(
+      el => el.style.display = 'none'
+    );
   }
 
-  function applyDisplacement(fd, bowlExp, dispScale) {
-    pushHistory(fd);
-    const disp = dispScale !== undefined ? dispScale : modDisp();
-    const half = P.cols / 2;
-    for (let r = 0; r < P.rows; r++) {
-      const pos  = posBuffers[r];
-      const hrow = histBuf[(histHead + r) % P.rows];
-      const bf   = bowlFactor(r, P.rows, bowlExp);
-      for (let c = 0; c < P.cols; c++) {
-        const m = c < half ? c : P.cols - 1 - c;
-        pos[c * 3 + 1] = -hrow[binMap[Math.min(m, half - 1)]] * bf * disp;
-      }
-      lines[r].geometry.attributes.position.needsUpdate = true;
-    }
-  }
-
-  /* ── Track display ────────────────────────────────────────── */
-  function updateTrackDisplay() {
-    const title  = document.getElementById('pTitle').value.trim();
-    const artist = document.getElementById('pArtist').value.trim();
-    const bpm    = document.getElementById('pBpm').value.trim();
-    const genre  = document.getElementById('pGenre').value.trim();
-    const time   = document.getElementById('dispCurrent').textContent.trim();
-
-    document.getElementById('dispTitle').textContent  = title;
-    document.getElementById('dispArtist').textContent = artist;
-    document.getElementById('dispBpm').textContent    = bpm;
-    document.getElementById('dispGenre').textContent  = genre;
-
-    // Rule appears when title is present
-    document.getElementById('dispRule').style.display = title ? 'block' : 'none';
-
-    // Pills: hide the pill and its following divider when value is empty
-    const showPill = (pillId, divId, hasVal) => {
-      document.getElementById(pillId).style.display  = hasVal ? 'flex' : 'none';
-      if (divId) document.getElementById(divId).style.display = hasVal ? 'block' : 'none';
-    };
-    showPill('pillTime',  'divTime',  !!time);
-    showPill('pillBpm',   'divBpm',   !!bpm);
-    showPill('pillGenre', null,       !!genre);
-
-    // Recalculate dividers: only show if the NEXT pill is also visible
-    document.getElementById('divTime').style.display = (!!time && (!!bpm || !!genre)) ? 'block' : 'none';
-    document.getElementById('divBpm').style.display  = (!!bpm && !!genre) ? 'block' : 'none';
-  }
-
-  function fmtTime(s) {
-    return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-  }
-
-  function setTimeDisplay(cur, total) {
-    document.getElementById('dispCurrent').textContent =
-      total ? `${fmtTime(cur)} / ${fmtTime(total)}` : '';
-    updateTrackDisplay();
-  }
-
-  /* ── Animation loop ───────────────────────────────────────── */
+  /* ── Animation loop ────────────────────────────────────── */
   const clock = new THREE.Clock();
   function animate() {
     requestAnimationFrame(animate);
-    if (document.visibilityState === 'hidden') return; // skip render when tab hidden
+    if (document.visibilityState === 'hidden') return;
     const dt = clock.getDelta();
     lfoTick(dt);
-    if (audioReady) {
+    if (isAudioReady()) {
+      const analyser = getAnalyser();
+      const freqData = getFreqData();
       analyser.getByteFrequencyData(freqData);
       computeEnvelopes(freqData);
       bpmTick(dt);
       applyModulation();
-      applyDisplacement(freqData, currentBowlExp());
+      if (visMode === 'bowl') {
+        applyDisplacement(freqData, modBowlExp());
+      } else if (visMode === 'polar') {
+        applyPolar(freqData, modBowlExp());
+      } else if (visMode === 'sphere') {
+        applySphere(freqData);
+      } else if (visMode === 'wave') {
+        const td = ensureTimeDomainData(analyser);
+        analyser.getByteTimeDomainData(td);
+        applyWave(td);
+      }
     }
     renderer.render(scene, camera);
   }
-  animate();
-  overlayReady();
 
-  /* ══════════════════════════════════════════════════════════
-     PARAMETERS PANEL
-  ══════════════════════════════════════════════════════════ */
-
+  /* ── Parameters panel ──────────────────────────────────── */
   document.getElementById('paramsToggle').addEventListener('click', () => {
     document.getElementById('paramsPanel').classList.toggle('open');
   });
-
-  function bindRange(id, valId, key, onChange) {
-    const el = document.getElementById(id), lbl = document.getElementById(valId);
-    el.addEventListener('input', () => {
-      P[key] = parseFloat(el.value);
-      lbl.textContent = el.value;
-      if (onChange) onChange(P[key]);
-      saveParams();
-    });
-  }
-  function bindSelect(id, valId, key, onChange) {
-    const el = document.getElementById(id), lbl = document.getElementById(valId);
-    el.addEventListener('change', () => {
-      P[key] = el.value;
-      lbl.textContent = el.value;
-      if (onChange) onChange(P[key]);
-      saveParams();
-    });
-  }
-  function bindText(id, cb) {
-    document.getElementById(id).addEventListener('input', () => { if (cb) cb(); saveParams(); });
-  }
 
   bindText('pTitle',  updateTrackDisplay);
   bindText('pArtist', updateTrackDisplay);
@@ -970,7 +967,7 @@
 
   bindSelect('pFreqScale', 'vFreqScale', 'freqScale', () => refreshBinMap());
   bindRange ('pFreqRange', 'vFreqRange', 'freqRange', () => refreshBinMap());
-  bindRange ('pSmoothing', 'vSmoothing', 'smoothing', v => { if (analyser) analyser.smoothingTimeConstant = v; });
+  bindRange ('pSmoothing', 'vSmoothing', 'smoothing', v => { const a = getAnalyser(); if (a) a.smoothingTimeConstant = v; });
   bindRange('pMaxDisp',  'vMaxDisp',  'maxDisp');
   bindRange('pBowlExp',  'vBowlExp',  'bowlExp');
   bindRange('pLfoDepth', 'vLfoDepth', 'lfoDepth');
@@ -990,246 +987,39 @@
     rebuildGrid(); refreshBinMap();
   });
 
-  loadParams();
+  bindSelect('pExportPreset', 'vExportPreset', 'exportPreset');
+  bindSelect('pExportOrient', 'vExportOrient', 'exportOrientation', (v) => {
+    document.getElementById('vExportOrient').textContent = v === 'horizontal' ? 'horiz' : 'vert';
+  });
+
+  loadParams(rebuildGrid, rebuildHistory, refreshBinMap);
   refreshBinMap();
 
-  /* ══════════════════════════════════════════════════════════
-     EXPORT PIPELINE
-  ══════════════════════════════════════════════════════════ */
-
-  // Scratch buffers allocated once per export, reused every frame
-  // (avoids per-frame GC pressure that causes "Array buffer allocation failed")
-  let _scratchPcm  = null;
-  let _scratchRe   = null;
-  let _scratchIm   = null;
-  let _scratchRaw  = null;
-  let _scratchPrev = null;
-  let _scratchCurr = null;
-
-  function allocExportScratch() {
-    _scratchPcm  = new Float32Array(FFT_SIZE);
-    _scratchRe   = new Float32Array(FFT_SIZE);
-    _scratchIm   = new Float32Array(FFT_SIZE);
-    _scratchRaw  = new Uint8Array(NUM_BINS);
-    _scratchPrev = new Uint8Array(NUM_BINS);
-    _scratchCurr = new Uint8Array(NUM_BINS);
-  }
-
-  function freeExportScratch() {
-    _scratchPcm = _scratchRe = _scratchIm = null;
-    _scratchRaw = _scratchPrev = _scratchCurr = null;
-  }
-
-  let savedDims = null;
-  function beginExportResize() {
-    savedDims = { w: window.innerWidth, h: window.innerHeight };
-    renderer.setPixelRatio(1);
-    renderer.setSize(EXPORT_W, EXPORT_H);
-    camera.aspect = EXPORT_W / EXPORT_H;
-    camera.updateProjectionMatrix();
-    renderer.domElement.style.visibility = 'hidden';
-  }
-  function endExportResize() {
-    if (!savedDims) return;
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(savedDims.w, savedDims.h);
-    camera.aspect = savedDims.w / savedDims.h;
-    camera.updateProjectionMatrix();
-    renderer.domElement.style.visibility = '';
-    savedDims = null;
-  }
-
-  async function encodeAudio(enc, buf) {
-    const sr = buf.sampleRate, nch = buf.numberOfChannels, total = buf.length, CHUNK = 4096;
-    for (let off = 0; off < total; off += CHUNK) {
-      const n = Math.min(CHUNK, total - off);
-      const pl = new Float32Array(n * nch);
-      for (let ch = 0; ch < nch; ch++) pl.set(buf.getChannelData(ch).subarray(off, off+n), ch*n);
-      const ad = new AudioData({ format:'f32-planar', sampleRate:sr, numberOfChannels:nch,
-        numberOfFrames:n, timestamp:Math.round((off/sr)*1e6), data:pl });
-      enc.encode(ad); ad.close();
+  /* ── Keyboard shortcuts ────────────────────────────────── */
+  document.addEventListener('keydown', e => {
+    // Ignore when typing in an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    switch (e.key) {
+      case ' ':  e.preventDefault(); setAppMode(appMode === 'export' ? 'live' : 'export'); break;
+      case '1':  setVisMode('bowl');   break;
+      case '2':  setVisMode('polar');  break;
+      case '3':  setVisMode('sphere'); break;
+      case '4':  setVisMode('wave');   break;
+      case 'p': case 'P': document.getElementById('paramsPanel').classList.toggle('open'); break;
+      case 'f': case 'F': document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); break;
     }
-    await enc.flush();
-  }
-
-  // Single-pass streaming export: FFT + smooth + displace + encode per frame.
-  // All intermediate buffers are pre-allocated; no per-frame heap allocations.
-  async function runExport(venc, audioBuffer, fps, duration, onProgress) {
-    const sr              = audioBuffer.sampleRate;
-    const totalSamples    = audioBuffer.length;
-    const samplesPerFrame = Math.ceil(sr / fps);
-    const totalFrames     = Math.ceil(totalSamples / samplesPerFrame);
-
-    // Mix to mono once (one Float32Array for the full track, unavoidable)
-    const ch0  = audioBuffer.getChannelData(0);
-    const ch1  = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
-    const mono = new Float32Array(totalSamples);
-    for (let i = 0; i < totalSamples; i++) mono[i] = ch1 ? (ch0[i]+ch1[i])*0.5 : ch0[i];
-
-    // Per-export state (all pre-allocated)
-    const expHist   = Array.from({length:P.rows}, ()=>new Float32Array(NUM_BINS));
-    const expBinMap = buildBinMap(P.freqScale, P.cols/2, NUM_BINS, P.freqRange, 44100);
-    let   expHead   = 0, expLfo = 0, expPrevRms = 0;
-    const expEnv    = { sub:0, kick:0, mid:0, high:0, rms:0, trans:0 };
-    const smooth    = P.smoothing;
-    const dt        = 1 / fps;
-
-    for (let f = 0; f < totalFrames; f++) {
-      while (venc.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 0));
-
-      // --- Fill PCM window into scratch buffer (no allocation) ---
-      const ws = f * samplesPerFrame - NUM_BINS;
-      for (let i = 0; i < FFT_SIZE; i++) {
-        const x = ws + i;
-        _scratchPcm[i] = (x >= 0 && x < totalSamples) ? mono[x] : 0;
-      }
-
-      // --- FFT into scratch re/im, result into _scratchRaw (no allocation) ---
-      computeFFTBinsInto(_scratchPcm, _scratchRe, _scratchIm, _scratchRaw);
-
-      // --- EMA smoothing: prev→curr in-place (swap references, no allocation) ---
-      for (let k = 0; k < NUM_BINS; k++) {
-        _scratchCurr[k] = Math.round(smooth * _scratchPrev[k] + (1 - smooth) * _scratchRaw[k]);
-      }
-      // Swap prev/curr without allocation
-      const tmp = _scratchPrev; _scratchPrev = _scratchCurr; _scratchCurr = tmp;
-      // _scratchPrev now holds the smoothed bins for this frame
-
-      // --- Envelope followers ---
-      expLfo = (expLfo + 2*Math.PI*P.lfoRate*dt) % (2*Math.PI);
-      expPrevRms = computeEnvelopesExport(_scratchPrev, expEnv, expPrevRms);
-
-      // --- Modulated params ---
-      const be   = P.bowlExp + P.lfoDepth * Math.sin(expLfo) - expEnv.high * P.modHigh;
-      const disp = P.maxDisp * (1 + expEnv.sub * P.modSub);
-
-      camera.position.y = CAM_BASE.y + expEnv.mid  * P.modMid;
-      camera.position.z = CAM_BASE.z - expEnv.rms  * P.modRms + expEnv.kick * P.modKick;
-      camera.lookAt(0, -0.5, 0);
-      material.opacity = 0.6 + expEnv.trans * P.modTrans;
-      material.transparent = true;
-      _colScratch.lerpColors(_colA, _colB, Math.min(expEnv.mid * 3.5, 1));
-      material.color.copy(_colScratch);
-
-      // --- History + displacement ---
-      expHead = (expHead + P.rows - 1) % P.rows;
-      const row = expHist[expHead];
-      for (let k = 0; k < NUM_BINS; k++) row[k] = (_scratchPrev[k] / 255) * aWeightGain[k];
-
-      const half = P.cols / 2;
-      for (let r = 0; r < P.rows; r++) {
-        const pos  = posBuffers[r];
-        const hrow = expHist[(expHead+r)%P.rows];
-        const bf   = bowlFactor(r, P.rows, be);
-        for (let c = 0; c < P.cols; c++) {
-          const m = c < half ? c : P.cols-1-c;
-          pos[c*3+1] = -hrow[expBinMap[Math.min(m,half-1)]] * bf * disp;
-        }
-        lines[r].geometry.attributes.position.needsUpdate = true;
-      }
-
-      setTimeDisplay(f/fps, duration);
-      renderer.render(scene, camera);
-
-      const vf = new VideoFrame(renderer.domElement,
-        { timestamp: Math.round(f*(1e6/fps)), duration: Math.round(1e6/fps) });
-      venc.encode(vf, { keyFrame: f % (fps * 2) === 0 });
-      vf.close();
-
-      if (f % 10 === 0) { onProgress(Math.round((f/totalFrames)*100)); await new Promise(r=>setTimeout(r,0)); }
-    }
-  }
-
-  const exportBtn  = document.getElementById('exportBtn');
-  const progressEl = document.getElementById('progress');
-  const wavInput   = document.getElementById('wavInput');
-
-  async function startExport(wavFile) {
-    if (isExporting) return;
-    isExporting = true; exportBtn.disabled = true;
-    const FPS = 30;
-    let writable = null;
-    try {
-      progressEl.textContent = 'decoding...';
-      const ab  = await wavFile.arrayBuffer();
-      const tmp = new AudioContext();
-      const buf = await tmp.decodeAudioData(ab);
-      await tmp.close();
-
-      const duration = buf.length / buf.sampleRate;
-      allocExportScratch();
-      beginExportResize();
-
-      // Pick save location up front — streams chunks directly to disk,
-      // no RAM accumulation (avoids ArrayBuffer limit on long tracks)
-      const fileHandle = await window.showSaveFilePicker({
-        suggestedName: `${wavFile.name.replace(/\.[^.]+$/,'')}_psychograph.mp4`,
-        types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
-      });
-      writable = await fileHandle.createWritable();
-
-      const { Muxer, StreamTarget } = Mp4Muxer;
-      const target = new StreamTarget({
-        onData: (data, position) => writable.write({ type:'write', data, position }),
-      });
-      const muxer  = new Muxer({ target,
-        video: { codec:'avc', width:EXPORT_W, height:EXPORT_H },
-        audio: { codec:'aac', sampleRate:buf.sampleRate, numberOfChannels:buf.numberOfChannels },
-        fastStart: false });
-
-      const venc = new VideoEncoder({
-        output: (c,m)=>muxer.addVideoChunk(c,m), error: e=>console.error('VEnc:',e) });
-      // CRF 18 — visually lossless on line-art-on-black; ~10× smaller than q=0.
-      // Inter-frame compression (P-frames) handles the smooth scanline motion well.
-      const vcfg = { codec:'avc1.640028', width:EXPORT_W, height:EXPORT_H,
-        framerate:FPS, bitrateMode:'quantizer', quantizer:18, latencyMode:'quality' };
-      const sup = await VideoEncoder.isConfigSupported(vcfg);
-      if (!sup.supported) { delete vcfg.bitrateMode; delete vcfg.quantizer; delete vcfg.latencyMode; vcfg.bitrate=8e6; }
-      venc.configure(vcfg);
-
-      const aenc = new AudioEncoder({
-        output: (c,m)=>muxer.addAudioChunk(c,m), error: e=>console.error('AEnc:',e) });
-      aenc.configure({ codec:'mp4a.40.2', sampleRate:buf.sampleRate,
-        numberOfChannels:buf.numberOfChannels, bitrate:192e3 });
-
-      progressEl.textContent = '0%';
-      await runExport(venc, buf, FPS, duration, p => {
-        progressEl.textContent = `${p}%`;
-      });
-
-      progressEl.textContent = 'audio...';
-      await encodeAudio(aenc, buf);
-      progressEl.textContent = 'muxing...';
-      await venc.flush();
-      muxer.finalize();
-      await writable.close();
-      progressEl.textContent = 'done.';
-
-    } catch (err) {
-      console.error('Export failed:', err);
-      progressEl.textContent = `err: ${err.message??err}`;
-      try { await writable?.abort(); } catch (_) {}
-    } finally {
-      freeExportScratch();
-      endExportResize();
-      // Restore camera and opacity to base values
-      camera.position.y = CAM_BASE.y;
-      camera.position.z = CAM_BASE.z;
-      camera.lookAt(0, -0.5, 0);
-      material.color.set(LINE_COLOR);
-      material.opacity = 1.0;
-      material.transparent = false;
-      isExporting = false; exportBtn.disabled = false; setTimeDisplay(0,0);
-    }
-  }
-
-  if (typeof VideoEncoder === 'undefined') {
-    progressEl.textContent = 'chrome 94+ required'; exportBtn.disabled = true;
-  }
-  exportBtn.addEventListener('click', () => { if (!isExporting) wavInput.click(); });
-  wavInput.addEventListener('change', e => {
-    const f = e.target.files[0]; if (f) { startExport(f); wavInput.value=''; }
   });
+
+  /* ── Boot ──────────────────────────────────────────────── */
+  if (typeof VideoEncoder === 'undefined') {
+    document.getElementById('progress').textContent = 'chrome 94+ required';
+    topLoadBtn.disabled = true;
+    topRenderBtn.disabled = true;
+  }
+
+  rebuildGrid();
+  animate();
+  overlayReady();
 
 </script>
 </body>

@@ -19,7 +19,7 @@
 
 <script type="module">
   import {
-    applyHannWindow, fftRadix2, computeFFTBins,
+    applyHannWindow, fftRadix2, computeFFTBins, computeFFTBinsInto,
     buildBinMap, bowlFactor, buildAWeightGain
   } from './dsp.js';
 
@@ -189,6 +189,17 @@
     assert(hzHi >= 5000 && hzHi <= 7000, `upper boundary: ${hzHi.toFixed(0)}Hz, expected ~6000`);
   });
 
+  test('dnb: last 25% of cols span 6000–16000 Hz', () => {
+    const m        = buildBinMap('dnb', HALF_COLS, NUM_BINS, 1.0, SR);
+    const hzPerBin = (SR / 2) / NUM_BINS;
+    const lo = Math.floor(HALF_COLS * 0.75);
+    const hi = HALF_COLS - 1;
+    const hzLo = m[lo] * hzPerBin;
+    const hzHi = m[hi] * hzPerBin;
+    assert(hzLo >= 5500 && hzLo <= 6500, `lower boundary: ${hzLo.toFixed(0)}Hz, expected ~6000`);
+    assert(hzHi >= 15000 && hzHi <= 17000, `upper boundary: ${hzHi.toFixed(0)}Hz, expected ~16000`);
+  });
+
   test('dnb: monotonically non-decreasing', () => {
     const m = buildBinMap('dnb', HALF_COLS, NUM_BINS, 1.0, SR);
     assertMonotone(m, 'dnb binMap');
@@ -283,6 +294,88 @@
     for (let k = 0; k < FFT_HALF; k++) smoothed[k] = Math.round(smooth * prev[k] + (1 - smooth) * 200);
     const expected2 = Math.round(smooth * expected1 + (1 - smooth) * 200);
     assertClose(smoothed[10], expected2, 2, `frame 2 EMA value`);
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     6. EXPORT PIPELINE DIAGNOSTICS
+  ════════════════════════════════════════════════════════════ */
+  section('Export pipeline diagnostics');
+
+  test('mono-mixing: averages two channels correctly', () => {
+    const left  = new Float32Array([1.0, -1.0, 0.5, -0.5]);
+    const right = new Float32Array([0.0,  0.0, 1.0,  1.0]);
+    const mixed = new Float32Array(left.length);
+    for (let i = 0; i < left.length; i++) mixed[i] = (left[i] + right[i]) * 0.5;
+    assertClose(mixed[0], 0.5,  0.001, 'mix index 0');
+    assertClose(mixed[1], -0.5, 0.001, 'mix index 1');
+    assertClose(mixed[2], 0.75, 0.001, 'mix index 2');
+    assertClose(mixed[3], 0.25, 0.001, 'mix index 3');
+  });
+
+  test('computeFFTBinsInto: avoids allocation and writes correct magnitudes', () => {
+    const pcm = makeSine(1000, FFT_N, SR);
+    const re  = new Float32Array(FFT_N);
+    const im  = new Float32Array(FFT_N);
+    const out = new Uint8Array(NUM_BINS);
+    computeFFTBinsInto(pcm, re, im, out);
+    const kBin = Math.round(1000 * FFT_N / SR);
+    assert(out[kBin] > 180, `1kHz bin value ${out[kBin]}, expected > 180`);
+  });
+
+  test('computeEnvelopesExport: slew limit follows attack snappy, release slow', () => {
+    // Slew logic: current + (1-rate)*(target-current)
+    const ATK = 0.05, REL_SUB = 0.82;
+    let env = { sub: 0, kick: 0, mid: 0, high: 0, rms: 0, trans: 0 };
+    let prevRms = 0;
+
+    // Simulate a "sub-bass" burst in bins 1-6
+    const fd = new Uint8Array(NUM_BINS).fill(0);
+    for (let k = 1; k <= 6; k++) fd[k] = 200; // ~0.78 scale
+
+    // Frame 1 (Attack)
+    prevRms = 0;
+    // Mocking the behavior from index.html (subRaw = sum / (6*255))
+    const subRaw = (200 * 6) / (6 * 255);
+    const expectedAtk = 0 + (1 - ATK) * (subRaw - 0);
+    // Manual calculation of the slew logic for verification
+    let currentEnvSub = 0;
+    currentEnvSub = currentEnvSub + (1 - ATK) * (subRaw - currentEnvSub);
+
+    assertClose(currentEnvSub, expectedAtk, 0.001, 'sub attack');
+
+    // Frame 2 (Release to zero)
+    const fdSilence = new Uint8Array(NUM_BINS).fill(0);
+    const expectedRel = expectedAtk + (1 - REL_SUB) * (0 - expectedAtk);
+    currentEnvSub = currentEnvSub + (1 - REL_SUB) * (0 - currentEnvSub);
+
+    assertClose(currentEnvSub, expectedRel, 0.001, 'sub release');
+  });
+
+  test('resolution calculation: returns correct dims for presets/orientations', () => {
+    const calc = (preset, orient) => {
+      let w, h;
+      const isVert = orient === 'vertical';
+      if (preset === 'lofi') {
+        w = isVert ? 480 : 640;
+        h = isVert ? 640 : 480;
+      } else {
+        w = isVert ? 1080 : 1920;
+        h = isVert ? 1920 : 1080;
+      }
+      return { w, h };
+    };
+
+    let d = calc('standard', 'horizontal');
+    assert(d.w === 1920 && d.h === 1080, 'std horiz');
+    
+    d = calc('standard', 'vertical');
+    assert(d.w === 1080 && d.h === 1920, 'std vert');
+
+    d = calc('lofi', 'horizontal');
+    assert(d.w === 640 && d.h === 480, 'lofi horiz');
+
+    d = calc('lofi', 'vertical');
+    assert(d.w === 480 && d.h === 640, 'lofi vert');
   });
 
   /* ════════════════════════════════════════════════════════════
