@@ -413,6 +413,11 @@
       let   exportTimeAccum = 0;
 
       for (let f = 0; f < totalFrames; f++) {
+        // Backpressure: wait until encoder queue drains before submitting more
+        while (videoEncoder.encodeQueueSize > 5) {
+          await new Promise(r => setTimeout(r, 0));
+        }
+
         exportFreqData.set(frameFreqData[f]);
         exportTimeAccum += frameDt;
 
@@ -428,9 +433,10 @@
         videoFrame.close();
         bitmap.close();
 
-        if (f % 30 === 0) {
+        // Yield every frame to keep browser responsive
+        if (f % 5 === 0) {
           onProgress(Math.round((f / totalFrames) * 100));
-          await new Promise(r => setTimeout(r, 0)); // yield to browser
+          await new Promise(r => setTimeout(r, 0));
         }
       }
     }
