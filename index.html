@@ -4,8 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PSYCHOGRAPH</title>
+
+  <!-- Cormorant Garamond — high-contrast editorial serif -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold:      rgba(232, 213, 176, 1);
+      --gold-dim:  rgba(232, 213, 176, 0.35);
+      --gold-mid:  rgba(232, 213, 176, 0.55);
+      --gold-faint:rgba(232, 213, 176, 0.15);
+      --serif: 'Cormorant Garamond', Georgia, serif;
+      --mono:  'Courier New', monospace;
+    }
+
     body {
       background: #0d0d0d;
       overflow: hidden;
@@ -17,6 +33,8 @@
       width: 100vw !important;
       height: 100vh !important;
     }
+
+    /* ── Start overlay ─────────────────────────────────────────── */
     #overlay {
       position: fixed;
       inset: 0;
@@ -27,26 +45,94 @@
       cursor: pointer;
     }
     #overlay span {
-      font-family: 'Courier New', monospace;
-      font-size: 0.8rem;
-      letter-spacing: 0.3em;
-      color: rgba(232, 213, 176, 0.3);
+      font-family: var(--serif);
+      font-weight: 300;
+      font-style: italic;
+      font-size: 1rem;
+      letter-spacing: 0.35em;
+      color: var(--gold-dim);
       text-transform: uppercase;
       user-select: none;
     }
     #overlay.hidden { display: none; }
 
-    /* ── Widget ──────────────────────────────────────────────── */
+    /* ── Track info overlay ────────────────────────────────────── */
+    /* Top-left: title + artist */
+    #trackTitle {
+      position: fixed;
+      top: 28px;
+      left: 32px;
+      z-index: 5;
+      pointer-events: none;
+      user-select: none;
+    }
+    #trackTitle .title {
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: 2rem;
+      letter-spacing: 0.12em;
+      color: rgba(232, 213, 176, 0.82);
+      line-height: 1;
+      text-transform: uppercase;
+    }
+    #trackTitle .artist {
+      font-family: var(--serif);
+      font-weight: 300;
+      font-style: italic;
+      font-size: 1rem;
+      letter-spacing: 0.22em;
+      color: var(--gold-dim);
+      margin-top: 6px;
+    }
+
+    /* Bottom-left: timecode */
+    #trackTime {
+      position: fixed;
+      bottom: 28px;
+      left: 32px;
+      z-index: 5;
+      pointer-events: none;
+      user-select: none;
+      font-family: var(--serif);
+      font-weight: 300;
+      font-size: 0.85rem;
+      letter-spacing: 0.22em;
+      color: var(--gold-dim);
+    }
+    #trackTime .current { color: var(--gold-mid); }
+
+    /* Bottom-right: BPM · genre */
+    #trackMeta {
+      position: fixed;
+      bottom: 28px;
+      right: 32px;
+      z-index: 5;
+      pointer-events: none;
+      user-select: none;
+      text-align: right;
+      font-family: var(--serif);
+      font-weight: 300;
+      font-size: 0.85rem;
+      letter-spacing: 0.22em;
+      color: var(--gold-dim);
+    }
+    #trackMeta .separator {
+      display: inline-block;
+      margin: 0 0.5em;
+      opacity: 0.4;
+    }
+
+    /* ── Parameters widget (left side) ─────────────────────────── */
     #widget {
       position: fixed;
       top: 16px;
-      right: 16px;
+      left: 16px;
       z-index: 100;
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
+      align-items: flex-start;
       gap: 5px;
-      font-family: 'Courier New', monospace;
+      font-family: var(--mono);
       font-size: 0.72rem;
       letter-spacing: 0.15em;
       pointer-events: auto;
@@ -56,16 +142,16 @@
       background: transparent;
       border: none;
       padding: 0;
-      color: rgba(232, 213, 176, 0.35);
+      color: var(--gold-dim);
       text-decoration: none;
       text-transform: lowercase;
       letter-spacing: 0.22em;
-      font-family: 'Courier New', monospace;
+      font-family: var(--mono);
       font-size: 0.72rem;
       cursor: pointer;
       transition: color 0.15s;
     }
-    #widget a:hover, .wbtn:hover:not(:disabled) { color: #e8d5b0; }
+    #widget a:hover, .wbtn:hover:not(:disabled) { color: var(--gold); }
     .wbtn:disabled { opacity: 0.28; cursor: not-allowed; }
 
     #progress {
@@ -73,40 +159,66 @@
       font-size: 0.65rem;
       letter-spacing: 0.12em;
       min-height: 0.9em;
-      text-align: right;
     }
 
-    /* ── Parameters panel ────────────────────────────────────── */
+    /* ── Parameters panel ─────────────────────────────────────── */
     #paramsPanel {
       display: none;
       flex-direction: column;
       gap: 5px;
-      width: 220px;
+      width: 260px;
       padding: 8px 0 4px;
-      border-top: 1px solid rgba(232, 213, 176, 0.1);
+      border-top: 1px solid var(--gold-faint);
     }
     #paramsPanel.open { display: flex; }
+
+    .psection {
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      color: var(--gold-faint);
+      text-transform: uppercase;
+      margin-top: 6px;
+      margin-bottom: 1px;
+    }
 
     .prow {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 6px;
     }
     .prow label {
-      color: rgba(232, 213, 176, 0.35);
+      color: var(--gold-dim);
       font-size: 0.65rem;
       letter-spacing: 0.12em;
       white-space: nowrap;
-      min-width: 80px;
+      width: 82px;
+      flex-shrink: 0;
     }
     .prow .pval {
-      color: rgba(232, 213, 176, 0.55);
+      color: var(--gold-mid);
       font-size: 0.65rem;
       letter-spacing: 0.08em;
-      min-width: 36px;
+      width: 38px;
       text-align: right;
+      flex-shrink: 0;
     }
+
+    /* Text inputs (title/artist/bpm/genre) */
+    input[type=text].ptxt {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--gold-faint);
+      color: var(--gold-mid);
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      outline: none;
+      padding: 1px 0;
+      min-width: 0;
+    }
+    input[type=text].ptxt::placeholder { color: rgba(232,213,176,0.2); }
+    input[type=text].ptxt:focus { border-bottom-color: rgba(232,213,176,0.4); }
 
     /* Range inputs */
     input[type=range] {
@@ -117,6 +229,7 @@
       background: rgba(232, 213, 176, 0.2);
       outline: none;
       cursor: pointer;
+      min-width: 0;
     }
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
@@ -132,19 +245,23 @@
       flex: 1;
       background: transparent;
       border: none;
-      border-bottom: 1px solid rgba(232, 213, 176, 0.2);
-      color: rgba(232, 213, 176, 0.7);
-      font-family: 'Courier New', monospace;
+      border-bottom: 1px solid var(--gold-faint);
+      color: var(--gold-mid);
+      font-family: var(--mono);
       font-size: 0.65rem;
       letter-spacing: 0.1em;
       outline: none;
       cursor: pointer;
       padding: 1px 0;
+      min-width: 0;
     }
     select.psel option { background: #111; }
+
+    /* LFO active indicator */
+    .lfo-active { color: rgba(232,213,176,0.7) !important; }
   </style>
 
-  <!-- mp4-muxer (must come before importmap) -->
+  <!-- mp4-muxer -->
   <script src="https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 
   <script type="importmap">
@@ -157,13 +274,51 @@
 </head>
 <body>
 
-  <div id="overlay"><span>Click to start</span></div>
+  <div id="overlay"><span>click to begin</span></div>
 
+  <!-- Track info overlay (shown during live + export) -->
+  <div id="trackTitle">
+    <div class="title" id="dispTitle"></div>
+    <div class="artist" id="dispArtist"></div>
+  </div>
+  <div id="trackTime">
+    <span class="current" id="dispCurrent">—</span>
+    <span id="dispDuration"></span>
+  </div>
+  <div id="trackMeta">
+    <span id="dispBpm"></span>
+    <span class="separator" id="dispSep" style="display:none">·</span>
+    <span id="dispGenre"></span>
+  </div>
+
+  <!-- Widget — left side -->
   <div id="widget">
     <a href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
     <button class="wbtn" id="paramsToggle">parameters</button>
 
     <div id="paramsPanel">
+
+      <!-- Track metadata -->
+      <div class="psection">track</div>
+      <div class="prow">
+        <label>title</label>
+        <input type="text" class="ptxt" id="pTitle" placeholder="—" maxlength="60">
+      </div>
+      <div class="prow">
+        <label>artist</label>
+        <input type="text" class="ptxt" id="pArtist" placeholder="—" maxlength="60">
+      </div>
+      <div class="prow">
+        <label>bpm</label>
+        <input type="text" class="ptxt" id="pBpm" placeholder="—" maxlength="8">
+      </div>
+      <div class="prow">
+        <label>genre</label>
+        <input type="text" class="ptxt" id="pGenre" placeholder="—" maxlength="30">
+      </div>
+
+      <!-- DSP -->
+      <div class="psection">dsp</div>
       <div class="prow">
         <label>freq scale</label>
         <select class="psel" id="pFreqScale">
@@ -183,6 +338,9 @@
         <input type="range" id="pSmoothing" min="0.1" max="0.95" step="0.05" value="0.55">
         <span class="pval" id="vSmoothing">0.55</span>
       </div>
+
+      <!-- Shape -->
+      <div class="psection">shape</div>
       <div class="prow">
         <label>displacement</label>
         <input type="range" id="pMaxDisp" min="0.5" max="5.0" step="0.1" value="2.2">
@@ -194,6 +352,19 @@
         <span class="pval" id="vBowlExp">2.0</span>
       </div>
       <div class="prow">
+        <label>lfo depth</label>
+        <input type="range" id="pLfoDepth" min="0.0" max="2.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfoDepth">0.0</span>
+      </div>
+      <div class="prow">
+        <label>lfo rate</label>
+        <input type="range" id="pLfoRate" min="0.02" max="1.0" step="0.02" value="0.12">
+        <span class="pval" id="vLfoRate">0.12</span>
+      </div>
+
+      <!-- Grid -->
+      <div class="psection">grid</div>
+      <div class="prow">
         <label>rows</label>
         <input type="range" id="pRows" min="20" max="120" step="10" value="60">
         <span class="pval" id="vRows">60</span>
@@ -203,11 +374,13 @@
         <input type="range" id="pCols" min="64" max="256" step="32" value="128">
         <span class="pval" id="vCols">128</span>
       </div>
-    </div>
+
+    </div><!-- /paramsPanel -->
 
     <button class="wbtn" id="exportBtn">load &amp; export</button>
     <div id="progress"></div>
   </div>
+
   <input type="file" id="wavInput" accept=".wav,audio/wav,audio/x-wav" style="display:none">
 
   <script type="module">
@@ -217,42 +390,95 @@
       buildBinMap, bowlFactor, buildAWeightGain
     } from './dsp.js';
 
-    /* ── Live parameters object ──────────────────────────────── */
-    const P = {
+    /* ── Parameters object ────────────────────────────────────── */
+    const DEFAULTS = {
       rows:      60,
       cols:      128,
       maxDisp:   2.2,
       bowlExp:   2.0,
+      lfoDepth:  0.0,
+      lfoRate:   0.12,
       smoothing: 0.55,
       freqScale: 'dnb',
       freqRange: 0.55,
+      // metadata (not saved in P directly — stored in DOM / separate)
     };
 
-    /* ── Fixed constants ─────────────────────────────────────── */
-    const FFT_SIZE  = 2048;
-    const NUM_BINS  = FFT_SIZE / 2;   // 1024
-    const GRID_W    = 10;
-    const GRID_D    = 10;
+    const P = { ...DEFAULTS };
+
+    /* ── Persist params to localStorage ──────────────────────── */
+    const STORAGE_KEY = 'psychograph_params';
+
+    function saveParams() {
+      const meta = {
+        title:  document.getElementById('pTitle').value,
+        artist: document.getElementById('pArtist').value,
+        bpm:    document.getElementById('pBpm').value,
+        genre:  document.getElementById('pGenre').value,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...P, ...meta }));
+    }
+
+    function loadParams() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        // Numeric / string params
+        const keys = ['rows','cols','maxDisp','bowlExp','lfoDepth','lfoRate','smoothing','freqScale','freqRange'];
+        for (const k of keys) {
+          if (saved[k] !== undefined) P[k] = saved[k];
+        }
+        // Apply to DOM inputs
+        function setInput(id, val) {
+          const el = document.getElementById(id);
+          if (el) el.value = val;
+        }
+        function setSpan(id, val) {
+          const el = document.getElementById(id);
+          if (el) el.textContent = val;
+        }
+        setInput('pFreqScale', P.freqScale); setSpan('vFreqScale', P.freqScale);
+        setInput('pFreqRange', P.freqRange); setSpan('vFreqRange', P.freqRange);
+        setInput('pSmoothing', P.smoothing); setSpan('vSmoothing', P.smoothing);
+        setInput('pMaxDisp',   P.maxDisp);   setSpan('vMaxDisp',   P.maxDisp);
+        setInput('pBowlExp',   P.bowlExp);   setSpan('vBowlExp',   P.bowlExp);
+        setInput('pLfoDepth',  P.lfoDepth);  setSpan('vLfoDepth',  P.lfoDepth);
+        setInput('pLfoRate',   P.lfoRate);   setSpan('vLfoRate',   P.lfoRate);
+        setInput('pRows',      P.rows);      setSpan('vRows',      P.rows);
+        setInput('pCols',      P.cols);      setSpan('vCols',      P.cols);
+        // Metadata
+        if (saved.title)  setInput('pTitle',  saved.title);
+        if (saved.artist) setInput('pArtist', saved.artist);
+        if (saved.bpm)    setInput('pBpm',    saved.bpm);
+        if (saved.genre)  setInput('pGenre',  saved.genre);
+        updateTrackDisplay();
+      } catch (_) {}
+    }
+
+    /* ── Fixed constants ──────────────────────────────────────── */
+    const FFT_SIZE   = 2048;
+    const NUM_BINS   = FFT_SIZE / 2;   // 1024
+    const GRID_W     = 10;
+    const GRID_D     = 10;
     const LINE_COLOR = 0xe8d5b0;
     const BG_COLOR   = 0x0d0d0d;
     const EXPORT_W   = 1920;
     const EXPORT_H   = 1080;
     let   isExporting = false;
 
-    /* ── Renderer ───────────────────────────────────────────── */
+    /* ── Renderer ─────────────────────────────────────────────── */
     const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(BG_COLOR, 1);
     document.body.appendChild(renderer.domElement);
 
-    /* ── Scene & Camera ─────────────────────────────────────── */
+    /* ── Scene & Camera ──────────────────────────────────────── */
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.set(0, 5.5, 9);
     camera.lookAt(0, -0.5, 0);
 
-    /* ── Grid (mutable — rebuilt when P.rows/P.cols change) ─── */
+    /* ── Grid ─────────────────────────────────────────────────── */
     const lines      = [];
     const posBuffers = [];
     const material   = new THREE.LineBasicMaterial({ color: LINE_COLOR });
@@ -261,7 +487,6 @@
       lines.forEach(l => scene.remove(l));
       lines.length = 0;
       posBuffers.length = 0;
-      // histBuf is resized separately in rebuildHistory()
       for (let r = 0; r < P.rows; r++) {
         const t_row     = r / (P.rows - 1);
         const z         = (t_row - 0.5) * GRID_D;
@@ -283,7 +508,7 @@
 
     rebuildGrid();
 
-    /* ── Frequency history ring buffer ──────────────────────── */
+    /* ── History ring buffer ──────────────────────────────────── */
     const histBuf = [];
     let   histHead = 0;
 
@@ -295,17 +520,27 @@
 
     rebuildHistory();
 
-    /* ── A-weight gain table (assume 44100Hz; good for 48kHz too) */
+    /* ── DSP tables ───────────────────────────────────────────── */
     const aWeightGain = buildAWeightGain(NUM_BINS, FFT_SIZE, 44100);
-
-    /* ── Bin map — rebuilt when scale/range changes ──────────── */
-    let binMap = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
+    let   binMap      = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
 
     function refreshBinMap() {
       binMap = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
     }
 
-    /* ── Audio (live mic) ────────────────────────────────────── */
+    /* ── LFO state ────────────────────────────────────────────── */
+    let lfoPhase = 0;  // 0..2π
+
+    function lfoTick(dt) {
+      lfoPhase = (lfoPhase + 2 * Math.PI * P.lfoRate * dt) % (2 * Math.PI);
+    }
+
+    function currentBowlExp() {
+      // Oscillates bowlExp ± lfoDepth
+      return P.bowlExp + P.lfoDepth * Math.sin(lfoPhase);
+    }
+
+    /* ── Live audio ───────────────────────────────────────────── */
     let analyser   = null;
     let freqData   = null;
     let audioReady = false;
@@ -322,7 +557,7 @@
       audioReady = true;
     }
 
-    /* ── Overlay / Start gate ────────────────────────────────── */
+    /* ── Overlay / start gate ─────────────────────────────────── */
     const overlay = document.getElementById('overlay');
     let started   = false;
 
@@ -334,7 +569,7 @@
       catch (err) { console.error('Audio init failed:', err); }
     });
 
-    /* ── Resize ──────────────────────────────────────────────── */
+    /* ── Resize ───────────────────────────────────────────────── */
     window.addEventListener('resize', () => {
       if (isExporting) return;
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -342,47 +577,71 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    /* ── Push a frequency snapshot into the history ──────────── */
+    /* ── Displacement ─────────────────────────────────────────── */
     function pushHistory(fd) {
-      histHead      = (histHead + P.rows - 1) % P.rows;
-      const row     = histBuf[histHead];
-      const halfCols = P.cols / 2;
+      histHead  = (histHead + P.rows - 1) % P.rows;
+      const row = histBuf[histHead];
       for (let k = 0; k < NUM_BINS; k++) {
         row[k] = (fd[k] / 255) * aWeightGain[k];
       }
     }
 
-    /* ── Displacement (shared: live + export) ────────────────── */
-    function applyDisplacement(fd) {
+    function applyDisplacement(fd, bowlExp) {
       pushHistory(fd);
       const halfCols = P.cols / 2;
-
       for (let r = 0; r < P.rows; r++) {
         const positions = posBuffers[r];
         const histRow   = histBuf[(histHead + r) % P.rows];
-        const bf        = bowlFactor(r, P.rows, P.bowlExp);
-
+        const bf        = bowlFactor(r, P.rows, bowlExp);
         for (let c = 0; c < P.cols; c++) {
           const colMirror = c < halfCols ? c : P.cols - 1 - c;
           const bin       = binMap[Math.min(colMirror, halfCols - 1)];
-          const val       = histRow[bin];
-          positions[c * 3 + 1] = -val * bf * P.maxDisp;
+          positions[c * 3 + 1] = -histRow[bin] * bf * P.maxDisp;
         }
-
         lines[r].geometry.attributes.position.needsUpdate = true;
       }
     }
 
-    /* ── Live animation loop ─────────────────────────────────── */
+    /* ── Track display ────────────────────────────────────────── */
+    function updateTrackDisplay() {
+      const title  = document.getElementById('pTitle').value.trim();
+      const artist = document.getElementById('pArtist').value.trim();
+      const bpm    = document.getElementById('pBpm').value.trim();
+      const genre  = document.getElementById('pGenre').value.trim();
+
+      document.getElementById('dispTitle').textContent  = title;
+      document.getElementById('dispArtist').textContent = artist;
+      document.getElementById('dispBpm').textContent    = bpm ? `${bpm} bpm` : '';
+      document.getElementById('dispGenre').textContent  = genre;
+      // Show separator only when both are populated
+      document.getElementById('dispSep').style.display  = (bpm && genre) ? 'inline-block' : 'none';
+    }
+
+    /* Time display: updated during export playback */
+    function fmtTime(secs) {
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function setTimeDisplay(currentSec, totalSec) {
+      document.getElementById('dispCurrent').textContent  = fmtTime(currentSec);
+      document.getElementById('dispDuration').textContent =
+        totalSec ? ` / ${fmtTime(totalSec)}` : '';
+    }
+
+    /* ── Animation loop ───────────────────────────────────────── */
     const clock = new THREE.Clock();
 
     function animate() {
       requestAnimationFrame(animate);
-      clock.getDelta(); // keep clock ticking even when not used
+      const dt = clock.getDelta();
+
+      lfoTick(dt);
 
       if (audioReady) {
         analyser.getByteFrequencyData(freqData);
-        applyDisplacement(freqData);
+        applyDisplacement(freqData, currentBowlExp());
       }
 
       renderer.render(scene, camera);
@@ -406,6 +665,7 @@
         P[key]  = v;
         label.textContent = v;
         if (onChange) onChange(v);
+        saveParams();
       });
     }
 
@@ -416,33 +676,50 @@
         P[key] = input.value;
         label.textContent = input.value;
         if (onChange) onChange(input.value);
+        saveParams();
       });
     }
+
+    function bindText(id, onChange) {
+      document.getElementById(id).addEventListener('input', () => {
+        if (onChange) onChange();
+        saveParams();
+      });
+    }
+
+    bindText('pTitle',  updateTrackDisplay);
+    bindText('pArtist', updateTrackDisplay);
+    bindText('pBpm',    updateTrackDisplay);
+    bindText('pGenre',  updateTrackDisplay);
 
     bindSelect('pFreqScale', 'vFreqScale', 'freqScale', () => refreshBinMap());
     bindRange ('pFreqRange', 'vFreqRange', 'freqRange', () => refreshBinMap());
     bindRange ('pSmoothing', 'vSmoothing', 'smoothing', v => {
       if (analyser) analyser.smoothingTimeConstant = v;
     });
-    bindRange('pMaxDisp', 'vMaxDisp', 'maxDisp');
-    bindRange('pBowlExp', 'vBowlExp', 'bowlExp');
+    bindRange('pMaxDisp',  'vMaxDisp',  'maxDisp');
+    bindRange('pBowlExp',  'vBowlExp',  'bowlExp');
+    bindRange('pLfoDepth', 'vLfoDepth', 'lfoDepth', v => {
+      document.getElementById('vLfoDepth').classList.toggle('lfo-active', v > 0);
+    });
+    bindRange('pLfoRate',  'vLfoRate',  'lfoRate');
     bindRange('pRows', 'vRows', 'rows', () => {
       P.rows = parseInt(document.getElementById('pRows').value);
-      rebuildGrid();
-      rebuildHistory();
-      refreshBinMap();
+      rebuildGrid(); rebuildHistory(); refreshBinMap();
     });
     bindRange('pCols', 'vCols', 'cols', () => {
       P.cols = parseInt(document.getElementById('pCols').value);
-      rebuildGrid();
-      refreshBinMap();
+      rebuildGrid(); refreshBinMap();
     });
+
+    // Load saved params after wiring (so events don't fire during load)
+    loadParams();
+    refreshBinMap();
 
     /* ══════════════════════════════════════════════════════════
        EXPORT PIPELINE
     ══════════════════════════════════════════════════════════ */
 
-    /* ── Pre-compute per-frame FFT data ──────────────────────── */
     function precomputeFrameData(audioBuffer, fps) {
       const sr              = audioBuffer.sampleRate;
       const totalSamples    = audioBuffer.length;
@@ -477,10 +754,9 @@
         frameFreqData[f] = smoothed;
       }
 
-      return { frameFreqData, totalFrames };
+      return { frameFreqData, totalFrames, duration: totalSamples / sr };
     }
 
-    /* ── Renderer resize helpers ─────────────────────────────── */
     let savedDims = null;
 
     function beginExportResize() {
@@ -502,13 +778,11 @@
       savedDims = null;
     }
 
-    /* ── Encode audio track ──────────────────────────────────── */
     async function encodeAudio(audioEncoder, audioBuffer) {
       const sr    = audioBuffer.sampleRate;
       const numCh = audioBuffer.numberOfChannels;
       const total = audioBuffer.length;
       const CHUNK = 4096;
-
       for (let offset = 0; offset < total; offset += CHUNK) {
         const count  = Math.min(CHUNK, total - offset);
         const planar = new Float32Array(count * numCh);
@@ -527,39 +801,38 @@
       await audioEncoder.flush();
     }
 
-    /* ── Frame render + encode loop ──────────────────────────── */
-    async function runFrameLoop(videoEncoder, frameFreqData, totalFrames, fps, onProgress) {
-      const frameDt        = 1 / fps;
+    async function runFrameLoop(videoEncoder, frameFreqData, totalFrames, fps, duration, onProgress) {
       const exportFreqData = new Uint8Array(NUM_BINS);
-      let   exportTimeAccum = 0;
-
-      // Snapshot export history state (separate from live histBuf)
-      const expHistBuf  = Array.from({ length: P.rows }, () => new Float32Array(NUM_BINS));
-      const expBinMap   = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
-      const expAWGain   = aWeightGain;
-      let   expHistHead = 0;
+      const expHistBuf     = Array.from({ length: P.rows }, () => new Float32Array(NUM_BINS));
+      const expBinMap      = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
+      let   expHistHead    = 0;
+      let   expLfoPhase    = 0;
+      const expDt          = 1 / fps;
 
       for (let f = 0; f < totalFrames; f++) {
         while (videoEncoder.encodeQueueSize > 2) {
           await new Promise(r => setTimeout(r, 0));
         }
 
-        exportFreqData.set(frameFreqData[f]);
-        exportTimeAccum += frameDt;
+        // LFO tick for export
+        expLfoPhase = (expLfoPhase + 2 * Math.PI * P.lfoRate * expDt) % (2 * Math.PI);
+        const expBowlExp = P.bowlExp + P.lfoDepth * Math.sin(expLfoPhase);
 
-        // Push into export-local history (doesn't pollute live histBuf)
+        exportFreqData.set(frameFreqData[f]);
+
+        // Push into export history
         expHistHead = (expHistHead + P.rows - 1) % P.rows;
         const expRow = expHistBuf[expHistHead];
         for (let k = 0; k < NUM_BINS; k++) {
-          expRow[k] = (exportFreqData[k] / 255) * expAWGain[k];
+          expRow[k] = (exportFreqData[k] / 255) * aWeightGain[k];
         }
 
-        // Apply displacement using export history
+        // Displace grid
         const halfCols = P.cols / 2;
         for (let r = 0; r < P.rows; r++) {
-          const positions  = posBuffers[r];
-          const histRow    = expHistBuf[(expHistHead + r) % P.rows];
-          const bf         = bowlFactor(r, P.rows, P.bowlExp);
+          const positions = posBuffers[r];
+          const histRow   = expHistBuf[(expHistHead + r) % P.rows];
+          const bf        = bowlFactor(r, P.rows, expBowlExp);
           for (let c = 0; c < P.cols; c++) {
             const colMirror = c < halfCols ? c : P.cols - 1 - c;
             const bin       = expBinMap[Math.min(colMirror, halfCols - 1)];
@@ -567,6 +840,9 @@
           }
           lines[r].geometry.attributes.position.needsUpdate = true;
         }
+
+        // Update timecode display
+        setTimeDisplay(f / fps, duration);
 
         renderer.render(scene, camera);
 
@@ -584,7 +860,6 @@
       }
     }
 
-    /* ── Export orchestrator ─────────────────────────────────── */
     const exportBtn  = document.getElementById('exportBtn');
     const progressEl = document.getElementById('progress');
     const wavInput   = document.getElementById('wavInput');
@@ -603,7 +878,7 @@
         await tmpCtx.close();
 
         progressEl.textContent = 'Analysing frequencies...';
-        const { frameFreqData, totalFrames } = precomputeFrameData(audioBuffer, FPS);
+        const { frameFreqData, totalFrames, duration } = precomputeFrameData(audioBuffer, FPS);
 
         beginExportResize();
 
@@ -646,8 +921,8 @@
           bitrate: 192_000,
         });
 
-        progressEl.textContent = `0%`;
-        await runFrameLoop(videoEncoder, frameFreqData, totalFrames, FPS, pct => {
+        progressEl.textContent = '0%';
+        await runFrameLoop(videoEncoder, frameFreqData, totalFrames, FPS, duration, pct => {
           progressEl.textContent = `${pct}%`;
         });
 
@@ -675,10 +950,10 @@
         endExportResize();
         isExporting = false;
         exportBtn.disabled = false;
+        setTimeDisplay(0, 0);
       }
     }
 
-    /* ── Widget wiring ───────────────────────────────────────── */
     if (typeof VideoEncoder === 'undefined') {
       progressEl.textContent = 'Chrome 94+ required';
       exportBtn.disabled = true;
