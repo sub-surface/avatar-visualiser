@@ -1128,7 +1128,7 @@
 
       const vf = new VideoFrame(renderer.domElement,
         { timestamp: Math.round(f*(1e6/fps)), duration: Math.round(1e6/fps) });
-      venc.encode(vf, { keyFrame: f % (FPS * 2) === 0 });
+      venc.encode(vf, { keyFrame: f % (fps * 2) === 0 });
       vf.close();
 
       if (f % 10 === 0) { onProgress(Math.round((f/totalFrames)*100)); await new Promise(r=>setTimeout(r,0)); }
