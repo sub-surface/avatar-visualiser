@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PSYCHOGRAPH — Avatar Visualiser</title>
+  <title>AVATAR — Audio Visualiser</title>
 
   <!--
     DM Serif Display — modern editorial serif, geometric construction,
@@ -739,6 +739,60 @@
 
   function currentBowlExp() { return modBowlExp(); }
 
+  /* ── BPM auto-detection ───────────────────────────────────── */
+  // Onset detection on the kick envelope. Collects inter-onset intervals,
+  // takes the median, converts to BPM. Only writes to the field if the
+  // user hasn't manually focused/edited it.
+  const BPM_ONSET_THRESH = 0.35;  // kick env must exceed this to count as a beat
+  const BPM_REFRACTORY   = 0.25;  // seconds to ignore after an onset (min ~240 BPM)
+  const BPM_HISTORY      = 24;    // intervals to keep for median
+  const BPM_MIN          = 60;
+  const BPM_MAX          = 200;
+
+  let _bpmPrevKick    = 0;
+  let _bpmLastOnset   = 0;   // timestamp of last accepted onset (seconds)
+  let _bpmIntervals   = [];  // ring of recent inter-onset intervals
+  let _bpmSmoothed    = 0;
+  let _bpmUserEdited  = false;
+  let _bpmClockSec    = 0;   // elapsed seconds tracked manually
+
+  const pBpmEl = document.getElementById('pBpm');
+  pBpmEl.addEventListener('focus', () => { _bpmUserEdited = true; });
+  pBpmEl.addEventListener('input', () => { if (!pBpmEl.value.trim()) { _bpmUserEdited = false; _bpmSmoothed = 0; _bpmIntervals = []; } });
+
+  function bpmTick(dt) {
+    _bpmClockSec += dt;
+    const kick = env.kick;
+
+    // Rising edge above threshold (onset)
+    if (kick > BPM_ONSET_THRESH && _bpmPrevKick <= BPM_ONSET_THRESH) {
+      const gap = _bpmClockSec - _bpmLastOnset;
+      if (gap > BPM_REFRACTORY && _bpmLastOnset > 0) {
+        _bpmIntervals.push(gap);
+        if (_bpmIntervals.length > BPM_HISTORY) _bpmIntervals.shift();
+      }
+      _bpmLastOnset = _bpmClockSec;
+    }
+    _bpmPrevKick = kick;
+
+    // Compute BPM from median interval once we have enough samples
+    if (_bpmIntervals.length >= 4 && !_bpmUserEdited) {
+      const sorted = [..._bpmIntervals].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      let bpm = 60 / median;
+      // Fold into 60–200 range (halve/double for half/double-time)
+      while (bpm < BPM_MIN) bpm *= 2;
+      while (bpm > BPM_MAX) bpm /= 2;
+      // EMA smooth
+      _bpmSmoothed = _bpmSmoothed ? _bpmSmoothed * 0.85 + bpm * 0.15 : bpm;
+      const rounded = Math.round(_bpmSmoothed);
+      if (pBpmEl.value !== String(rounded)) {
+        pBpmEl.value = rounded;
+        updateTrackDisplay();
+      }
+    }
+  }
+
   /* ── Live audio ───────────────────────────────────────────── */
   let analyser = null, freqData = null, audioReady = false;
 
@@ -854,6 +908,7 @@
     if (audioReady) {
       analyser.getByteFrequencyData(freqData);
       computeEnvelopes(freqData);
+      bpmTick(dt);
       applyModulation();
       applyDisplacement(freqData, currentBowlExp());
     }
