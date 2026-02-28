@@ -97,11 +97,17 @@ export function compositeFrame(glCanvas, meta, time, duration, visMode) {
   const serifLarge = `italic ${isLowRes ? '500' : '400'} ${Math.round(34 * (isLowRes ? scale * 1.5 : scale))}px "DM Serif Display", Georgia, serif`;
   const monoTiny = `${isLowRes ? '400' : '300'} ${Math.round(11 * (isLowRes ? scale * 1.5 : scale))}px "DM Mono", "Courier New", monospace`;
 
-  // Colors: brighter for low-res
-  const colMauve = isLowRes ? 'rgba(230, 200, 220, 0.95)' : 'rgba(192, 162, 184, 0.80)';
-  const colSlate = isLowRes ? 'rgba(210, 230, 240, 0.95)' : 'rgba(162, 182, 192, 0.85)';
-  const colRule  = isLowRes ? 'rgba(230, 200, 220, 0.40)' : 'rgba(192, 162, 184, 0.20)';
-  const colPills = isLowRes ? 'rgba(210, 230, 240, 0.70)' : 'rgba(162, 182, 192, 0.45)';
+  // Colors: use current UI palette accent, fall back to defaults
+  const accentRgb = getComputedStyle(document.documentElement)
+    .getPropertyValue('--ui-accent-rgb').trim() || '162, 182, 192';
+  const titleAlpha  = isLowRes ? 0.95 : 0.85;
+  const artistAlpha = isLowRes ? 0.95 : 0.80;
+  const ruleAlpha   = isLowRes ? 0.40 : 0.20;
+  const pillAlpha   = isLowRes ? 0.70 : 0.45;
+  const colMauve = `rgba(${accentRgb}, ${artistAlpha})`;
+  const colSlate = `rgba(${accentRgb}, ${titleAlpha})`;
+  const colRule  = `rgba(${accentRgb}, ${ruleAlpha})`;
+  const colPills = `rgba(${accentRgb}, ${pillAlpha})`;
 
   // Artist
   if (meta.artist) {

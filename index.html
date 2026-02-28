@@ -1519,6 +1519,12 @@
         <button class="chrome" id="btnDirReset" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Reset the selected camera style to its factory default coordinates">reset</button>
       </div>
 
+      <div class="psection">boot</div>
+      <div class="prow" style="align-items:center; gap:8px; padding:4px 0;">
+        <label for="pFastBoot" style="cursor:pointer;" title="Skip full boot animation — shows landing screen then 5 quick BIOS lines before launching">fast boot</label>
+        <input type="checkbox" id="pFastBoot" style="accent-color:var(--ui-accent); width:14px; height:14px; cursor:pointer;">
+      </div>
+
       <div class="psection">debug</div>
       <div class="prow" style="justify-content:center; padding-top:4px;">
         <button class="chrome" id="btnTestCapture" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Perform a batch capture of all 4 visualization modes to local disk">capture tests</button>
@@ -1563,125 +1569,26 @@
 
   window.isUserInteractingWithCamera = false;
 
-  // ═══════════════════════════════════════════════════════════
-  // CAMERA CONTROL DEBUG & TESTING SYSTEM
-  // ═══════════════════════════════════════════════════════════
-  
+  // ── Lean camera debug (silent; call checkCamera() in console when needed) ──
   const cameraDebug = {
-    isEnabled: true,
-    lastLogTime: 0,
-    logs: [],
-    maxLogs: 100,
-    
-    log(event, data = {}) {
-      if (!this.isEnabled) return;
-      const now = performance.now();
-      const entry = {
-        time: now,
-        event,
-        controlsEnabled: controls.enabled,
-        cameraPos: { x: camera.position.x.toFixed(2), y: camera.position.y.toFixed(2), z: camera.position.z.toFixed(2) },
-        ...data
-      };
-      this.logs.push(entry);
-      if (this.logs.length > this.maxLogs) this.logs.shift();
-      
-      // Log to console with timestamp
-      const elapsed = ((now - this.lastLogTime) / 1000).toFixed(3);
-      console.log(`[CAM] [+${elapsed}s] ${event}`, entry);
-      this.lastLogTime = now;
-    },
-    
-    getLogs() {
-      return this.logs;
-    },
-    
-    testCameraMovement() {
-      console.log('═══ CAMERA MOVEMENT TEST ═══');
-      console.log('Controls enabled:', controls.enabled);
-      console.log('Controls locked:', controls.locks);
-      console.log('Mouse buttons:', controls.mouseButtons);
-      console.log('Damping:', controls.enableDamping, 'Factor:', controls.dampingFactor);
-      console.log('Current position:', { 
-        x: camera.position.x.toFixed(3), 
-        y: camera.position.y.toFixed(3), 
-        z: camera.position.z.toFixed(3) 
-      });
-      console.log('Target:', { 
-        x: controls.target.x.toFixed(3), 
-        y: controls.target.y.toFixed(3), 
-        z: controls.target.z.toFixed(3) 
-      });
-      console.log('Distance to target:', controls.getDistance?.() ?? 'N/A');
-      
-      // Manual test: animate camera
-      console.log('Starting 3-second test animation...');
-      const startTime = performance.now();
-      const startPos = camera.position.clone();
-      
-      const testAnim = setInterval(() => {
-        const elapsed = (performance.now() - startTime) / 1000;
-        if (elapsed > 3) {
-          clearInterval(testAnim);
-          console.log('Test animation complete');
-          return;
-        }
-        const t = elapsed / 3;
-        camera.position.x = startPos.x + Math.sin(t * Math.PI * 2) * 2;
-        camera.position.z = startPos.z + Math.cos(t * Math.PI * 2) * 2;
-        console.log(`[${elapsed.toFixed(1)}s] Pos:`, camera.position.x.toFixed(2), camera.position.z.toFixed(2));
-      }, 100);
-    },
-    
-    getState() {
-      return {
-        controlsEnabled: controls.enabled,
-        autoRotate: controls.autoRotate,
-        rotateSpeed: controls.rotateSpeed,
-        panSpeed: controls.panSpeed,
-        zoomSpeed: controls.zoomSpeed,
-        dampingFactor: controls.dampingFactor,
-        cameraPos: {
-          x: camera.position.x.toFixed(3),
-          y: camera.position.y.toFixed(3),
-          z: camera.position.z.toFixed(3)
-        },
-        targetPos: {
-          x: controls.target.x.toFixed(3),
-          y: controls.target.y.toFixed(3),
-          z: controls.target.z.toFixed(3)
-        },
-        recentLogs: this.logs.slice(-10)
-      };
-    }
+    isEnabled: false,
+    log(event, data = {}) { if (this.isEnabled) console.log(`[CAM] ${event}`, data); },
   };
 
-  // Expose for debugging
-  window.cameraDebug = cameraDebug;
-  
-  // Add convenience functions to console
-  window.testCamera = () => cameraDebug.testCameraMovement();
-  window.checkCamera = () => console.log(cameraDebug.getState());
-  window.getRecentLogs = () => cameraDebug.getLogs().slice(-20);
-  window.clearCameraLogs = () => { cameraDebug.logs = []; console.log('Logs cleared'); };
-  window.toggleCameraDebug = () => { cameraDebug.isEnabled = !cameraDebug.isEnabled; console.log('Debug:', cameraDebug.isEnabled); };
-  
-  // Print diagnostic info on console
-  console.log('%c═════ CAMERA CONTROL DEBUG ═════', 'color: #0f0; font-weight: bold; font-size: 14px;');
-  console.log('Available commands:');
-  console.log('  checkCamera()        - Show current camera state');
-  console.log('  testCamera()         - Run camera movement test');
-  console.log('  getRecentLogs()      - Show last 20 events');
-  console.log('  clearCameraLogs()    - Clear event log');
-  console.log('  toggleCameraDebug()  - Toggle logging on/off');
-  console.log('Controls object:', controls);
-  console.log('Renderer canvas:', renderer.domElement);
-  
-  // Log initial state
-  cameraDebug.log('INIT', { info: 'Camera controls initialized' });
-  
-  // We want to stop the "manual override" when switching modes or presets, 
-  // or provide a way to snap back. For now, it stays until changed.
+  // ── Export diagnostics (replaces old camera debug) ───────────────────────
+  // call checkExport() in the browser console to dump the current export state
+  window.checkExport = () => {
+    const cols = Math.max(2, P.complexity * 32);
+    console.group('%c[EXPORT DIAG]', 'color:#a2b6c0;font-weight:bold');
+    console.log('P.rows:', P.rows, '  P.complexity:', P.complexity, '  cols:', cols);
+    console.log('P.colorA:', P.colorA, '  P.colorB:', P.colorB);
+    console.log('Renderer size:', renderer.domElement.width, '×', renderer.domElement.height);
+    console.log('Camera pos:', camera.position.x.toFixed(2), camera.position.y.toFixed(2), camera.position.z.toFixed(2));
+    console.log('Export preset:', P.exportPreset, '  orientation:', P.exportOrientation, '  aspect:', P.exportAspect);
+    console.log('Scene children:', scene.children.length);
+    console.groupEnd();
+  };
+  window.checkCamera = () => console.log({ pos: camera.position, target: controls.target, enabled: controls.enabled });
   
   import { P, loadParams, saveParams, bindRange, bindSelect, bindText,
            updateTrackDisplay } from './params.js';
@@ -2499,6 +2406,11 @@
   });
   bindSelect('pCycleMode', 'vCycleMode', 'cycleMode');
 
+  document.getElementById('pFastBoot').addEventListener('change', e => {
+    P.fastBoot = e.target.checked;
+    saveParams();
+  });
+
   document.getElementById('btnBpmAuto').addEventListener('click', () => {
     import('./envelopes.js').then(m => m.resetBpmAuto());
     logStatus('BPM Auto-detect enabled');
@@ -2980,6 +2892,10 @@
   const bootPrompt = document.getElementById('bootStartPrompt');
   const bootTerm = document.getElementById('bootTerminal');
 
+  // Read fastBoot from localStorage before P is available
+  const _savedParams = (() => { try { return JSON.parse(localStorage.getItem('psychograph_params') || '{}'); } catch { return {}; } })();
+  const _isFastBoot = !!_savedParams.fastBoot;
+
   if (bootEl) {
     import('./boot.js').then(({ BootScreen }) => {
       const boot = new BootScreen(bootTerm);
@@ -2989,7 +2905,8 @@
         if (bootPrompt.style.display === 'none') return; // Already started
         bootPrompt.style.display = 'none';
         bootTerm.style.opacity = '1';
-        boot.run(bootEl).then(() => {
+        const runFn = _isFastBoot ? boot.runFast.bind(boot) : boot.run.bind(boot, bootEl);
+        runFn().then(() => {
           bootEl.classList.add('done');
           setTimeout(() => bootEl.remove(), 500);
           initApp();
@@ -3003,17 +2920,15 @@
           e.preventDefault();
           boot.skipped = true;
           if (bootPrompt.style.display !== 'none') {
-            // Boot hasn't started yet, start it now
             startBoot();
           }
           return;
         }
-        
+
         // For other keys, only start boot if it hasn't started yet
         if (bootPrompt.style.display === 'none') return; // Boot already started
-        
+
         if (bootPrompt.parentNode) {
-          // Any other key starts the boot
           e.preventDefault();
           startBoot();
         }

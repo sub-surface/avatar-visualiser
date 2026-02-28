@@ -596,6 +596,30 @@ export class BootScreen {
     return new Promise(r => setTimeout(r, ms));
   }
 
+  /** Fast-boot path: skip intro animation, show 5 BIOS lines, launch. */
+  async runFast() {
+    this.audio.init();
+    this.audio.beep(880, 0.08, 'square');
+    await this._sleep(60);
+    this.audio.beep(1320, 0.06, 'sine');
+
+    const FAST_LINES = [
+      { text: 'SUB-SURFACE AVATAR  v0.9  (C) 2024  sub-surface', cls: 'boot-tertiary' },
+      { text: 'WaveCore DSP-X @ 44.1kHz  ·  FFT 1024-bin stereo  ·  WebGL 2.0 .... <span class="boot-ok">OK</span>' },
+      { text: 'Memory Test: 131072K  ·  Terrain 60×128  ·  A-weight IEC 61672 .... <span class="boot-ok">OK</span>' },
+      { text: '<span class="boot-dim">Pro tip: your subwoofer is legally required to participate in this experience.</span>' },
+      { text: '<span class="boot-accent">System ready.</span>  Initiating visualiser...', cls: 'boot-bright' },
+    ];
+
+    for (const entry of FAST_LINES) {
+      this._line(entry.text, entry.cls || '');
+      await this._sleep(60);
+    }
+
+    this.audio.powerUpSweep(0.6);
+    await this._sleep(300);
+  }
+
   async run(containerEl) {
     this.audio.init();
     this.audio.beep(880, 0.15, 'square'); // POST beep

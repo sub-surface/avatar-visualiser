@@ -154,8 +154,8 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
   const samplesPerFrame = Math.ceil(sr / fps);
   const totalFrames     = Math.ceil(totalSamples / samplesPerFrame);
 
-  const rows = P.rows;
-  const cols = P.cols;
+  const rows = Math.max(2, P.rows);
+  const cols = Math.max(2, P.complexity * 32);
 
   const chL = audioBuffer.getChannelData(0);
   const chR = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : chL;
@@ -170,7 +170,7 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cols * 3), 3));
     geo.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(cols * 3), 3));
-    const line = new THREE.LineLoop(geo, material);
+    const line = new THREE.Line(geo, material);
     scene.add(line);
     exportLines.push(line);
     exportGeos.push(geo);

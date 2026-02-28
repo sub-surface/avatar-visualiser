@@ -42,6 +42,7 @@ export const P = {
   exportOrientation: 'horizontal',
   exportAspect: '16:9',
   uiPalette: 'default',
+  fastBoot: false,
   camStyles: {
     normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
     distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
@@ -96,6 +97,7 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     if (saved.exportOrientation) P.exportOrientation = saved.exportOrientation;
     if (saved.exportAspect) P.exportAspect = saved.exportAspect;
     if (saved.cycleMode) P.cycleMode = saved.cycleMode;
+    if (saved.fastBoot !== undefined) P.fastBoot = !!saved.fastBoot;
     
     // Validate parameters to prevent NaN errors
     validateParams();
@@ -165,6 +167,9 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pExportPreset', P.exportPreset); ss('vExportPreset', P.exportPreset);
     si('pExportOrient', P.exportOrientation); ss('vExportOrient', P.exportOrientation);
     si('pExportAspect', P.exportAspect); ss('vExportAspect', P.exportAspect);
+
+    const fbEl = document.getElementById('pFastBoot');
+    if (fbEl) fbEl.checked = !!P.fastBoot;
 
     if (saved.camStyles && typeof saved.camStyles === 'object') {
       for (const k of Object.keys(P.camStyles)) {
