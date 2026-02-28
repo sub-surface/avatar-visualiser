@@ -246,9 +246,13 @@
       flex-direction: column;
       gap: 4px;
       width: 248px;
-      padding-bottom: 8px;
+      padding: 10px 12px;
       border-bottom: 1px solid var(--s-rule);
       text-align: left;
+      background: hsl(220 12% 7% / 0.82);
+      box-shadow: 0 8px 32px hsl(0 0% 0% / 0.7), 0 2px 8px hsl(0 0% 0% / 0.5);
+      backdrop-filter: blur(6px);
+      border-radius: 2px;
     }
     #paramsPanel.open { display: flex; }
 
@@ -542,7 +546,8 @@
   const NUM_BINS   = FFT_SIZE / 2;
   const GRID_W     = 10;
   const GRID_D     = 10;
-  const LINE_COLOR = 0xe8d5b0;
+  const LINE_COLOR  = 0xe8d5b0;   // warm gold (base)
+  const LINE_COLOR2 = 0xb090c8;   // cool mauve (peak mids)
   const BG_COLOR   = 0x0d0d0d;
   const EXPORT_W   = 1920;
   const EXPORT_H   = 1080;
@@ -563,7 +568,10 @@
 
   /* ── Grid ─────────────────────────────────────────────────── */
   const lines = [], posBuffers = [];
-  const material = new THREE.LineBasicMaterial({ color: LINE_COLOR });
+  const material    = new THREE.LineBasicMaterial({ color: LINE_COLOR });
+  const _colA       = new THREE.Color(LINE_COLOR);   // warm gold
+  const _colB       = new THREE.Color(LINE_COLOR2);  // cool mauve
+  const _colScratch = new THREE.Color();
 
   function rebuildGrid() {
     lines.forEach(l => scene.remove(l));
@@ -709,6 +717,9 @@
     camera.lookAt(0, -0.5, 0);
     material.opacity     = 0.6 + env.trans * P.modTrans;
     material.transparent = true;
+    // Colour: gold → mauve driven by mid energy
+    _colScratch.lerpColors(_colA, _colB, Math.min(env.mid * 3.5, 1));
+    material.color.copy(_colScratch);
   }
 
   function modDisp()    { return P.maxDisp * (1 + env.sub * P.modSub); }
@@ -1092,6 +1103,8 @@
       camera.lookAt(0, -0.5, 0);
       material.opacity = 0.6 + expEnv.trans * P.modTrans;
       material.transparent = true;
+      _colScratch.lerpColors(_colA, _colB, Math.min(expEnv.mid * 3.5, 1));
+      material.color.copy(_colScratch);
 
       // --- History + displacement ---
       expHead = (expHead + P.rows - 1) % P.rows;
@@ -1198,6 +1211,7 @@
       camera.position.y = CAM_BASE.y;
       camera.position.z = CAM_BASE.z;
       camera.lookAt(0, -0.5, 0);
+      material.color.set(LINE_COLOR);
       material.opacity = 1.0;
       material.transparent = false;
       isExporting = false; exportBtn.disabled = false; setTimeDisplay(0,0);
