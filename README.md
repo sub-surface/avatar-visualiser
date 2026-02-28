@@ -6,23 +6,25 @@ Designed for use as a live video avatar via OBS Studio.
 
 ## Setup
 
-1. Open `index.html` in **Chrome** or **Edge**
-2. Click anywhere on screen
-3. Grant microphone access when prompted
-4. The visualiser reacts to your default audio input device in real time
+ES modules are blocked by browsers when opened directly from `file://` — you must serve over HTTP.
+
+1. Double-click `serve.bat` (requires Node.js) — starts a local server and opens the browser automatically
+2. Or run manually: `npx serve . --listen 3000` then open `http://localhost:3000`
+3. Click anywhere on screen and grant microphone access when prompted
+
+To open `tests.html`: navigate to `http://localhost:3000/tests.html`
 
 ## OBS Capture
 
-### Option A — Local file (simplest)
-1. Add a **Browser Source** in OBS
-2. Set URL to: `file:///C:/Users/Leon/Desktop/Psychograph/Avatar/index.html`
-3. Click **Interact** in the source properties to open the interactive view, then click inside it to start
+### Option A — Browser Source via local server (recommended)
+1. Run `serve.bat`
+2. Add a **Browser Source** in OBS, set URL to `http://localhost:3000/index.html`
+3. Click **Interact** in the source properties, then click inside it to start
 
-### Option B — Local server (more reliable for getUserMedia)
-```bash
-npx serve .
-```
-Then set the Browser Source URL to `http://localhost:3000`
+### Option B — Local file (only works if --allow-file-access-from-files is set)
+1. Launch your browser with the `--allow-file-access-from-files` flag
+2. Add a **Browser Source** in OBS
+3. Set URL to: `file:///C:/Users/Leon/Desktop/Psychograph/Avatar/index.html`
 
 ### Tips
 - Resolution: 1920×1080 recommended
@@ -79,7 +81,7 @@ Parameters are baked in at export time — set them before clicking export.
 
 ## Tests
 
-Open `tests.html` in Chrome to run the DSP test suite. All pure functions (`applyHannWindow`, `fftRadix2`, `computeFFTBins`, `buildBinMap`, `bowlFactor`, `buildAWeightGain`) are tested in isolation without a DOM or WebGL context.
+Run `serve.bat` then open `http://localhost:3000/tests.html` in your browser. All pure functions (`applyHannWindow`, `fftRadix2`, `computeFFTBins`, `buildBinMap`, `bowlFactor`, `buildAWeightGain`) are tested in isolation without a DOM or WebGL context.
 
 Test groups:
 - **FFT correctness** — Hann window normalisation, DC bin, 440Hz dominant bin, silence → zero bins
