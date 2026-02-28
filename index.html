@@ -2740,23 +2740,18 @@
   loadDirSliders();
   updateCamSelUI();
 
-  // Global flag to track actual OrbitControls drag session
-  let _controlsActive = false;
-
   controls.addEventListener('start', () => {
-    _controlsActive = true;
     window.isUserInteractingWithCamera = true;
     stopCamPreview();
     updateCamSelUI();
   });
 
   controls.addEventListener('end', () => {
-    _controlsActive = false;
     // Keep interaction flag true — manual override persists until mode/preset change.
   });
 
   controls.addEventListener('change', () => {
-    if (_controlsActive && !isExporting) {
+    if (window.isUserInteractingWithCamera && !isExporting) {
       const cs = P.camStyles[dirStyle.value];
       cs.x = Number(camera.position.x.toFixed(2));
       cs.y = Number(camera.position.y.toFixed(2));
