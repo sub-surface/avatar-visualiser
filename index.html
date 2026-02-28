@@ -503,6 +503,9 @@
       if (saved.bpm)    si('pBpm',    saved.bpm);
       if (saved.genre)  si('pGenre',  saved.genre);
       updateTrackDisplay();
+      // Rebuild geometry to match restored rows/cols
+      rebuildGrid();
+      rebuildHistory();
     } catch (_) {}
   }
 
