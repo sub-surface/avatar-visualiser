@@ -84,11 +84,11 @@
   ════════════════════════════════════════════════════════════ */
   section('FFT correctness');
 
-  test('applyHannWindow: sum of squares ≈ N/2', () => {
+  test('applyHannWindow: sum of squares ≈ 3N/8', () => {
     const buf = new Float32Array(FFT_N).fill(1);
     applyHannWindow(buf);
     const sos = buf.reduce((s, v) => s + v * v, 0);
-    assertClose(sos, FFT_N / 2, FFT_N * 0.02, 'Hann SOS');
+    assertClose(sos, 3 * FFT_N / 8, FFT_N * 0.02, 'Hann SOS');
   });
 
   test('fftRadix2: DC bin for constant signal', () => {
@@ -241,11 +241,17 @@
     assertClose(max, 1.0, 0.01, 'peak gain');
   });
 
-  test('gain at 3.5kHz is higher than at 100Hz (A-weight peak)', () => {
-    const g       = buildAWeightGain(NUM_BINS, FFT_N, SR);
-    const bin100  = Math.round(100  * FFT_N / SR);
-    const bin3500 = Math.round(3500 * FFT_N / SR);
-    assert(g[bin3500] > g[bin100], `3.5kHz gain ${g[bin3500].toFixed(3)} not > 100Hz gain ${g[bin100].toFixed(3)}`);
+  test('peak bin is near 3.5kHz (A-weight curve shape)', () => {
+    // Use a larger FFT size for this test so bins have enough Hz resolution
+    // to distinguish the A-weight curve shape (avoid Float32 floor at 0.5)
+    const bigN   = FFT_N * 8;                          // 16384
+    const bigBins = bigN / 2;
+    const g      = buildAWeightGain(bigBins, bigN, SR);
+    let peakBin  = 0;
+    for (let k = 1; k < bigBins; k++) if (g[k] > g[peakBin]) peakBin = k;
+    const peakHz = peakBin * SR / bigN;
+    assert(peakHz >= 2000 && peakHz <= 5000,
+      `peak at ${peakHz.toFixed(0)} Hz, expected 2–5 kHz`);
   });
 
   /* ════════════════════════════════════════════════════════════

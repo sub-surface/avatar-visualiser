@@ -68,6 +68,29 @@ export function computeFFTBins(pcmWindow) {
   return out;
 }
 
+/**
+ * Same as computeFFTBins but writes into caller-supplied scratch buffers.
+ * No heap allocations — safe to call in a tight export loop.
+ * @param {Float32Array} pcmWindow  source PCM (read-only, copied into re)
+ * @param {Float32Array} re         scratch — length N (overwritten)
+ * @param {Float32Array} im         scratch — length N (overwritten, zeroed on entry)
+ * @param {Uint8Array}   out        destination bins — length N/2
+ */
+export function computeFFTBinsInto(pcmWindow, re, im, out) {
+  const N = pcmWindow.length;
+  re.set(pcmWindow);
+  im.fill(0);
+  applyHannWindow(re);
+  fftRadix2(re, im);
+  const numBins = N / 2;
+  for (let k = 0; k < numBins; k++) {
+    const mag     = Math.sqrt(re[k] * re[k] + im[k] * im[k]) / N;
+    const db      = mag > 0 ? 20 * Math.log10(mag) : WA_MIN_DB;
+    const clamped = Math.max(WA_MIN_DB, Math.min(WA_MAX_DB, db));
+    out[k]        = Math.round(((clamped - WA_MIN_DB) / (WA_MAX_DB - WA_MIN_DB)) * 255);
+  }
+}
+
 /* ── Frequency bin lookup table ──────────────────────────────── */
 /**
  * Build a Uint16Array of length halfCols mapping each column position
@@ -142,15 +165,18 @@ export function bowlFactor(r, totalRows, exp) {
  * @param {number} sr
  */
 export function buildAWeightGain(numBins, fftSize, sr) {
+  // IEC 61672 A-weighting: peaks ~2.5 kHz, blended 50/50 with flat response
+  const P1  = 12194.0 * 12194.0;  // 12194 Hz pole (squared)
+  const P2  = 20.6    * 20.6;     //  20.6 Hz pole (squared)
+  const P3A = 107.7   * 107.7;    // 107.7 Hz pole (squared)
+  const P3B = 737.9   * 737.9;    // 737.9 Hz pole (squared)
   const gain = new Float32Array(numBins);
   let peak = 0;
   for (let k = 0; k < numBins; k++) {
     const f  = Math.max(1, k * sr / fftSize);
-    const f2 = f * f, f4 = f2 * f2;
-    const num  = 1.562339 * f4;
-    const den  = (f2 + 107.65265) * (f2 + 737.86223);
-    const aden = (f2 + 20.598997) * (f2 + 12194.217);
-    const raw  = (num / (den * aden * aden)) * 1e16;
+    const f2 = f * f;
+    const raw = (P1 * f2 * f2) /
+                ((f2 + P2) * Math.sqrt((f2 + P3A) * (f2 + P3B)) * (f2 + P1));
     gain[k] = raw;
     if (raw > peak) peak = raw;
   }

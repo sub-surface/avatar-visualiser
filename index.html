@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PSYCHOGRAPH</title>
+  <title>PSYCHOGRAPH — Avatar Visualiser</title>
 
   <!--
     DM Serif Display — modern editorial serif, geometric construction,
@@ -52,16 +52,21 @@
       height: 100vh !important;
     }
 
-    /* ── Start overlay ──────────────────────────────────────── */
+    /* ── Start / loading overlay ────────────────────────────── */
     #overlay {
       position: fixed;
       inset: 0;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 1.4rem;
       z-index: 10;
-      cursor: pointer;
+      cursor: default;
+      transition: opacity 0.4s;
     }
+    #overlay.ready { cursor: pointer; }
+    #overlay.hidden { opacity: 0; pointer-events: none; }
     #overlay span {
       font-family: var(--serif);
       font-style: italic;
@@ -69,8 +74,28 @@
       letter-spacing: 0.05em;
       color: var(--s-mid);
       user-select: none;
+      transition: opacity 0.3s;
     }
-    #overlay.hidden { display: none; }
+    /* Thin animated progress bar shown while loading */
+    #loadBar {
+      width: 120px;
+      height: 1px;
+      background: hsl(205 18% 22%);
+      overflow: hidden;
+    }
+    #loadBar::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: 40%;
+      background: var(--s-mid);
+      animation: loadSlide 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes loadSlide {
+      from { transform: translateX(-60%); }
+      to   { transform: translateX(210%); }
+    }
+    #loadBar.done { display: none; }
 
     /* ═══════════════════════════════════════════════════════════
        TRACK INFO CARD
@@ -328,7 +353,10 @@
 </head>
 <body>
 
-<div id="overlay"><span>click to begin</span></div>
+<div id="overlay">
+  <div id="loadBar"></div>
+  <span id="overlayMsg">loading…</span>
+</div>
 
 <!-- ── Track info card — centred, left-aligned within ──────────── -->
 <div id="trackInfo">
@@ -442,7 +470,7 @@
   import * as THREE from 'three';
   import {
     applyHannWindow, fftRadix2, computeFFTBins,
-    buildBinMap, bowlFactor, buildAWeightGain
+    computeFFTBinsInto, buildBinMap, bowlFactor, buildAWeightGain
   } from './dsp.js';
 
   /* ── Parameters ───────────────────────────────────────────── */
@@ -522,7 +550,7 @@
 
   /* ── Renderer ─────────────────────────────────────────────── */
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(BG_COLOR, 1);
   document.body.appendChild(renderer.domElement);
@@ -726,11 +754,21 @@
     audioReady = true;
   }
 
-  /* ── Start overlay ────────────────────────────────────────── */
-  const overlay = document.getElementById('overlay');
+  /* ── Start / loading overlay ──────────────────────────────── */
+  const overlay    = document.getElementById('overlay');
+  const overlayMsg = document.getElementById('overlayMsg');
+  const loadBar    = document.getElementById('loadBar');
   let started = false;
+
+  // Mark ready once Three.js scene is initialised (end of this script)
+  function overlayReady() {
+    loadBar.classList.add('done');
+    overlayMsg.textContent = 'click to begin';
+    overlay.classList.add('ready');
+  }
+
   overlay.addEventListener('click', async () => {
-    if (started) return;
+    if (!overlay.classList.contains('ready') || started) return;
     started = true;
     overlay.classList.add('hidden');
     try { await initAudio(); } catch (e) { console.error('Audio init:', e); }
@@ -810,6 +848,7 @@
   const clock = new THREE.Clock();
   function animate() {
     requestAnimationFrame(animate);
+    if (document.visibilityState === 'hidden') return; // skip render when tab hidden
     const dt = clock.getDelta();
     lfoTick(dt);
     if (audioReady) {
@@ -821,6 +860,7 @@
     renderer.render(scene, camera);
   }
   animate();
+  overlayReady();
 
   /* ══════════════════════════════════════════════════════════
      PARAMETERS PANEL
@@ -886,30 +926,27 @@
      EXPORT PIPELINE
   ══════════════════════════════════════════════════════════ */
 
-  function precomputeFrameData(audioBuffer, fps) {
-    const sr = audioBuffer.sampleRate, totalSamples = audioBuffer.length;
-    const samplesPerFrame = Math.ceil(sr / fps);
-    const totalFrames     = Math.ceil(totalSamples / samplesPerFrame);
-    const halfFFT = FFT_SIZE / 2;
-    const ch0 = audioBuffer.getChannelData(0);
-    const ch1 = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
-    const mono = new Float32Array(totalSamples);
-    for (let i = 0; i < totalSamples; i++) mono[i] = ch1 ? (ch0[i]+ch1[i])*0.5 : ch0[i];
+  // Scratch buffers allocated once per export, reused every frame
+  // (avoids per-frame GC pressure that causes "Array buffer allocation failed")
+  let _scratchPcm  = null;
+  let _scratchRe   = null;
+  let _scratchIm   = null;
+  let _scratchRaw  = null;
+  let _scratchPrev = null;
+  let _scratchCurr = null;
 
-    const frameFreqData = new Array(totalFrames);
-    let prevBins = new Uint8Array(halfFFT);
-    const smooth = P.smoothing;
-    for (let f = 0; f < totalFrames; f++) {
-      const ws = f * samplesPerFrame - halfFFT;
-      const pcm = new Float32Array(FFT_SIZE);
-      for (let i = 0; i < FFT_SIZE; i++) { const x = ws+i; pcm[i] = (x>=0&&x<totalSamples)?mono[x]:0; }
-      const raw = computeFFTBins(pcm);
-      const sm  = new Uint8Array(halfFFT);
-      for (let k = 0; k < halfFFT; k++) sm[k] = Math.round(smooth*prevBins[k]+(1-smooth)*raw[k]);
-      prevBins = sm;
-      frameFreqData[f] = sm;
-    }
-    return { frameFreqData, totalFrames, duration: totalSamples / sr };
+  function allocExportScratch() {
+    _scratchPcm  = new Float32Array(FFT_SIZE);
+    _scratchRe   = new Float32Array(FFT_SIZE);
+    _scratchIm   = new Float32Array(FFT_SIZE);
+    _scratchRaw  = new Uint8Array(NUM_BINS);
+    _scratchPrev = new Uint8Array(NUM_BINS);
+    _scratchCurr = new Uint8Array(NUM_BINS);
+  }
+
+  function freeExportScratch() {
+    _scratchPcm = _scratchRe = _scratchIm = null;
+    _scratchRaw = _scratchPrev = _scratchCurr = null;
   }
 
   let savedDims = null;
@@ -944,36 +981,67 @@
     await enc.flush();
   }
 
-  async function runFrameLoop(venc, frameFreqData, totalFrames, fps, duration, onProgress) {
-    const expFreq    = new Uint8Array(NUM_BINS);
-    const expHist    = Array.from({length:P.rows}, ()=>new Float32Array(NUM_BINS));
-    const expBinMap  = buildBinMap(P.freqScale, P.cols/2, NUM_BINS, P.freqRange, 44100);
-    let   expHead    = 0, expLfo = 0, expPrevRms = 0;
-    const expEnv     = { sub:0, kick:0, mid:0, high:0, rms:0, trans:0 };
-    const dt         = 1 / fps;
+  // Single-pass streaming export: FFT + smooth + displace + encode per frame.
+  // All intermediate buffers are pre-allocated; no per-frame heap allocations.
+  async function runExport(venc, audioBuffer, fps, duration, onProgress) {
+    const sr              = audioBuffer.sampleRate;
+    const totalSamples    = audioBuffer.length;
+    const samplesPerFrame = Math.ceil(sr / fps);
+    const totalFrames     = Math.ceil(totalSamples / samplesPerFrame);
+
+    // Mix to mono once (one Float32Array for the full track, unavoidable)
+    const ch0  = audioBuffer.getChannelData(0);
+    const ch1  = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
+    const mono = new Float32Array(totalSamples);
+    for (let i = 0; i < totalSamples; i++) mono[i] = ch1 ? (ch0[i]+ch1[i])*0.5 : ch0[i];
+
+    // Per-export state (all pre-allocated)
+    const expHist   = Array.from({length:P.rows}, ()=>new Float32Array(NUM_BINS));
+    const expBinMap = buildBinMap(P.freqScale, P.cols/2, NUM_BINS, P.freqRange, 44100);
+    let   expHead   = 0, expLfo = 0, expPrevRms = 0;
+    const expEnv    = { sub:0, kick:0, mid:0, high:0, rms:0, trans:0 };
+    const smooth    = P.smoothing;
+    const dt        = 1 / fps;
 
     for (let f = 0; f < totalFrames; f++) {
-      while (venc.encodeQueueSize > 2) await new Promise(r => setTimeout(r, 0));
+      while (venc.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 0));
 
+      // --- Fill PCM window into scratch buffer (no allocation) ---
+      const ws = f * samplesPerFrame - NUM_BINS;
+      for (let i = 0; i < FFT_SIZE; i++) {
+        const x = ws + i;
+        _scratchPcm[i] = (x >= 0 && x < totalSamples) ? mono[x] : 0;
+      }
+
+      // --- FFT into scratch re/im, result into _scratchRaw (no allocation) ---
+      computeFFTBinsInto(_scratchPcm, _scratchRe, _scratchIm, _scratchRaw);
+
+      // --- EMA smoothing: prev→curr in-place (swap references, no allocation) ---
+      for (let k = 0; k < NUM_BINS; k++) {
+        _scratchCurr[k] = Math.round(smooth * _scratchPrev[k] + (1 - smooth) * _scratchRaw[k]);
+      }
+      // Swap prev/curr without allocation
+      const tmp = _scratchPrev; _scratchPrev = _scratchCurr; _scratchCurr = tmp;
+      // _scratchPrev now holds the smoothed bins for this frame
+
+      // --- Envelope followers ---
       expLfo = (expLfo + 2*Math.PI*P.lfoRate*dt) % (2*Math.PI);
+      expPrevRms = computeEnvelopesExport(_scratchPrev, expEnv, expPrevRms);
 
-      expFreq.set(frameFreqData[f]);
-      expPrevRms = computeEnvelopesExport(expFreq, expEnv, expPrevRms);
-
-      // Modulated parameters for this export frame
+      // --- Modulated params ---
       const be   = P.bowlExp + P.lfoDepth * Math.sin(expLfo) - expEnv.high * P.modHigh;
       const disp = P.maxDisp * (1 + expEnv.sub * P.modSub);
 
-      // Apply modulated camera
       camera.position.y = CAM_BASE.y + expEnv.mid  * P.modMid;
       camera.position.z = CAM_BASE.z - expEnv.rms  * P.modRms + expEnv.kick * P.modKick;
       camera.lookAt(0, -0.5, 0);
       material.opacity = 0.6 + expEnv.trans * P.modTrans;
       material.transparent = true;
 
+      // --- History + displacement ---
       expHead = (expHead + P.rows - 1) % P.rows;
       const row = expHist[expHead];
-      for (let k = 0; k < NUM_BINS; k++) row[k] = (expFreq[k]/255) * aWeightGain[k];
+      for (let k = 0; k < NUM_BINS; k++) row[k] = (_scratchPrev[k] / 255) * aWeightGain[k];
 
       const half = P.cols / 2;
       for (let r = 0; r < P.rows; r++) {
@@ -995,7 +1063,7 @@
       venc.encode(vf, { keyFrame: true });
       vf.close();
 
-      if (f % 5 === 0) { onProgress(Math.round((f/totalFrames)*100)); await new Promise(r=>setTimeout(r,0)); }
+      if (f % 10 === 0) { onProgress(Math.round((f/totalFrames)*100)); await new Promise(r=>setTimeout(r,0)); }
     }
   }
 
@@ -1014,8 +1082,8 @@
       const buf = await tmp.decodeAudioData(ab);
       await tmp.close();
 
-      progressEl.textContent = 'analysing...';
-      const { frameFreqData, totalFrames, duration } = precomputeFrameData(buf, FPS);
+      const duration = buf.length / buf.sampleRate;
+      allocExportScratch();
       beginExportResize();
 
       const { Muxer, ArrayBufferTarget } = Mp4Muxer;
@@ -1039,7 +1107,7 @@
         numberOfChannels:buf.numberOfChannels, bitrate:192e3 });
 
       progressEl.textContent = '0%';
-      await runFrameLoop(venc, frameFreqData, totalFrames, FPS, duration, p => {
+      await runExport(venc, buf, FPS, duration, p => {
         progressEl.textContent = `${p}%`;
       });
 
@@ -1061,6 +1129,7 @@
       console.error('Export failed:', err);
       progressEl.textContent = `err: ${err.message??err}`;
     } finally {
+      freeExportScratch();
       endExportResize();
       // Restore camera and opacity to base values
       camera.position.y = CAM_BASE.y;
