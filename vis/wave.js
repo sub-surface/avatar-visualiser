@@ -16,10 +16,10 @@ const tdEnergy  = []; // Store peak magnitude for each row
 let tdHead = 0;
 
 export function rebuildWave() {
+  const cols = Math.max(2, P.complexity * 32);
   tearDownWave();
   
-  const rows = P.rows;
-  const cols = P.cols;
+  const rows = Math.max(2, P.rows);
 
   for (let r = 0; r < rows; r++) {
     const positions = new Float32Array(cols * 3);
@@ -56,8 +56,8 @@ export function rebuildWave() {
 export function applyWave(tdData, dispScale, spacing) {
   const disp  = dispScale !== undefined ? dispScale : modDisp();
   const space = spacing !== undefined ? spacing : P.waveSpacing;
-  const rows  = P.rows;
-  const cols  = P.cols;
+  const rows  = Math.max(2, P.rows);
+  const cols  = Math.max(2, P.complexity * 32);
 
   // Push latest data to ring buffer
   tdHead = (tdHead + rows - 1) % rows;
@@ -78,8 +78,9 @@ export function applyWave(tdData, dispScale, spacing) {
     const data = tdHistory[hIdx];
     const energy = tdEnergy[hIdx];
     
+    const tilt = r * P.morph * 0.15;
     for (let c = 0; c < cols; c++) {
-      pos[c * 3 + 1] = data[c] * disp;
+      pos[c * 3 + 1] = data[c] * disp + tilt;
       pos[c * 3 + 2] = -r * space;
     }
     

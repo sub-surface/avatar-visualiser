@@ -13,10 +13,12 @@ export const polarBufs  = [];
 export const polarCols  = [];
 
 export function rebuildPolar() {
+  const cols = Math.max(2, P.complexity * 32);
   polarLines.forEach(l => scene.remove(l));
   polarLines.length = polarBufs.length = polarCols.length = 0;
-  const segs = P.cols;
-  for (let r = 0; r < P.rows; r++) {
+  const rows = Math.max(2, P.rows);
+  const segs = cols;
+  for (let r = 0; r < rows; r++) {
     const positions = new Float32Array((segs + 1) * 3);
     const colors    = new Float32Array((segs + 1) * 3);
     const geo = new THREE.BufferGeometry();
@@ -37,19 +39,22 @@ export function applyPolar(fdL, fdR, bowlExp, dispScale, spacing) {
 
   const disp  = dispScale !== undefined ? dispScale : modDisp();
   const space = spacing !== undefined ? spacing : P.polarSpacing;
-  const half  = P.cols / 2;
-  const segs  = P.cols;
+  const cols  = Math.max(2, P.complexity * 32);
+  const half  = cols / 2;
+  const segs  = cols;
+  const rows  = Math.max(2, P.rows);
   const BASE_R = 0.4;
   const MAX_R  = 4.5;
-  for (let r = 0; r < P.rows; r++) {
+  for (let r = 0; r < rows; r++) {
     const pos  = polarBufs[r];
     const col  = polarCols[r];
-    const hrow = histBuf[(histHead + r) % P.rows];
-    const bf   = bowlFactor(r, P.rows, bowlExp);
-    const y    = (r / (P.rows - 1) - 0.5) * space;
+    const hrow = histBuf[(histHead + r) % rows];
+    const bf   = bowlFactor(r, rows, bowlExp);
+    const y    = (r / (rows - 1) - 0.5) * space;
     for (let c = 0; c <= segs; c++) {
       const ci = c % segs;
-      const angle  = (ci / segs) * Math.PI * 2;
+      const spiral = P.morph * (r / P.rows) * Math.PI * 2;
+      const angle  = (ci / segs) * Math.PI * 2 + spiral;
       const isRight = ci < segs / 2; 
       const m  = ci < half ? ci : segs - 1 - ci;
       const bin = binMap[Math.min(m, half - 1)];

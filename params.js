@@ -4,7 +4,7 @@
 
 /* ── Parameters ────────────────────────────────────────────── */
 export const P = {
-  rows: 60, cols: 128,
+  rows: 60, complexity: 4,
   maxDisp: 2.2, bowlExp: 2.0,
   smoothing: 0.55, freqScale: 'log', freqRange: 0.55,
   modSub:   0.5,
@@ -36,7 +36,8 @@ export const P = {
   colorB: '#b090c8', // Default mauve
   colorCycle: 0.0,
   uiReactivity: 0.5,
-  cycleModes: false,
+  morph: 0.0,
+  cycleMode: 'off',
   exportPreset: 'standard',
   exportOrientation: 'horizontal',
   exportAspect: '16:9',
@@ -50,6 +51,19 @@ export const P = {
     oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
   },
 };
+
+/** Validate and constrain parameters to valid ranges */
+function validateParams() {
+  P.rows = Math.max(2, Math.round(P.rows));
+  P.complexity = Math.max(1, Math.round(P.complexity));
+  P.maxDisp = Math.max(0, isFinite(P.maxDisp) ? P.maxDisp : 2.2);
+  P.bowlExp = isFinite(P.bowlExp) ? P.bowlExp : 2.0;
+  P.smoothing = Math.max(0, Math.min(1, isFinite(P.smoothing) ? P.smoothing : 0.55));
+  P.freqRange = Math.max(0.01, Math.min(1, isFinite(P.freqRange) ? P.freqRange : 0.55));
+  P.sphereSize = Math.max(0.1, isFinite(P.sphereSize) ? P.sphereSize : 3.0);
+  P.lpfCutoff = Math.max(20, Math.min(20000, isFinite(P.lpfCutoff) ? P.lpfCutoff : 20000));
+  P.gain = Math.max(0, isFinite(P.gain) ? P.gain : 1.0);
+}
 
 /* ── localStorage persistence ─────────────────────────────── */
 const STORAGE_KEY = 'psychograph_params';
@@ -68,12 +82,12 @@ export function saveParams() {
 export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    const numKeys = ['rows','cols','maxDisp','bowlExp','smoothing','freqRange',
+    const numKeys = ['rows','complexity','maxDisp','bowlExp','smoothing','freqRange',
                      'modSub','modKick','modMid','modHigh','modRms','modTrans',
                      'sphereSize', 'waveSpacing', 'polarSpacing', 'lpfCutoff', 'gain',
                      'lfoRate', 'lfoDepth', 'lfoOffset', 'lfo2Rate', 'lfo2Depth', 'lfo2Offset',
                      'lfoToDisp', 'lfoToBowl', 'lfoToZoom', 'lfoToOpacity', 'lfoToPolar', 'lfoToWave', 
-                     'uiReactivity', 'colorCycle'];
+                     'uiReactivity', 'colorCycle', 'morph'];
     for (const k of numKeys) if (saved[k] !== undefined) P[k] = +saved[k];
     if (saved.colorA) P.colorA = saved.colorA;
     if (saved.colorB) P.colorB = saved.colorB;
@@ -81,6 +95,10 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     if (saved.exportPreset) P.exportPreset = saved.exportPreset;
     if (saved.exportOrientation) P.exportOrientation = saved.exportOrientation;
     if (saved.exportAspect) P.exportAspect = saved.exportAspect;
+    if (saved.cycleMode) P.cycleMode = saved.cycleMode;
+    
+    // Validate parameters to prevent NaN errors
+    validateParams();
     if (saved.uiPalette) {
       P.uiPalette = saved.uiPalette;
       document.body.setAttribute('data-palette', P.uiPalette);
@@ -95,6 +113,7 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pSmoothing', P.smoothing); ss('vSmoothing', P.smoothing);
     si('pMaxDisp',   P.maxDisp);   ss('vMaxDisp',   P.maxDisp);
     si('pBowlExp',   P.bowlExp);   ss('vBowlExp',   P.bowlExp);
+    si('pMorph',     P.morph);     ss('vMorph',     P.morph);
     
     si('pLfoWaveform', P.lfoWaveform);
     si('pLfoRate',   P.lfoRate);   ss('vLfoRate',   P.lfoRate);
@@ -118,7 +137,7 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pLfo2Depth',  P.lfo2Depth);  ss('vLfo2Depth',  P.lfo2Depth);
 
     si('pRows',      P.rows);      ss('vRows',      P.rows);
-    si('pCols',      P.cols);      ss('vCols',      P.cols);
+    si('pComplexity',P.complexity); ss('vComplexity',P.complexity);
     si('pModSub',    P.modSub);    ss('vModSub',    P.modSub);
     si('pModKick',   P.modKick);   ss('vModKick',   P.modKick);
     si('pModMid',    P.modMid);    ss('vModMid',    P.modMid);
@@ -141,11 +160,7 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pColorCycle', P.colorCycle); ss('vColorCycle', P.colorCycle);
     si('pUiReactivity', P.uiReactivity); ss('vUiReactivity', P.uiReactivity);
 
-    if (saved.cycleModes !== undefined) {
-      P.cycleModes = !!saved.cycleModes;
-      const el = document.getElementById('pCycleModes');
-      if (el) el.checked = P.cycleModes;
-    }
+    si('pCycleMode', P.cycleMode); ss('vCycleMode', P.cycleMode);
 
     si('pExportPreset', P.exportPreset); ss('vExportPreset', P.exportPreset);
     si('pExportOrient', P.exportOrientation); ss('vExportOrient', P.exportOrientation);
@@ -177,6 +192,12 @@ export function bindRange(id, valId, key, onChange) {
   el.addEventListener('input', () => {
     P[key] = parseFloat(el.value);
     lbl.textContent = el.value;
+    // Validate critical parameters to prevent NaN
+    if (key === 'rows' || key === 'complexity') {
+      validateParams();
+      el.value = P[key]; // Update input to reflect validated value
+      lbl.textContent = P[key];
+    }
     if (onChange) onChange(P[key]);
     saveParams();
   });

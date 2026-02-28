@@ -31,12 +31,12 @@
     :root {
       --ui-accent:    #a2b6c0; /* Slate Default */
       --ui-secondary: #6a8a99;
-      --ui-tertiary:  #c2d1d9;
+      --ui-tertiary:  #d1c2d9;
       --ui-accent-rgb: 162, 182, 192;
       
-      --s-hi:    rgba(var(--ui-accent-rgb), 0.85);
-      --s-mid:   rgba(var(--ui-accent-rgb), 0.45);
-      --s-lo:    rgba(var(--ui-accent-rgb), 0.18);
+      --s-hi:    rgba(var(--ui-accent-rgb), 0.98);
+      --s-mid:   rgba(var(--ui-accent-rgb), 0.70);
+      --s-lo:    rgba(var(--ui-accent-rgb), 0.25);
       --s-rule:  var(--ui-secondary);
 
       --m-hi:    var(--ui-accent);
@@ -761,6 +761,25 @@
       pointer-events: auto;
       transform: translateX(-50%) scale(1);
     }
+    
+    /* Magic Triangle safe zone */
+    #paletteSafeZone {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 400px;
+      pointer-events: none;
+      z-index: -1;
+    }
+    #paletteSafeZone path {
+      pointer-events: auto;
+      fill: transparent;
+    }
+    #paletteWrap:not(:hover) #paletteSafeZone path {
+      pointer-events: none;
+    }
     .pal-dot {
       width: 12px; height: 12px;
       border-radius: 50%;
@@ -996,12 +1015,23 @@
       scrollbar-width: none;
     }
     #bootTerminal::-webkit-scrollbar { display: none; }
-    /* #bootSkip is now inside the terminal output as .boot-skip-hint */
-    #bootSkip { display: none; }
+    #bootSkip {
+      position: absolute;
+      bottom: 24px;
+      right: 28px;
+      font-family: var(--mono);
+      color: rgba(var(--ui-accent-rgb), 0.4);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: lowercase;
+    }
     .boot-line { min-height: 1.6em; color: var(--s-mid); }
     .boot-dim   { color: rgba(var(--ui-accent-rgb), 0.35); font-style: italic; }
     .boot-bright { color: var(--s-hi); font-weight: 600; letter-spacing: 0.05em; }
     .boot-ok    { color: var(--m-hi); }
+    .boot-accent { color: var(--ui-accent); }
+    .boot-secondary { color: var(--ui-secondary); }
+    .boot-tertiary { color: var(--ui-tertiary); }
     .boot-logo  { color: var(--s-mid); text-align: center; font-size: 13px; letter-spacing: 0.04em; }
     .boot-header { color: var(--s-hi); text-align: center; font-weight: 600; }
     .boot-skip-hint {
@@ -1025,8 +1055,11 @@
 
 <!-- ── Boot Screen ──────────────────────────────────────────── -->
 <div id="bootScreen">
-  <div id="bootTerminal"></div>
-  <div id="bootSkip">[SPACE] skip</div>
+  <div id="bootTerminal" style="opacity:0; transition:opacity 0.5s;"></div>
+  <div id="bootStartPrompt" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10000; cursor:pointer;">
+    <span class="boot-accent" style="font-family:var(--serif); font-size:1.5rem; letter-spacing:0.1em; text-shadow:0 0 20px var(--ui-accent);">click to begin boot</span>
+  </div>
+  <div id="bootSkip">[S] skip</div>
 </div>
 
 <div id="overlay">
@@ -1162,6 +1195,7 @@
   <span class="mode-sep">·</span>
   <div id="paletteWrap">
     <button id="btnCycle" title="UI palette"><span id="paletteDot"></span></button>
+    <svg id="paletteSafeZone"><path d=""></path></svg>
     <div id="palettePop">
       <button class="pal-dot" data-pal="default" style="--dot-color:#a2b6c0" title="default"></button>
       <button class="pal-dot" data-pal="red" style="--dot-color:#ff4d4d" title="red"></button>
@@ -1195,8 +1229,12 @@
         <input type="text" class="ptxt" id="pTitle" placeholder="—" maxlength="60"></div>
       <div class="prow"><label title="Artist name shown in the overlay">artist</label>
         <input type="text" class="ptxt" id="pArtist" placeholder="—" maxlength="60"></div>
-      <div class="prow"><label title="Beats per minute — shown in the overlay metadata">bpm</label>
-        <input type="text" class="ptxt" id="pBpm" placeholder="—" maxlength="8"></div>
+      <div class="prow"><label title="Beats per minute — used for LFO sync and overlay metadata">bpm</label>
+        <div style="display:flex; gap:4px; align-items:center; flex:1;">
+          <input type="text" class="ptxt" id="pBpm" placeholder="—" maxlength="8" style="flex:1;">
+          <button class="chrome" id="btnBpmAuto" title="Automatically detect and assign BPM from the audio signal" style="padding: 2px 4px; font-size: 0.55rem;">auto</button>
+        </div>
+      </div>
       <div class="prow"><label title="Genre label shown in the overlay metadata">genre</label>
         <input type="text" class="ptxt" id="pGenre" placeholder="—" maxlength="30"></div>
     </div>
@@ -1246,10 +1284,19 @@
       <div class="prow"><label title="Base wireframe colour — applied to quiet/low-energy lines">base color</label>
         <input type="color" id="pColorA" value="#e8d5b0" style="width:40px; height:18px; border:none; background:none; cursor:pointer;"></div>
       <div class="prow"><label title="Peak colour — blended in on loud transients and high displacement">peak color</label>
-        <input type="color" id="pColorB" value="#b090c8" style="width:40px; height:18px; border:none; background:none; cursor:pointer;"></div>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <input type="color" id="pColorB" value="#b090c8" style="width:40px; height:18px; border:none; background:none; cursor:pointer;">
+          <button class="chrome" id="btnRandomColors" title="Randomise both base and peak colors" style="padding: 2px 4px; font-size: 0.55rem;">randomise</button>
+        </div>
+      </div>
       <div class="prow"><label title="How much the LFO drives colour oscillation between base and peak">color cycle</label>
         <input type="range" id="pColorCycle" min="0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vColorCycle">0.0</span></div>
+      
+      <div class="psection">warping</div>
+      <div class="prow"><label title="Mode-specific mathematical transformation (Bowl: twist, Polar: spiral, Sphere: noise, Wave: tilt)">morph</label>
+        <input type="range" id="pMorph" min="0" max="1.0" step="0.01" value="0.0">
+        <span class="pval" id="vMorph">0.0</span></div>
 
       <div class="psection">dsp</div>
       <div class="prow"><label title="Frequency axis mapping: log = perceptual/musical, linear = equal Hz per column, dnb = sub/kick/treble emphasis">freq scale</label>
@@ -1284,16 +1331,16 @@
       <div class="prow" data-modes="bowl,polar"><label title="Number of scanline rows — more rows = smoother terrain, higher GPU load">rows</label>
         <input type="range" id="pRows" min="20" max="120" step="10" value="60">
         <span class="pval" id="vRows">60</span></div>
-      <div class="prow"><label title="Number of vertices per row — higher values give more frequency resolution">cols</label>
-        <input type="range" id="pCols" min="64" max="256" step="32" value="128">
-        <span class="pval" id="vCols">128</span></div>
+      <div class="prow"><label title="Mesh detail level (1-10) — higher complexity increases horizontal resolution across all modes">complexity</label>
+        <input type="range" id="pComplexity" min="1" max="10" step="1" value="4">
+        <span class="pval" id="vComplexity">4</span></div>
     </div>
 
     <!-- Modulation Tab -->
     <div id="tMod" class="ptab-content">
       <canvas id="lfoMonitor" width="500" height="80"></canvas>
       
-      <div class="prow"><label>lfo shape</label>
+      <div class="prow"><label title="Primary LFO waveform shape for parameter oscillation">lfo shape</label>
         <select class="psel" id="pLfoWaveform">
           <option value="sine">sine</option>
           <option value="square">square</option>
@@ -1302,103 +1349,112 @@
         </select>
         <span class="pval" id="vLfoWaveform">sine</span></div>
 
-      <div class="prow"><label>lfo rate</label>
+      <div class="prow"><label title="Speed of the primary LFO in cycles per beat (0.25 = 1 cycle every 4 beats)">lfo rate</label>
         <input type="range" id="pLfoRate" min="0.01" max="1.0" step="0.01" value="0.15">
         <span class="pval" id="vLfoRate">0.15</span></div>
       
-      <div class="prow"><label>lfo depth</label>
+      <div class="prow"><label title="Maximum amplitude of the LFO oscillation">lfo depth</label>
         <input type="range" id="pLfoDepth" min="0" max="2.0" step="0.05" value="1.0">
         <span class="pval" id="vLfoDepth">1.0</span></div>
 
-      <div class="prow"><label>lfo offset</label>
+      <div class="prow"><label title="Centred offset for the LFO signal">lfo offset</label>
         <input type="range" id="pLfoOffset" min="-1.0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vLfoOffset">0.0</span></div>
 
       <div class="psection">links</div>
-      <div class="prow"><label>lfo→disp</label>
+      <div class="prow"><label title="Amount of LFO modulation applied to terrain displacement">lfo→disp</label>
         <input type="range" id="pLfoToDisp" min="0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vLfoToDisp">0.0</span></div>
-      <div class="prow" data-modes="bowl,polar"><label>lfo→bowl</label>
+      <div class="prow" data-modes="bowl,polar"><label title="Amount of LFO modulation applied to bowl shape curvature">lfo→bowl</label>
         <input type="range" id="pLfoToBowl" min="0" max="2.0" step="0.05" value="0.5">
         <span class="pval" id="vLfoToBowl">0.5</span></div>
-      <div class="prow" data-modes="polar"><label>lfo→polar_lift</label>
+      <div class="prow" data-modes="polar"><label title="Amount of LFO modulation applied to polar mode vertical lift">lfo→polar_lift</label>
         <input type="range" id="pLfoToPolar" min="0" max="2.0" step="0.05" value="0.0">
         <span class="pval" id="vLfoToPolar">0.0</span></div>
-      <div class="prow" data-modes="wave"><label>lfo→wave_gap</label>
+      <div class="prow" data-modes="wave"><label title="Amount of LFO modulation applied to wave mode vertical gap">lfo→wave_gap</label>
         <input type="range" id="pLfoToWave" min="0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vLfoToWave">0.0</span></div>
-      <div class="prow" data-modes="all"><label>lfo→zoom</label>
+      <div class="prow" data-modes="all"><label title="Amount of LFO modulation applied to camera zoom">lfo→zoom</label>
         <input type="range" id="pLfoToZoom" min="0" max="5.0" step="0.1" value="0.0">
         <span class="pval" id="vLfoToZoom">0.0</span></div>
-      <div class="prow"><label>lfo→opacity</label>
+      <div class="prow"><label title="Amount of LFO modulation applied to wireframe opacity">lfo→opacity</label>
         <input type="range" id="pLfoToOpacity" min="0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vLfoToOpacity">0.0</span></div>
 
       <div class="psection">Sens Envs</div>
-      <div class="prow"><label>sub→disp</label>
+      <div class="prow"><label title="Sub-bass energy sensitivity for terrain displacement">sub→disp</label>
         <input type="range" id="pModSub" min="0" max="1.0" step="0.05" value="0.5">
         <span class="pval" id="vModSub">0.5</span></div>
-      <div class="prow"><label>kick→cam</label>
+      <div class="prow"><label title="Kick drum energy sensitivity for camera shake/zoom">kick→cam</label>
         <input type="range" id="pModKick" min="0" max="2.0" step="0.1" value="0.8">
         <span class="pval" id="vModKick">0.8</span></div>
-      <div class="prow"><label>mid→lift</label>
+      <div class="prow"><label title="Mid-range energy sensitivity for terrain lift">mid→lift</label>
         <input type="range" id="pModMid" min="0" max="1.5" step="0.05" value="0.6">
         <span class="pval" id="vModMid">0.6</span></div>
-      <div class="prow"><label>high→bowl</label>
+      <div class="prow"><label title="High-frequency energy sensitivity for bowl shape intensity">high→bowl</label>
         <input type="range" id="pModHigh" min="0" max="1.5" step="0.05" value="0.8">
         <span class="pval" id="vModHigh">0.8</span></div>
-      <div class="prow"><label>rms→zoom</label>
+      <div class="prow"><label title="Global RMS volume sensitivity for overall camera zoom">rms→zoom</label>
         <input type="range" id="pModRms" min="0" max="1.5" step="0.05" value="0.5">
         <span class="pval" id="vModRms">0.5</span></div>
-      <div class="prow"><label>trans→opacity</label>
+      <div class="prow"><label title="Transient energy (sharp attacks) sensitivity for wireframe opacity">trans→opacity</label>
         <input type="range" id="pModTrans" min="0" max="1.0" step="0.05" value="0.4">
         <span class="pval" id="vModTrans">0.4</span></div>
 
       <div class="psection" style="display:flex; justify-content:space-between; align-items:center;">
         <span>interface</span>
       </div>
-      <div class="prow"><label>ui reactivity</label>
+      <div class="prow"><label title="Global UI sensitivity to audio energy — affects primary and secondary theme colors">ui reactivity</label>
         <input type="range" id="pUiReactivity" min="0" max="1.0" step="0.05" value="0.5">
         <span class="pval" id="vUiReactivity">0.5</span></div>
     </div>
 
     <!-- Export Tab -->
     <div id="tExport" class="ptab-content" data-modes="all">
-      <div class="prow"><label>preset</label>
+      <div class="prow"><label title="Video encoding quality preset">preset</label>
         <select class="psel" id="pExportPreset">
           <option value="lossless">lossless</option>
           <option value="standard" selected>standard</option>
           <option value="lofi">lo-fi ps2</option>
         </select>
         <span class="pval" id="vExportPreset">standard</span></div>
-      <div class="prow"><label>aspect</label>
+      <div class="prow"><label title="Target video aspect ratio">aspect</label>
         <select class="psel" id="pExportAspect">
           <option value="16:9" selected>16:9</option>
           <option value="4:3">4:3</option>
         </select>
         <span class="pval" id="vExportAspect">16:9</span></div>
-      <div class="prow"><label>orientation</label>
+      <div class="prow"><label title="Video orientation (horizontal for desktops, vertical for mobile)">orientation</label>
         <select class="psel" id="pExportOrient">
           <option value="horizontal" selected>horizontal</option>
           <option value="vertical">vertical</option>
         </select>
         <span class="pval" id="vExportOrient">horiz</span></div>
-      <div class="prow"><label>cycle modes</label>
-        <input type="checkbox" id="pCycleModes" style="cursor:pointer; width:12px; height:12px; margin-left:auto;"></div>
+      <div class="prow"><label title="Automated peak-triggered mode cycling behavior">cycle mode</label>
+        <select class="psel" id="pCycleMode">
+          <option value="off" selected title="Disable automatic cycling">off</option>
+          <option value="normal" title="Cycle through camera positions only (keeps current vis mode)">normal</option>
+          <option value="types" title="Cycle through both camera positions and visualisation types (Sphere ⇄ Bowl ⇄ Polar ⇄ Wave)">types</option>
+          <option value="random" title="Randomise all visual parameters on every transition peak">random</option>
+        </select>
+        <span class="pval" id="vCycleMode">off</span></div>
 
       <div class="psection">cameras</div>
       <div id="camSelectorGrid" class="prow" style="flex-wrap:wrap; justify-content:center; gap:4px; padding:6px 0;">
-        <button class="chrome cam-sel-btn" data-style="normal">1</button>
-        <button class="chrome cam-sel-btn" data-style="distant">2</button>
-        <button class="chrome cam-sel-btn" data-style="birds">3</button>
-        <button class="chrome cam-sel-btn" data-style="worms">4</button>
-        <button class="chrome cam-sel-btn" data-style="side">5</button>
-        <button class="chrome cam-sel-btn" data-style="oblique">6</button>
+        <button class="chrome cam-sel-btn" data-style="normal" title="Switch to Normal Camera Style">1</button>
+        <button class="chrome cam-sel-btn" data-style="distant" title="Switch to Distant Camera Style">2</button>
+        <button class="chrome cam-sel-btn" data-style="birds" title="Switch to Birds-eye Camera Style">3</button>
+        <button class="chrome cam-sel-btn" data-style="worms" title="Switch to Worms-eye Camera Style">4</button>
+        <button class="chrome cam-sel-btn" data-style="side" title="Switch to Side Camera Style">5</button>
+        <button class="chrome cam-sel-btn" data-style="oblique" title="Switch to Oblique Camera Style">6</button>
         <div style="width:1px; height:12px; background:var(--s-rule); margin:0 4px;"></div>
-        <button class="chrome" id="btnCamLock" title="Toggle audio reactivity" style="border:1px solid var(--s-lo); padding:2px 6px;">lock</button>
+        <button class="chrome" id="btnCamLock" title="Locked: fix camera to your manual position (overrides reactivity). Unlocked: allow audio-reactive movement." style="border:1px solid var(--s-lo); padding:2px 6px;">unlocked</button>
+      </div>
+      <div class="prow" style="justify-content:center; padding-bottom:4px;">
+        <button class="chrome" id="btnCamPreview" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Cycle through all 6 camera styles automatically">preview cameras</button>
       </div>
 
-      <div class="prow"><label>camera</label>
+      <div class="prow"><label title="Selected camera style to edit in Director Mode">camera</label>
         <select class="psel" id="pDirStyle">
           <option value="normal">normal</option>
           <option value="distant">distant</option>
@@ -1407,26 +1463,26 @@
           <option value="side">side</option>
           <option value="oblique">oblique</option>
         </select></div>
-      <div class="prow"><label>x</label>
+      <div class="prow"><label title="X position of the camera style">x</label>
         <input type="range" id="pDirX" min="-15" max="15" step="0.5" value="0">
         <span class="pval" id="vDirX">0</span></div>
-      <div class="prow"><label>y</label>
+      <div class="prow"><label title="Y position of the camera style">y</label>
         <input type="range" id="pDirY" min="-2" max="20" step="0.5" value="5.5">
         <span class="pval" id="vDirY">5.5</span></div>
-      <div class="prow"><label>z</label>
+      <div class="prow"><label title="Z position of the camera style">z</label>
         <input type="range" id="pDirZ" min="-2" max="20" step="0.5" value="9">
         <span class="pval" id="vDirZ">9</span></div>
-      <div class="prow"><label>look y</label>
+      <div class="prow"><label title="Target vertical look-at position for the camera style">look y</label>
         <input type="range" id="pDirLookY" min="-2" max="5" step="0.5" value="-0.5">
         <span class="pval" id="vDirLookY">-0.5</span></div>
       <div class="prow" style="justify-content:center; gap:8px; padding-top:4px;">
-        <button class="chrome" id="btnDirPreview" style="border:1px solid var(--s-lo); padding:2px 8px;">preview</button>
-        <button class="chrome" id="btnDirReset" style="border:1px solid var(--s-lo); padding:2px 8px;">reset</button>
+        <button class="chrome" id="btnDirPreview" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Preview the selected camera style immediately">preview</button>
+        <button class="chrome" id="btnDirReset" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Reset the selected camera style to its factory default coordinates">reset</button>
       </div>
 
       <div class="psection">debug</div>
       <div class="prow" style="justify-content:center; padding-top:4px;">
-        <button class="chrome" id="btnTestCapture" style="border:1px solid var(--s-lo); padding:2px 8px;">capture tests</button>
+        <button class="chrome" id="btnTestCapture" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Perform a batch capture of all 4 visualization modes to local disk">capture tests</button>
       </div>
     </div>
 
@@ -1466,23 +1522,6 @@
   controls.update();
 
   window.isUserInteractingWithCamera = false;
-  controls.addEventListener('start', () => {
-    window.isUserInteractingWithCamera = true;
-    stopCamPreview();
-  });
-  
-  // When user moves camera, update the currently selected "Director" style
-  controls.addEventListener('change', () => {
-    if (window.isUserInteractingWithCamera && !isExporting) {
-      const cs = P.camStyles[dirStyle.value];
-      cs.x = Number(camera.position.x.toFixed(2));
-      cs.y = Number(camera.position.y.toFixed(2));
-      cs.z = Number(camera.position.z.toFixed(2));
-      cs.lookY = Number(controls.target.y.toFixed(2));
-      loadDirSliders(); // Update UI
-      saveParams();
-    }
-  });
   
   // We want to stop the "manual override" when switching modes or presets, 
   // or provide a way to snap back. For now, it stays until changed.
@@ -1521,76 +1560,6 @@
       if (btn.dataset.tab === 'tMod') modDims = setupSharpCanvas(modCanvas, modCtx);
       if (btn.dataset.tab === 'tAudio') modDims2 = setupSharpCanvas(modCanvas2, modCtx2);
     });
-  });
-
-  // Randomise broad parameters (excluding audio/meta)
-  document.getElementById('btnRandomAll').addEventListener('click', () => {
-    const config = [
-      // Visuals
-      { id: 'pMaxDisp',   key: 'maxDisp',   min: 0.5, max: 4.5 },
-      { id: 'pBowlExp',   key: 'bowlExp',   min: 1.0, max: 4.0 },
-      { id: 'pSmoothing', key: 'smoothing', min: 0.2, max: 0.9 },
-      { id: 'pFreqRange', key: 'freqRange', min: 0.1, max: 1.0 },
-      { id: 'pColorCycle',key: 'colorCycle',min: 0,   max: 1.0 },
-      
-      // Sens Envs
-      { id: 'pModSub',    key: 'modSub',    min: 0.1, max: 1.0 },
-      { id: 'pModHigh',   key: 'modHigh',   min: 0.1, max: 1.2 },
-      { id: 'pModTrans',  key: 'modTrans',  min: 0.1, max: 1.0 },
-      
-      // LFO 1
-      { id: 'pLfoRate',   key: 'lfoRate',   min: 0.05, max: 0.8 },
-      { id: 'pLfoDepth',  key: 'lfoDepth',  min: 0.2,  max: 2.0 },
-      { id: 'pLfoOffset', key: 'lfoOffset', min: -0.5, max: 0.5 },
-      { id: 'pLfoToDisp', key: 'lfoToDisp', min: 0,    max: 0.8 },
-      { id: 'pLfoToBowl', key: 'lfoToBowl', min: 0,    max: 1.5 },
-      { id: 'pLfoToOpacity', key: 'lfoToOpacity', min: 0, max: 1.0 },
-      { id: 'pLfoToPolar', key: 'lfoToPolar', min: 0, max: 2.0 },
-      { id: 'pLfoToWave', key: 'lfoToWave', min: 0, max: 1.0 },
-
-      // Specifics
-      { id: 'pSphereSize', key: 'sphereSize', min: 1.0, max: 6.0 },
-      { id: 'pWaveSpacing', key: 'waveSpacing', min: 0.1, max: 1.0 },
-      { id: 'pPolarSpacing', key: 'polarSpacing', min: -6.0, max: 0 },
-    ];
-
-    config.forEach(m => {
-      const val = m.min + Math.random() * (m.max - m.min);
-      const el = document.getElementById(m.id);
-      if (el) {
-        el.value = val;
-        P[m.key] = val;
-        const lbl = document.getElementById('v' + m.id.substring(1));
-        if (lbl) lbl.textContent = val.toFixed(2);
-      }
-    });
-
-    // Randomize Colors
-    const randomHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    P.colorA = randomHex();
-    P.colorB = randomHex();
-    const elA = document.getElementById('pColorA');
-    const elB = document.getElementById('pColorB');
-    if (elA) elA.value = P.colorA;
-    if (elB) elB.value = P.colorB;
-    
-    // Randomize Selects
-    const waveTypes = ['sine', 'square', 'sawtooth', 'triangle'];
-    const scales = ['log', 'linear', 'dnb'];
-    
-    P.lfoWaveform = waveTypes[Math.floor(Math.random()*waveTypes.length)];
-    const elLfo = document.getElementById('pLfoWaveform');
-    if (elLfo) elLfo.value = P.lfoWaveform;
-
-    P.freqScale = scales[Math.floor(Math.random()*scales.length)];
-    const elScale = document.getElementById('pFreqScale');
-    if (elScale) elScale.value = P.freqScale;
-
-    logStatus('Visual parameters randomised');
-    saveParams();
-    rebuildGrid();
-    refreshBinMap();
-    rebuildHistory();
   });
 
   // Action links within info box
@@ -2002,6 +1971,30 @@
     }
   });
 
+  // Theme palette magic triangle
+  const paletteWrap = document.getElementById('paletteWrap');
+  const palettePop  = document.getElementById('palettePop');
+  const safeZone    = document.getElementById('paletteSafeZone');
+  const safePath    = safeZone.querySelector('path');
+
+  paletteWrap.addEventListener('mousemove', e => {
+    const rect = palettePop.getBoundingClientRect();
+    const wrapRect = paletteWrap.getBoundingClientRect();
+    
+    // Relative mouse position within the 400x400 SVG container
+    // The SVG is centred on the wrap (bottom:0, left:50%)
+    const mx = e.clientX - (wrapRect.left + wrapRect.width / 2) + 200;
+    const my = e.clientY - wrapRect.bottom + 400;
+
+    // Popover corners relative to the same 400x400 container
+    const x1 = rect.left - (wrapRect.left + wrapRect.width / 2) + 200;
+    const x2 = rect.right - (wrapRect.left + wrapRect.width / 2) + 200;
+    const y  = rect.top - wrapRect.bottom + 400;
+
+    // Create a path from mouse to top corners of popover
+    safePath.setAttribute('d', `M ${mx} ${my} L ${x1} ${y} L ${x2} ${y} Z`);
+  });
+
   // Mode toggle buttons
   document.getElementById('btnExport').addEventListener('click', () => setAppMode('export'));
   document.getElementById('btnLive').addEventListener('click',   () => setAppMode('live'));
@@ -2328,22 +2321,24 @@
   bindRange('pRows', 'vRows', 'rows', () => {
     rebuildHistory(); refreshBinMap(); buildVis(visMode);
   });
-  bindRange('pCols', 'vCols', 'cols', () => {
-    refreshBinMap(); buildVis(visMode);
+  bindRange('pComplexity', 'vComplexity', 'complexity', () => {
+    refreshBinMap(); rebuildHistory(); buildVis(visMode);
   });
   bindRange('pSphereSize', 'vSphereSize', 'sphereSize', () => buildVis(visMode));
   bindRange('pWaveSpacing', 'vWaveSpacing', 'waveSpacing', () => buildVis(visMode));
   bindRange('pPolarSpacing', 'vPolarSpacing', 'polarSpacing', () => buildVis(visMode));
+  bindRange('pMorph', 'vMorph', 'morph');
 
   bindSelect('pExportPreset', 'vExportPreset', 'exportPreset');
   bindSelect('pExportAspect', 'vExportAspect', 'exportAspect');
   bindSelect('pExportOrient', 'vExportOrient', 'exportOrientation', (v) => {
     document.getElementById('vExportOrient').textContent = v === 'horizontal' ? 'horiz' : 'vert';
   });
-  document.getElementById('pCycleModes').addEventListener('change', e => {
-    P.cycleModes = e.target.checked;
-    saveParams();
-    logStatus(`Mode cycling ${P.cycleModes ? 'enabled' : 'disabled'}`);
+  bindSelect('pCycleMode', 'vCycleMode', 'cycleMode');
+
+  document.getElementById('btnBpmAuto').addEventListener('click', () => {
+    import('./envelopes.js').then(m => m.resetBpmAuto());
+    logStatus('BPM Auto-detect enabled');
   });
 
   loadParams(() => buildVis(visMode), rebuildHistory, refreshBinMap);
@@ -2352,6 +2347,98 @@
     import('./engine.js').then(m => m.setTheme(true));
   }
   refreshBinMap();
+
+  window.randomiseParams = () => {
+    // Randomise core visual settings with explicit bounds
+    const paramBounds = {
+      rows: { min: 20, max: 120 },
+      complexity: { min: 1, max: 10 },
+      maxDisp: { min: 0.1, max: 4.0 },
+      bowlExp: { min: 0.5, max: 4.0 },
+      smoothing: { min: 0.1, max: 0.95 },
+      freqRange: { min: 0.1, max: 1.0 },
+      morph: { min: 0, max: 2.0 },
+      modSub: { min: 0, max: 1.0 },
+      modKick: { min: 0, max: 1.0 },
+      modMid: { min: 0, max: 1.0 },
+      modHigh: { min: 0, max: 1.0 },
+      modRms: { min: 0, max: 1.0 },
+      modTrans: { min: 0, max: 1.0 },
+      sphereSize: { min: 0.5, max: 6.0 },
+      waveSpacing: { min: 0.1, max: 1.5 },
+      polarSpacing: { min: -5.0, max: 5.0 },
+      colorCycle: { min: 0, max: 1.0 }
+    };
+    
+    let needsRebuildHistory = false;
+    let needsRefreshBinMap = false;
+    
+    for (const [k, bounds] of Object.entries(paramBounds)) {
+      // Try to get bounds from HTML element first, fall back to explicit bounds
+      const id = 'p' + k.charAt(0).toUpperCase() + k.slice(1);
+      const el = document.getElementById(id);
+      const min = el ? (parseFloat(el.min) || bounds.min) : bounds.min;
+      const max = el ? (parseFloat(el.max) || bounds.max) : bounds.max;
+      
+      // Ensure min < max before randomizing
+      if (min >= max) continue;
+      
+      let value = min + Math.random() * (max - min);
+      
+      // Round integers
+      if (k === 'rows' || k === 'complexity') {
+        value = Math.round(value);
+      }
+      
+      P[k] = value;
+      
+      // Track if we need to rebuild history/binmap
+      if (k === 'rows') needsRebuildHistory = true;
+      if (k === 'complexity') needsRefreshBinMap = true;
+      
+      // Update DOM if element exists
+      if (el) {
+        el.value = P[k];
+        const lbl = document.getElementById('v' + k.charAt(0).toUpperCase() + k.slice(1));
+        if (lbl) lbl.textContent = (k === 'rows' || k === 'complexity') ? P[k] : P[k].toFixed(2);
+      }
+    }
+    
+    // Randomise palette (hex colors)
+    const randHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+    P.colorA = randHex();
+    P.colorB = randHex();
+    document.getElementById('pColorA').value = P.colorA;
+    document.getElementById('pColorB').value = P.colorB;
+    
+    // Critical: rebuild history and binmap before rebuilding geometry
+    if (needsRebuildHistory) {
+      console.log('[randomiser] Rebuilding history buffer for new row count:', P.rows);
+      rebuildHistory();
+    }
+    if (needsRefreshBinMap) {
+      console.log('[randomiser] Refreshing binmap for new complexity:', P.complexity);
+      refreshBinMap();
+    }
+    
+    // If either changed, need full rebuild
+    if (needsRebuildHistory || needsRefreshBinMap) {
+      console.log('[randomiser] Full geometry rebuild due to rows/complexity change');
+      buildVis(visMode);
+    } else {
+      console.log('[randomiser] Partial rebuild (geometry only)');
+      buildVis(visMode);
+    }
+    
+    saveParams();
+    setColors(P.colorA, P.colorB);
+    console.log('[randomiser] Complete. P:', {rows: P.rows, complexity: P.complexity, morph: P.morph});
+  };
+
+  document.getElementById('btnRandomAll').addEventListener('click', () => {
+    window.randomiseParams();
+    logStatus('Visual parameters randomised');
+  });
 
   // Camera selector grid logic
   const camSelBtns = document.querySelectorAll('.cam-sel-btn');
@@ -2362,7 +2449,7 @@
       b.classList.toggle('active', b.dataset.style === dirStyle.value);
     });
     btnCamLock.classList.toggle('btn-active-highlight', window.isUserInteractingWithCamera);
-    btnCamLock.textContent = window.isUserInteractingWithCamera ? 'unlock' : 'lock';
+    btnCamLock.textContent = window.isUserInteractingWithCamera ? 'locked' : 'unlocked';
   }
 
   camSelBtns.forEach(btn => {
@@ -2394,11 +2481,37 @@
     logStatus(`Camera: ${name}`, { open: false });
   }
 
-  // Preview cycle is removed in favor of direct selection, 
-  // but we'll keep a legacy stopCamPreview for interaction cleanup.
+  // Restore Camera Preview cycling
+  const CAM_STYLES_LIST = ['normal', 'distant', 'birds', 'worms', 'side', 'oblique'];
+  let camPreviewActive = false;
+  let camPreviewIdx = 0;
+  let camPreviewTimer = null;
+
   function stopCamPreview() {
-    // legacy - can be removed if certain no other part of code calls it
+    if (camPreviewTimer) clearInterval(camPreviewTimer);
+    camPreviewActive = false;
+    const btn = document.getElementById('btnCamPreview');
+    if (btn) btn.textContent = 'preview cameras';
   }
+
+  document.getElementById('btnCamPreview').addEventListener('click', () => {
+    if (camPreviewActive) { stopCamPreview(); return; }
+    camPreviewActive = true;
+    camPreviewIdx = 0;
+    document.getElementById('btnCamPreview').textContent = 'stop preview';
+    
+    const cycle = () => {
+      const styleName = CAM_STYLES_LIST[camPreviewIdx];
+      dirStyle.value = styleName;
+      loadDirSliders();
+      applyCamStyle(styleName);
+      updateCamSelUI();
+      camPreviewIdx = (camPreviewIdx + 1) % CAM_STYLES_LIST.length;
+    };
+    
+    cycle();
+    camPreviewTimer = setInterval(cycle, 2000);
+  });
 
   // Director mode — edit camera style positions
   const dirStyle = document.getElementById('pDirStyle');
@@ -2421,11 +2534,12 @@
 
   function saveDirSliders() {
     const cs = P.camStyles[dirStyle.value];
-    cs.x = parseFloat(dirX.value);     vDirX.textContent = dirX.value;
-    cs.y = parseFloat(dirY.value);     vDirY.textContent = dirY.value;
-    cs.z = parseFloat(dirZ.value);     vDirZ.textContent = dirZ.value;
-    cs.lookY = parseFloat(dirLookY.value); vDirLookY.textContent = dirLookY.value;
+    cs.x = Number(parseFloat(dirX.value).toFixed(2));     vDirX.textContent = dirX.value;
+    cs.y = Number(parseFloat(dirY.value).toFixed(2));     vDirY.textContent = dirY.value;
+    cs.z = Number(parseFloat(dirZ.value).toFixed(2));     vDirZ.textContent = dirZ.value;
+    cs.lookY = Number(parseFloat(dirLookY.value).toFixed(2)); vDirLookY.textContent = dirLookY.value;
     saveParams();
+    applyCamStyle(dirStyle.value); // Realtime update
   }
 
   dirStyle.addEventListener('change', () => {
@@ -2440,26 +2554,70 @@
   loadDirSliders();
   updateCamSelUI(); // Initialise UI state
 
+  // Setup OrbitControls event listeners after dirStyle is declared
+  controls.addEventListener('start', () => {
+    window.isUserInteractingWithCamera = true;
+    stopCamPreview();
+    updateCamSelUI();
+  });
+
+  controls.addEventListener('end', () => {
+    // Keep interaction flag true if we want manual control to persist, 
+    // or set to false if we want it to snap back. 
+    // User requested "override until settings are changed again", 
+    // so we keep it locked in 'manual' mode.
+  });
+  
+  controls.addEventListener('change', () => {
+    if (window.isUserInteractingWithCamera && !isExporting) {
+      const cs = P.camStyles[dirStyle.value];
+      cs.x = Number(camera.position.x.toFixed(2));
+      cs.y = Number(camera.position.y.toFixed(2));
+      cs.z = Number(camera.position.z.toFixed(2));
+      cs.lookY = Number(controls.target.y.toFixed(2));
+      
+      // Update sliders without triggering their 'input' listeners to avoid recursion
+      dirX.value = cs.x;      vDirX.textContent = cs.x;
+      dirY.value = cs.y;      vDirY.textContent = cs.y;
+      dirZ.value = cs.z;      vDirZ.textContent = cs.z;
+      dirLookY.value = cs.lookY; vDirLookY.textContent = cs.lookY;
+      
+      saveParams();
+    }
+  });
+
   document.getElementById('btnDirPreview').addEventListener('click', () => {
     stopCamPreview();
     applyCamStyle(dirStyle.value);
   });
 
-  const defaultCamStyles = {
-    normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
-    distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
-    birds:   { x: 0,    y: 15.0, z: 1.0,  lookY: 0 },
-    worms:   { x: 0,    y: 0.5,  z: 6.0,  lookY: 2.0 },
-    side:    { x: 12.0, y: 2.0,  z: 0,    lookY: 0 },
-    oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
-  };
   document.getElementById('btnDirReset').addEventListener('click', () => {
     const name = dirStyle.value;
+    const defaultCamStyles = {
+      normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
+      distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
+      birds:   { x: 0,    y: 15.0, z: 1.0,  lookY: 0 },
+      worms:   { x: 0,    y: 0.5,  z: 6.0,  lookY: 2.0 },
+      side:    { x: 12.0, y: 2.0,  z: 0,    lookY: 0 },
+      oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
+    };
     Object.assign(P.camStyles[name], defaultCamStyles[name]);
     loadDirSliders();
-    applyCamStyle(name); // Apply immediately to view the reset
+    applyCamStyle(name);
     saveParams();
     logStatus(`Camera '${name}' reset to default`, { open: false });
+  });
+
+  // Color randomiser specific to palette
+  document.getElementById('btnRandomColors').addEventListener('click', () => {
+    const randHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+    P.colorA = randHex();
+    P.colorB = randHex();
+    document.getElementById('pColorA').value = P.colorA;
+    document.getElementById('pColorB').value = P.colorB;
+    saveParams();
+    setColors(P.colorA, P.colorB);
+    logStatus('Palette randomised');
   });
 
   // Debug: Capture tests
@@ -2588,22 +2746,30 @@
 
   // Boot sequence
   const bootEl = document.getElementById('bootScreen');
+  const bootPrompt = document.getElementById('bootStartPrompt');
+  const bootTerm = document.getElementById('bootTerminal');
+
   if (bootEl) {
     import('./boot.js').then(({ BootScreen }) => {
-      const boot = new BootScreen(document.getElementById('bootTerminal'));
+      const boot = new BootScreen(bootTerm);
 
       document.addEventListener('keydown', function bootKey(e) {
-        if (e.code === 'Space' && bootEl.parentNode) {
+        if (e.code === 'KeyS' && bootEl.parentNode) {
           e.preventDefault();
           boot.skipped = true;
         }
       });
 
-      boot.run(bootEl).then(() => {
-        bootEl.classList.add('done');
-        setTimeout(() => bootEl.remove(), 500);
-        initApp();
-      });
+      bootPrompt.addEventListener('click', () => {
+        bootPrompt.style.display = 'none';
+        bootTerm.style.opacity = '1';
+        boot.run(bootEl).then(() => {
+          bootEl.classList.add('done');
+          setTimeout(() => bootEl.remove(), 500);
+          initApp();
+        });
+      }, { once: true });
+
     }).catch(() => {
       // If boot.js fails to load, just init the app
       bootEl.remove();

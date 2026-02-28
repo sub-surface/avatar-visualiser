@@ -94,9 +94,11 @@ function calcBowlPos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, bf, disp
   const m = isRight ? cols - 1 - c : c;
   const bin = binMap[Math.min(m, half - 1)];
   const fv = (isRight ? hrowR[bin] : hrowL[bin]);
-  out[0] = (c / (cols - 1) - 0.5) * GRID_W;
+  const safeCols = Math.max(2, cols);
+  const safeRows = Math.max(2, rows);
+  out[0] = (c / (safeCols - 1) - 0.5) * GRID_W;
   out[1] = -fv * bf * disp;
-  out[2] = (r / (rows - 1) - 0.5) * 10.0; // GRID_D
+  out[2] = (r / (safeRows - 1) - 0.5) * 10.0; // GRID_D
 }
 
 function calcPolarPos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, bf, disp, space) {
@@ -109,14 +111,17 @@ function calcPolarPos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, bf, dis
   const fv = isRight ? hrowR[bin] : hrowL[bin];
   const radius = 0.4 + (4.5 - 0.4) * bf * (1 + fv * disp * 0.18);
   out[0] = Math.cos(angle) * radius;
-  out[1] = (r / (rows - 1) - 0.5) * space;
+  const safeRows = Math.max(2, rows);
+  out[1] = (r / (safeRows - 1) - 0.5) * space;
   out[2] = Math.sin(angle) * radius;
 }
 
 function calcSpherePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp, sphereSize, rot) {
-  const phi = (r / (rows - 1)) * Math.PI;
+  const safeRows = Math.max(2, rows);
+  const safeCols = Math.max(2, cols);
+  const phi = (r / (safeRows - 1)) * Math.PI;
   const sinPhi = Math.sin(phi), cosPhi = Math.cos(phi);
-  const theta = (c / (cols - 1)) * Math.PI * 2;
+  const theta = (c / (safeCols - 1)) * Math.PI * 2;
   const isRight = c < half;
   const m = c < half ? c : cols - 1 - c;
   const bin = binMap[Math.min(m, half - 1)];
@@ -135,8 +140,10 @@ function calcWavePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp, sp
   const m = isRight ? cols - 1 - c : c;
   const bin = binMap[Math.min(m, half - 1)];
   const fv = (isRight ? hrowR[bin] : hrowL[bin]);
-  out[0] = (c / (cols - 1) - 0.5) * GRID_W;
-  out[1] = (r / (rows - 1) - 0.5) * -4.0; 
+  const safeCols = Math.max(2, cols);
+  const safeRows = Math.max(2, rows);
+  out[0] = (c / (safeCols - 1) - 0.5) * GRID_W;
+  out[1] = (r / (safeRows - 1) - 0.5) * -4.0; 
   out[2] = -fv * disp * 2.0;
 }
 
@@ -192,15 +199,34 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
   const camStyles = ['normal', 'distant', 'birds', 'worms', 'side', 'oblique'];
   let camStyleIdx = 0;
 
+  // Initialise morph state if we ARE cycling vis types
+  if (P.cycleMode === 'types' || P.cycleMode === 'random') {
+    morphAlpha = 1.0; // Start stable on current vis
+  }
+
   for (let f = 0; f < totalFrames; f++) {
     while (venc.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 0));
 
     const currentSample = f * samplesPerFrame;
     if (triggerFrames.includes(currentSample)) {
-      morphTargetIdx = (currentModeIdx + 1) % cycleList.length;
-      morphAlpha = 0.0;
-      camStyleIdx = (camStyleIdx + 1) % camStyles.length; // Cycle through styles
-      logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${camStyles[camStyleIdx]} view)`);
+      // Always cycle camera style
+      camStyleIdx = (camStyleIdx + 1) % camStyles.length;
+
+      if (P.cycleMode === 'types' || P.cycleMode === 'random') {
+        // Cycle vis mode morph
+        morphTargetIdx = (currentModeIdx + 1) % cycleList.length;
+        morphAlpha = 0.0;
+        logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${camStyles[camStyleIdx]} view)`);
+      } else {
+        // Normal: camera only, no vis morph
+        logStatus(`Peak hit! Camera cut to ${camStyles[camStyleIdx]} view`);
+      }
+
+      // NEW: Randomise visual parameters if in 'random' cycle mode
+      if (P.cycleMode === 'random' && typeof window.randomiseParams === 'function') {
+        window.randomiseParams(); 
+        logStatus('Parameters randomised for peak transition');
+      }
     }
 
     if (morphAlpha < 1.0) {

@@ -8,10 +8,11 @@ import { buildBinMap, buildAWeightGain } from '../dsp.js';
 
 /* ── DSP tables ────────────────────────────────────────────── */
 export const aWeightGain = buildAWeightGain(NUM_BINS, FFT_SIZE, 44100);
-export let   binMap      = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
+export let   binMap      = buildBinMap(P.freqScale, (P.complexity * 32) / 2, NUM_BINS, P.freqRange, 44100);
 
 export function refreshBinMap() {
-  binMap = buildBinMap(P.freqScale, P.cols / 2, NUM_BINS, P.freqRange, 44100);
+  const cols = P.complexity * 32;
+  binMap = buildBinMap(P.freqScale, cols / 2, NUM_BINS, P.freqRange, 44100);
 }
 
 /* ── History ring buffer ───────────────────────────────────── */
@@ -28,7 +29,21 @@ rebuildHistory();
 export function pushHistory(fd) {
   histHead = (histHead + P.rows - 1) % P.rows;
   const row = histBuf[histHead];
-  for (let k = 0; k < NUM_BINS; k++) row[k] = (fd[k] / 255) * aWeightGain[k];
+  
+  // Defensive: validate before storing
+  for (let k = 0; k < NUM_BINS; k++) {
+    const magnitude = fd[k] / 255;
+    const gain = aWeightGain[k];
+    let value = magnitude * gain;
+    
+    // Clamp to valid range to prevent NaN propagation
+    if (!isFinite(value)) {
+      console.warn('[shared.pushHistory] Non-finite value prevented at bin', k, 'magnitude:', magnitude, 'gain:', gain);
+      value = 0;
+    }
+    value = Math.max(0, Math.min(1, value)); // Clamp 0..1
+    row[k] = value;
+  }
 }
 
 /** Set histHead (used by export to manage its own history) */

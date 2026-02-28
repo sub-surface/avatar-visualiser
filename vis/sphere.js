@@ -12,11 +12,11 @@ export const sphereBase  = []; // static unit-sphere points
 let sphereRotation = 0;
 
 export function rebuildSphere() {
+  const cols = P.complexity * 32;
   sphereLines.forEach(l => scene.remove(l));
   sphereLines.length = sphereBufs.length = sphereCols.length = sphereBase.length = 0;
 
-  const rows = P.rows;
-  const cols = P.cols;
+  const rows = Math.max(2, P.rows);
 
   for (let r = 0; r < rows; r++) {
     const phi = (r / (rows - 1)) * Math.PI; // 0 to PI (top to bottom)
@@ -60,12 +60,14 @@ export function applySphere(fdL, fdR, dispScale) {
   pushHistory(fdAvg);
 
   const disp = dispScale !== undefined ? dispScale : modDisp() * 0.5;
-  const half = P.cols / 2;
+  const cols = Math.max(2, P.complexity * 32);
+  const rows = Math.max(2, P.rows);
+  const half = cols / 2;
 
   // Ambient spin
   sphereRotation += 0.005;
 
-  for (let r = 0; r < P.rows; r++) {
+  for (let r = 0; r < rows; r++) {
     const pos  = sphereBufs[r];
     const col  = sphereCols[r];
     const base = sphereBase[r];
@@ -75,14 +77,15 @@ export function applySphere(fdL, fdR, dispScale) {
     const distFromMid = Math.abs(r - midIdx);
     const hrow = histBuf[(histHead + distFromMid) % P.rows];
 
-    for (let c = 0; c < P.cols; c++) {
+    for (let c = 0; c < cols; c++) {
       const isRight = c < half; 
-      const m  = c < half ? c : P.cols - 1 - c;
+      const m  = c < half ? c : cols - 1 - c;
       const bin = binMap[Math.min(m, half - 1)];
       
       const fv = (r === midIdx) ? ((isRight ? fdR[bin] : fdL[bin]) / 255) : hrow[bin];
       
-      const push = 1 + fv * disp;
+      const noise = 1 + Math.sin(r * 0.2 + c * 0.2 + sphereRotation * 2) * P.morph * 0.3;
+      const push = (1 + fv * disp) * noise;
       pos[c * 3]     = base[c * 3]     * push;
       pos[c * 3 + 1] = base[c * 3 + 1] * push;
       pos[c * 3 + 2] = base[c * 3 + 2] * push;

@@ -12,13 +12,20 @@ const ROOT = __dirname;
 const MAX_ROWS = 14;   // request log rows
 
 const MIME = {
-  '.html': 'text/html',
-  '.js':   'application/javascript',
-  '.css':  'text/css',
-  '.wav':  'audio/wav',
-  '.mp4':  'video/mp4',
-  '.png':  'image/png',
-  '.ico':  'image/x-icon',
+  '.html':  'text/html',
+  '.js':    'application/javascript',
+  '.css':   'text/css',
+  '.json':  'application/json',
+  '.wav':   'audio/wav',
+  '.mp3':   'audio/mpeg',
+  '.mp4':   'video/mp4',
+  '.png':   'image/png',
+  '.svg':   'image/svg+xml',
+  '.ico':   'image/x-icon',
+  '.woff':  'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf':   'font/ttf',
+  '.otf':   'font/otf',
 };
 
 /* ── ANSI ──────────────────────────────────────────────────── */
@@ -126,14 +133,31 @@ const server = http.createServer((req, res) => {
   }
 
   fs.readFile(filePath, (err, data) => {
-    const status = err ? 404 : 200;
-    const bytes  = data ? data.length : 0;
+    let status = 200;
+    let bytes  = 0;
 
     if (err) {
-      res.writeHead(404); res.end('Not found');
+      // Log specific error types
+      if (err.code === 'NOENT') {
+        status = 404;
+        res.writeHead(404); res.end('Not found');
+      } else if (err.code === 'EACCES') {
+        status = 403;
+        res.writeHead(403); res.end('Forbidden');
+      } else if (err.code === 'EISDIR') {
+        status = 400;
+        res.writeHead(400); res.end('Bad request');
+      } else {
+        status = 500;
+        res.writeHead(500); res.end('Server error');
+      }
       errorCount++;
     } else {
-      res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+      bytes = data.length;
+      res.writeHead(200, { 
+        'Content-Type': MIME[ext] || 'application/octet-stream',
+        'Cache-Control': 'no-cache' // Prevent stale assets during dev
+      });
       res.end(data);
       totalBytes += bytes;
     }
@@ -148,13 +172,23 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  exec(`start http://localhost:${PORT}`);
+  // Try to open browser automatically (gracefully handle failure)
+  const cmd = process.platform === 'win32' ? `start http://localhost:${PORT}` :
+             process.platform === 'darwin' ? `open http://localhost:${PORT}` :
+             `xdg-open http://localhost:${PORT}`;
+  exec(cmd, (err) => {
+    if (err) {
+      // Silently fail - user can open browser manually
+    }
+  });
+  
   // Refresh uptime every second
   setInterval(render, 1000);
   render();
 });
 
 process.on('SIGINT', () => {
+  console.log('\n' + A.dim + '  Shutting down gracefully…' + A.reset);
   process.stdout.write('\x1b[2J\x1b[H');
   process.exit(0);
 });

@@ -125,13 +125,41 @@ export function applyModulation() {
 }
 
 export function modDisp() { 
-  return P.maxDisp * (1 + env.sub * P.modSub + getLfoVal() * P.lfoToDisp); 
+  const result = P.maxDisp * (1 + env.sub * P.modSub + getLfoVal() * P.lfoToDisp);
+  // Ensure result is always finite
+  if (!isFinite(result)) {
+    console.error('[envelopes.modDisp] ERROR: non-finite result', result, {maxDisp: P.maxDisp, env_sub: env.sub, modSub: P.modSub});
+    return P.maxDisp || 2.2; // Fallback to default
+  }
+  return result;
 }
 
-export function modBowlExp() { return P.bowlExp - env.high * P.modHigh + getLfoVal() * P.lfoToBowl; }
+export function modBowlExp() { 
+  const result = P.bowlExp - env.high * P.modHigh + getLfoVal() * P.lfoToBowl;
+  if (!isFinite(result)) {
+    console.error('[envelopes.modBowlExp] ERROR: non-finite result', result);
+    return P.bowlExp || 2.0;
+  }
+  return result;
+}
 
-export function modPolarSpacing() { return P.polarSpacing + getLfoVal() * P.lfoToPolar; }
-export function modWaveSpacing() { return P.waveSpacing + getLfoVal() * P.lfoToWave; }
+export function modPolarSpacing() { 
+  const result = P.polarSpacing + getLfoVal() * P.lfoToPolar;
+  if (!isFinite(result)) {
+    console.error('[envelopes.modPolarSpacing] ERROR: non-finite result', result);
+    return P.polarSpacing || -3.0;
+  }
+  return result;
+}
+
+export function modWaveSpacing() { 
+  const result = P.waveSpacing + getLfoVal() * P.lfoToWave;
+  if (!isFinite(result)) {
+    console.error('[envelopes.modWaveSpacing] ERROR: non-finite result', result);
+    return P.waveSpacing || 0.4;
+  }
+  return result;
+}
 
 /* ── BPM auto-detection ───────────────────────────────────── */
 const BPM_ONSET_THRESH = 0.35;
@@ -152,6 +180,14 @@ pBpmEl.addEventListener('focus', () => { _bpmUserEdited = true; });
 pBpmEl.addEventListener('input', () => {
   if (!pBpmEl.value.trim()) { _bpmUserEdited = false; _bpmSmoothed = 0; _bpmIntervals = []; }
 });
+
+export function resetBpmAuto() {
+  _bpmUserEdited = false;
+  _bpmSmoothed = 0;
+  _bpmIntervals = [];
+  _bpmLastOnset = 0;
+  logStatus('BPM Auto-detect resynced');
+}
 
 export function bpmTick(dt) {
   _bpmClockSec += dt;

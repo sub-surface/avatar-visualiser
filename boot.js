@@ -28,34 +28,64 @@ function accentRgb() {
 
 // ── BIOS POST content ───────────────────────────────────────────────────────
 const BIOS_LINES = [
-  { text: '┌──────────────────────────────────────────────────────────┐', delay: 2 },
-  { text: '│  SUB-SURFACE DSP-CORE BIOS  v1.0.0  (C) 2024  sub-surface│', delay: 2 },
-  { text: '│  WaveCore FFT Engine · WebGL Terrain Renderer · WebCodecs│', delay: 2 },
-  { text: '└──────────────────────────────────────────────────────────┘', delay: 2 },
+  { text: '┌──────────────────────────────────────────────────────────┐', delay: 2, cls: 'boot-tertiary' },
+  { text: '│  SUB-SURFACE DSP-CORE BIOS  v1.0.0  (C) 2024  sub-surface│', delay: 2, cls: 'boot-tertiary' },
+  { text: '│  WaveCore FFT Engine · WebGL Terrain Renderer · WebCodecs│', delay: 2, cls: 'boot-tertiary' },
+  { text: '└──────────────────────────────────────────────────────────┘', delay: 2, cls: 'boot-tertiary' },
   { text: '', delay: 60 },
-  { text: 'Main Processor  : WaveCore DSP-X  @ 44.1kHz / 48kHz', delay: 8 },
-  { text: 'Co-Processor    : FFT Radix-2  (1024-bin stereo pair)', delay: 8 },
-  { text: 'Geometry Engine : Three.js r169  (LineBasicMaterial)', delay: 8 },
-  { text: 'Codec Unit      : WebCodecs  AVC1 / AAC  (30fps, 25Mbps)', delay: 8 },
+  { text: '<span class="boot-secondary">Main Processor</span>  : <span class="boot-accent">WaveCore DSP-X</span>  @ 44.1kHz / 48kHz', delay: 8 },
+  { text: '<span class="boot-secondary">Co-Processor</span>    : <span class="boot-accent">FFT Radix-2</span>  (1024-bin stereo pair)', delay: 8 },
+  { text: '<span class="boot-secondary">Geometry Engine</span> : <span class="boot-accent">Three.js r169</span>  (LineBasicMaterial)', delay: 8 },
+  { text: '<span class="boot-secondary">Codec Unit</span>      : <span class="boot-accent">WebCodecs</span>  AVC1 / AAC  (30fps, 25Mbps)', delay: 8 },
   { text: '', delay: 60 },
   { text: 'Memory Test: ', delay: 5, action: null },
   { text: null, action: 'memtest' },
   { text: '', delay: 50 },
-  { text: 'Detecting WebGL ........... 2.0 (antialias, preserveBuffer)', delay: 8 },
-  { text: 'Detecting Web Audio API ... AnalyserNode  stereo pair', delay: 8 },
-  { text: 'Detecting WebCodecs ....... VideoEncoder + AudioEncoder  OK', delay: 8 },
+  { text: 'Detecting WebGL ........... 2.0 (antialias, preserveBuffer)', delay: 8, cls: 'boot-secondary' },
+  { text: 'Detecting Web Audio API ... AnalyserNode  stereo pair', delay: 8, cls: 'boot-secondary' },
+  { text: 'Detecting WebCodecs ....... VideoEncoder + AudioEncoder  OK', delay: 8, cls: 'boot-secondary' },
   { text: '', delay: 40 },
-  { text: 'Terrain geometry  60 rows × 128 cols  (7,680 vertices) .... OK', delay: 8 },
-  { text: 'A-weighting curve  IEC 61672  peak @ 3.5 kHz ............. OK', delay: 8 },
-  { text: 'BPM auto-detect   onset threshold 0.35  window 24 beats .. OK', delay: 8 },
-  { text: 'Envelope slew     ATK 0.05  REL sub:0.82  kick:0.70 ...... OK', delay: 8 },
+  { text: '<span class="boot-accent">System Topology:</span>', delay: 5 },
+  { text: '  [CPU]  WaveCore v3.2 (8 cores, 44.1kHz) ..... <span class="boot-ok">OK</span>', delay: 4, cls: 'boot-dim' },
+  { text: '  [GPU]  RasterPipe-128 (WebGL 2.0) ........... <span class="boot-ok">OK</span>', delay: 4, cls: 'boot-dim' },
+  { text: '  [MEM]  Radix-2 FFT Buffers (1024 bin) ....... <span class="boot-ok">OK</span>', delay: 4, cls: 'boot-dim' },
+  { text: '  [ENV]  Slew Control v0.9 (ATK 0.05) ......... <span class="boot-ok">OK</span>', delay: 4, cls: 'boot-dim' },
   { text: '', delay: 40 },
-  { text: 'Microphone ....... Permission pending', delay: 8 },
-  { text: 'Subwoofer ........ Strongly recommended', delay: 8 },
-  { text: 'Mouse ............ Not found  (hover is enough)', delay: 8 },
-  { text: 'Soul ............. Waveform detected  ∿∿∿∿∿∿∿∿∿∿', delay: 8 },
+  { text: 'Memory Map:', delay: 5, cls: 'boot-secondary' },
+  { text: '  0x0000  <span class="boot-tertiary">████████████████</span>  [KERNEL]', delay: 2 },
+  { text: '  0x4000  <span class="boot-tertiary">▓▓▓▓▓▓▓▓░░░░░░░░</span>  [AUDIO_BUF]', delay: 2 },
+  { text: '  0x8000  <span class="boot-tertiary">▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒</span>  [FFT_WIN]', delay: 2 },
+  { text: '  0xC000  <span class="boot-tertiary">░░░░░░░░░░░░░░░░</span>  [FREE]', delay: 2 },
+  { text: '', delay: 40 },
+  { text: 'Network Handshake:', delay: 5, cls: 'boot-secondary' },
+  { text: '  <span class="boot-dim">TX</span>  >>> SYN [0x1A] ... <span class="boot-ok">ACK</span>', delay: 10 },
+  { text: '  <span class="boot-dim">RX</span>  <<< SYN/ACK [0x4F] ... <span class="boot-ok">ESTABLISHED</span>', delay: 10 },
+  { text: '', delay: 40 },
+  { text: 'DSP Calibration:', delay: 5, cls: 'boot-secondary' },
+  { text: '  <span class="boot-dim">Noise Floor</span> : -96.0 dB', delay: 5 },
+  { text: '  <span class="boot-dim">DC Offset</span>   : 0.0003 V', delay: 5 },
+  { text: '  <span class="boot-dim">Jitter</span>      : 0.012 ms', delay: 5 },
+  { text: '  [<span class="boot-accent">||||||||||||||||||||||||</span>] 100%', delay: 15 },
+  { text: '', delay: 40 },
+  { text: 'Terrain geometry  60 rows × 128 cols  (7,680 vertices) .... <span class="boot-ok">OK</span>', delay: 8 },
+  { text: 'A-weighting curve  IEC 61672  peak @ 3.5 kHz ............. <span class="boot-ok">OK</span>', delay: 8 },
+  { text: 'BPM auto-detect   onset threshold 0.35  window 24 beats .. <span class="boot-ok">OK</span>', delay: 8 },
+  { text: 'Envelope slew     ATK 0.05  REL sub:0.82  kick:0.70 ...... <span class="boot-ok">OK</span>', delay: 8 },
+  { text: '', delay: 40 },
+  { text: 'Spectral Analysis:', delay: 5, cls: 'boot-secondary' },
+  { text: '  LOW  <span class="boot-tertiary">▇▇▇▇▆▆▅▄▃  </span> -12dB', delay: 3 },
+  { text: '  MID  <span class="boot-tertiary">▇▇▆▅▄▃▂    </span> -24dB', delay: 3 },
+  { text: '  HI   <span class="boot-tertiary">▇▆▅▄▂      </span> -36dB', delay: 3 },
+  { text: '', delay: 40 },
+  { text: '<span class="boot-dim">0000: 4C 4F 41 44 49 4E 47 2E 2E 2E 00 00 00 00 00 00</span>', delay: 2 },
+  { text: '<span class="boot-dim">0010: 53 59 53 54 45 4D 5F 49 4E 49 54 5F 4F 4B 00 00</span>', delay: 2 },
+  { text: '', delay: 40 },
+  { text: 'Microphone ....... Permission pending', delay: 8, cls: 'boot-secondary' },
+  { text: 'Subwoofer ........ Strongly recommended', delay: 8, cls: 'boot-secondary' },
+  { text: 'Mouse ............ Not found  (hover is enough)', delay: 8, cls: 'boot-secondary' },
+  { text: 'Soul ............. <span class="boot-accent">Waveform detected</span>  ∿∿∿∿∿∿∿∿∿∿', delay: 8 },
   { text: '', delay: 50 },
-  { text: 'Loading AVATAR OS ...', delay: 5 },
+  { text: 'Loading <span class="boot-accent">AVATAR OS</span> ...', delay: 5 },
   { text: null, action: 'dots' },
   { text: '', delay: 80 },
 ];
@@ -131,214 +161,70 @@ function makeCanvas(container) {
   return c;
 }
 
-// ── Animation 1: Terrain Materialise ────────────────────────────────────────
-// Joy Division-style terrain rows build from silence to full amplitude.
-// Uses procedural noise seeded differently each run.
-async function animTerrain(container, skipped) {
+// ── Animation 1: Vector Converge ──────────────────────────────────────────
+// Geometric lines fly in from the corners to form a central "Diamond" logo.
+async function animVector(container, skipped) {
   const c = makeCanvas(container);
   const ctx = c.getContext('2d');
   const W = c.width, H = c.height;
   const [r, g, b] = accentRgb();
+  const cx = W / 2, cy = H / 2;
 
-  // Random seed for procedural variation
-  const seed = Math.random() * 1000;
-  const numRows = 24 + Math.floor(Math.random() * 16); // 24–40 rows
-  const rowH = H / (numRows + 2);
-  const rowDur = 40 + Math.random() * 30; // ms per row materialise
-
-  // Noise function (deterministic per seed)
-  function noise(x, row) {
-    const s = seed + row * 137.508;
-    return Math.sin(x * 0.08 + s) * 0.5
-         + Math.sin(x * 0.03 + s * 2.1) * 0.3
-         + Math.sin(x * 0.15 + s * 0.7) * 0.2
-         + Math.sin(x * 0.25 + s * 3.3) * 0.1
-         + (Math.sin(x * 0.01 + s) > 0.5 ? Math.sin(x * 0.4 + s) * 0.15 : 0);
-  }
-
-  // Precompute all rows
-  const rows = [];
-  for (let row = 0; row < numRows; row++) {
-    const pts = [];
-    const baseY = H - rowH * (row + 1);
-    const amp   = rowH * 0.4 * (row / numRows); // grows toward center
-    for (let x = 0; x < W; x += 3) {
-      pts.push({ x, y: baseY - noise(x, row) * amp });
-    }
-    rows.push(pts);
-  }
-
-  let drawn = 0;
-  const total = numRows;
-  const dur = rowDur * total;
+  const dur = 2000;
   const start = performance.now();
 
   return new Promise(resolve => {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-
     function frame() {
       if (skipped()) { c.remove(); resolve(); return; }
       const t = (performance.now() - start) / dur;
-      const targetRow = Math.floor(t * total);
+      const ease = 1 - Math.pow(1 - t, 4); // Strong outward ease
 
-      // Draw new rows since last frame
-      while (drawn <= targetRow && drawn < total) {
-        const row = drawn;
-        const pts = rows[row];
-        const alpha = 0.6 + 0.4 * (row / total);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      
+      ctx.globalCompositeOperation = 'lighter';
+      const alpha = t < 0.8 ? 1 : 1 - (t - 0.8) / 0.2;
+      
+      // Draw converging vectors
+      const size = Math.min(W, H) * 0.2;
+      const off = (1 - ease) * 1000;
 
-        // Erase area below this row line (black fill = terrain "foreground")
-        ctx.fillStyle = '#000';
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        const px = cx + Math.cos(angle) * (size + off);
+        const py = cy + Math.sin(angle) * (size + off);
+        
+        ctx.strokeStyle = `rgba(${r},${g},${b},${alpha * 0.8})`;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(0, H);
-        pts.forEach(p => ctx.lineTo(p.x, p.y));
-        ctx.lineTo(W, H);
+        ctx.moveTo(px, py);
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+
+        // Crosshairs
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px - 20, py); ctx.lineTo(px + 20, py);
+        ctx.moveTo(px, py - 20); ctx.lineTo(px, py + 20);
+        ctx.stroke();
+      }
+
+      // Central Diamond forming
+      if (t > 0.5) {
+        const dAlpha = (t - 0.5) * 2;
+        ctx.strokeStyle = `rgba(${r},${g},${b},${dAlpha * alpha})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - size);
+        ctx.lineTo(cx + size, cy);
+        ctx.lineTo(cx, cy + size);
+        ctx.lineTo(cx - size, cy);
         ctx.closePath();
-        ctx.fill();
-
-        // Draw the terrain line
-        ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
-        ctx.lineWidth = 1.2;
-        ctx.shadowColor = `rgba(${r},${g},${b},0.4)`;
-        ctx.shadowBlur = 4;
-        ctx.beginPath();
-        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
         ctx.stroke();
-        drawn++;
-      }
-
-      if (t < 1) requestAnimationFrame(frame);
-      else { setTimeout(() => { c.remove(); resolve(); }, 400); }
-    }
-    requestAnimationFrame(frame);
-  });
-}
-
-// ── Animation 2: Waveform Reveal ─────────────────────────────────────────────
-// A flat horizon line that erupts into a complex stereo waveform,
-// then fades revealing the terminal beneath.
-async function animWaveform(container, skipped) {
-  const c = makeCanvas(container);
-  const ctx = c.getContext('2d');
-  const W = c.width, H = c.height;
-  const [r, g, b] = accentRgb();
-  const cy = H / 2;
-
-  const seed = Math.random() * 1000;
-  const dur = 2200;
-  const start = performance.now();
-
-  // Build a complex waveform from multiple harmonics (unique each run)
-  const harmonics = Array.from({ length: 6 + Math.floor(Math.random() * 6) }, (_, i) => ({
-    freq: 0.005 + Math.random() * 0.04,
-    amp:  0.5 + Math.random() * 0.5,
-    phase: Math.random() * Math.PI * 2,
-  }));
-
-  function waveY(x, t) {
-    return harmonics.reduce((sum, h) => sum + Math.sin(x * h.freq + h.phase + t * 2) * h.amp, 0);
-  }
-
-  return new Promise(resolve => {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-
-    function frame() {
-      if (skipped()) { c.remove(); resolve(); return; }
-      const t = (performance.now() - start) / dur;
-      const ease = t < 0.5 ? t * 2 : 1 - (t - 0.5) * 2; // rise and fall
-
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(0, 0, W, H);
-
-      const amp = ease * (H * 0.18);
-
-      // Draw 3 layered waveforms (stereo separation feel)
-      for (let layer = 2; layer >= 0; layer--) {
-        const alpha = (0.3 + layer * 0.25) * ease;
-        const offset = (layer - 1) * 12;
-        ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
-        ctx.lineWidth = layer === 2 ? 1.5 : 0.8;
-        ctx.shadowColor = `rgba(${r},${g},${b},${alpha * 0.6})`;
-        ctx.shadowBlur = layer === 2 ? 8 : 0;
-        ctx.beginPath();
-        for (let x = 0; x < W; x += 2) {
-          const y = cy + offset + waveY(x, t * 4) * amp;
-          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-
-      // Horizontal centre rule fades in
-      ctx.strokeStyle = `rgba(${r},${g},${b},${ease * 0.2})`;
-      ctx.lineWidth = 0.5;
-      ctx.shadowBlur = 0;
-      ctx.beginPath();
-      ctx.moveTo(0, cy); ctx.lineTo(W, cy);
-      ctx.stroke();
-
-      if (t < 1) requestAnimationFrame(frame);
-      else { setTimeout(() => { c.remove(); resolve(); }, 200); }
-    }
-    requestAnimationFrame(frame);
-  });
-}
-
-// ── Animation 3: Grid Pulse ───────────────────────────────────────────────────
-// The invisible 60×128 vertex grid of the visualiser pulses to life
-// as points appear and connect from centre outward, then fade.
-async function animGrid(container, skipped) {
-  const c = makeCanvas(container);
-  const ctx = c.getContext('2d');
-  const W = c.width, H = c.height;
-  const [r, g, b] = accentRgb();
-
-  const ROWS = 32 + Math.floor(Math.random() * 16);
-  const COLS = 64 + Math.floor(Math.random() * 32);
-  const cellW = W / COLS, cellH = H / ROWS;
-  const dur = 2400;
-  const start = performance.now();
-
-  // Each point has a random activation time based on distance from centre
-  const cx = COLS / 2, cy = ROWS / 2;
-  const maxDist = Math.sqrt(cx * cx + cy * cy);
-  const pts = [];
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      const dx = col - cx, dy = row - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
-      const jitter = Math.random() * 0.15;
-      pts.push({ row, col, t: dist * 0.7 + jitter });
-    }
-  }
-
-  return new Promise(resolve => {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-
-    function frame() {
-      if (skipped()) { c.remove(); resolve(); return; }
-      const t = Math.min((performance.now() - start) / dur, 1);
-
-      ctx.fillStyle = 'rgba(0,0,0,0.08)';
-      ctx.fillRect(0, 0, W, H);
-
-      for (const p of pts) {
-        if (p.t > t) continue;
-        const age = (t - p.t) / 0.3;
-        const alpha = age < 1 ? age : Math.max(0, 1 - (age - 1) * 0.5);
-        if (alpha <= 0) continue;
-
-        const px = (p.col + 0.5) * cellW;
-        const py = (p.row + 0.5) * cellH;
-
-        ctx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.7})`;
-        ctx.shadowColor = `rgba(${r},${g},${b},${alpha * 0.5})`;
-        ctx.shadowBlur = 4;
-        ctx.beginPath();
-        ctx.arc(px, py, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+        
+        // Inner detail
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx - size/2, cy - size/2, size, size);
       }
 
       if (t < 1) requestAnimationFrame(frame);
@@ -348,53 +234,166 @@ async function animGrid(container, skipped) {
   });
 }
 
-// ── Animation 4: Frequency Spectrum Bars ─────────────────────────────────────
-// Fake FFT bars (procedurally animated) that build up, hold, then collapse,
-// evoking the visualiser's own spectrum analyser aesthetic.
-async function animSpectrum(container, skipped) {
+// ── Animation 2: Raster Scan ─────────────────────────────────────────────
+// Amiga-style horizontal stripes that build a geometric silhouette.
+async function animRaster(container, skipped) {
+  const c = makeCanvas(container);
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const [r, g, b] = accentRgb();
+  const [tr, tg, tb] = [209, 194, 217]; // Tertiary lavender
+
+  const dur = 2200;
+  const start = performance.now();
+
+  return new Promise(resolve => {
+    function frame() {
+      if (skipped()) { c.remove(); resolve(); return; }
+      const t = (performance.now() - start) / dur;
+      
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      const numBars = 12;
+      const barH = H / numBars;
+
+      for (let i = 0; i < numBars; i++) {
+        const speed = 1 + i * 0.2;
+        const xOff = Math.sin(t * 5 + i) * 100 * (1 - t);
+        const alpha = Math.sin(t * Math.PI) * 0.6;
+        
+        // Horizontal scan bars
+        ctx.fillStyle = i % 2 === 0 ? `rgba(${r},${g},${b},${alpha})` : `rgba(${tr},${tg},${tb},${alpha})`;
+        ctx.fillRect(0, i * barH, W, 2);
+
+        // Blocks that fly across
+        const bx = ((t * speed * W) % (W * 2)) - W/2 + xOff;
+        ctx.fillRect(bx, i * barH - 10, 40, 20);
+      }
+
+      // Central "Logo" Frame appearing
+      ctx.strokeStyle = `rgba(${r},${g},${b},${t})`;
+      ctx.lineWidth = 40 * (1 - t);
+      ctx.strokeRect(W/4, H/4, W/2, H/2);
+
+      if (t < 1) requestAnimationFrame(frame);
+      else { setTimeout(() => { c.remove(); resolve(); }, 200); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// ── Animation 3: Geometry Boot ──────────────────────────────────────────
+// 3D Wireframe cubes initializing in a grid, mimicking early geometry engines.
+async function animGeometry(container, skipped) {
   const c = makeCanvas(container);
   const ctx = c.getContext('2d');
   const W = c.width, H = c.height;
   const [r, g, b] = accentRgb();
 
-  const NUM_BARS = 80 + Math.floor(Math.random() * 40);
-  const seed = Math.random() * 1000;
-  const dur = 2600;
+  const dur = 2400;
   const start = performance.now();
 
-  // Each bar has an independent sine oscillator
-  const bars = Array.from({ length: NUM_BARS }, (_, i) => ({
-    freq:  0.8 + Math.random() * 3,
-    phase: (i / NUM_BARS) * Math.PI * 2 + seed,
-    peak:  0.3 + Math.pow(Math.random(), 1.5) * 0.7,
-  }));
-
-  const barW = W / NUM_BARS;
+  function project(x, y, z, t) {
+    const rot = t * Math.PI;
+    const x1 = x * Math.cos(rot) - z * Math.sin(rot);
+    const z1 = x * Math.sin(rot) + z * Math.cos(rot);
+    const scale = 400 / (400 + z1);
+    return { x: W/2 + x1 * scale, y: H/2 + y * scale };
+  }
 
   return new Promise(resolve => {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-
     function frame() {
       if (skipped()) { c.remove(); resolve(); return; }
       const t = (performance.now() - start) / dur;
-      // Envelope: rise (0-0.3), hold (0.3-0.7), fall (0.7-1.0)
-      const env = t < 0.3 ? t / 0.3 : t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+      const alpha = Math.sin(t * Math.PI);
+
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      
+      ctx.strokeStyle = `rgba(${r},${g},${b},${alpha * 0.7})`;
+      ctx.lineWidth = 1.5;
+
+      const size = 100;
+      const pts = [
+        [-1,-1,-1], [1,-1,-1], [1,1,-1], [-1,1,-1],
+        [-1,-1,1],  [1,-1,1],  [1,1,1],  [-1,1,1]
+      ];
+      const lines = [
+        [0,1],[1,2],[2,3],[3,0], [4,5],[5,6],[6,7],[7,4], [0,4],[1,5],[2,6],[3,7]
+      ];
+
+      lines.forEach(([a, b]) => {
+        const p1 = project(pts[a][0]*size, pts[a][1]*size, pts[a][2]*size, t);
+        const p2 = project(pts[b][0]*size, pts[b][1]*size, pts[b][2]*size, t);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      });
+
+      // Binary status code rain in background
+      ctx.font = '10px monospace';
+      ctx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.2})`;
+      for (let i = 0; i < 20; i++) {
+        ctx.fillText(Math.random() > 0.5 ? '1' : '0', (i/20)*W, (t*H + i*20)%H);
+      }
+
+      if (t < 1) requestAnimationFrame(frame);
+      else { setTimeout(() => { c.remove(); resolve(); }, 300); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// ── Animation 4: Signal Sync ─────────────────────────────────────────────
+// A circular scope sync animation that "locks" onto the visualiser signature.
+async function animSignal(container, skipped) {
+  const c = makeCanvas(container);
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const [r, g, b] = accentRgb();
+  const cx = W / 2, cy = H / 2;
+
+  const dur = 2600;
+  const start = performance.now();
+
+  return new Promise(resolve => {
+    function frame() {
+      if (skipped()) { c.remove(); resolve(); return; }
+      const t = (performance.now() - start) / dur;
+      const ease = Math.sin(t * Math.PI);
 
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      for (let i = 0; i < NUM_BARS; i++) {
-        const bar = bars[i];
-        const raw = (Math.sin(t * bar.freq * Math.PI * 2 + bar.phase) + 1) / 2;
-        const h = raw * bar.peak * env * H * 0.7;
-        const x = i * barW;
-        const alpha = 0.4 + env * 0.5;
+      // Radar rings
+      ctx.strokeStyle = `rgba(${r},${g},${b},${ease * 0.4})`;
+      for (let i = 1; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, i * 100 * t, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
-        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-        ctx.shadowColor = `rgba(${r},${g},${b},0.3)`;
-        ctx.shadowBlur = 3;
-        ctx.fillRect(x + 1, H - h, barW - 2, h);
+      // Sine wave circle
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(${r},${g},${b},${ease})`;
+      ctx.lineWidth = 2;
+      for (let a = 0; a <= 100; a++) {
+        const angle = (a / 100) * Math.PI * 2;
+        const rad = 150 + Math.sin(angle * 8 + t * 20) * 20 * ease;
+        const px = cx + Math.cos(angle) * rad;
+        const py = cy + Math.sin(angle) * rad;
+        if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+
+      // "Locking" text
+      if (t > 0.7) {
+        ctx.fillStyle = `rgba(${r},${g},${b},${(t-0.7)*3})`;
+        ctx.font = '12px Courier';
+        ctx.fillText('SIGNAL_LOCKED', cx + 170, cy);
+        ctx.fillRect(cx - 200, cy, 400 * (t), 1);
       }
 
       if (t < 1) requestAnimationFrame(frame);
@@ -404,7 +403,55 @@ async function animSpectrum(container, skipped) {
   });
 }
 
-const INTRO_ANIMS = [animTerrain, animWaveform, animGrid, animSpectrum];
+const INTRO_ANIMS = [animVector, animRaster, animGeometry, animSignal];
+
+// ── Retro PC Audio ───────────────────────────────────────────────────────────
+class BootAudio {
+  constructor() {
+    this.ctx = null;
+    this.lpf = null;
+  }
+
+  init() {
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.lpf = this.ctx.createBiquadFilter();
+    this.lpf.type = 'lowpass';
+    this.lpf.frequency.value = 1200; // Muffled 90s chassis sound
+    this.lpf.connect(this.ctx.destination);
+  }
+
+  beep(freq = 880, dur = 0.1, type = 'sine') {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.05, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    osc.connect(g);
+    g.connect(this.lpf);
+    osc.start();
+    osc.stop(this.ctx.currentTime + dur);
+  }
+
+  // Subtle HDD "chug" noise
+  chug() {
+    if (!this.ctx) return;
+    const bufSize = this.ctx.sampleRate * 0.05;
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.02, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+    src.connect(g);
+    g.connect(this.lpf);
+    src.start();
+  }
+}
 
 // ── Boot Screen Class ─────────────────────────────────────────────────────────
 
@@ -412,14 +459,16 @@ export class BootScreen {
   constructor(terminalEl) {
     this.el = terminalEl;
     this.skipped = false;
+    this.audio = new BootAudio();
   }
 
   _sk() { return this.skipped; }
 
   _line(text, cls = '') {
+    if (!this.skipped) this.audio.chug(); // Subtle sound on line write
     const d = document.createElement('div');
     d.className = 'boot-line' + (cls ? ' ' + cls : '');
-    d.textContent = text;
+    d.innerHTML = text;
     this.el.appendChild(d);
     this.el.scrollTop = this.el.scrollHeight;
     return d;
@@ -429,13 +478,18 @@ export class BootScreen {
     const d = document.createElement('div');
     d.className = 'boot-line' + (cls ? ' ' + cls : '');
     this.el.appendChild(d);
-    if (this.skipped) { d.textContent = text; return; }
-    for (let i = 0; i < text.length; i++) {
-      if (this.skipped) { d.textContent = text; return; }
-      d.textContent = text.slice(0, i + 1);
+    if (this.skipped) { d.innerHTML = text; return; }
+    
+    // For typing, we strip tags to get the visible length
+    const plain = text.replace(/<[^>]*>/g, '');
+    for (let i = 0; i < plain.length; i++) {
+      if (this.skipped) { d.innerHTML = text; return; }
+      d.textContent = plain.slice(0, i + 1);
       this.el.scrollTop = this.el.scrollHeight;
       await this._sleep(delay);
     }
+    // Set final HTML content to show colors/spans
+    d.innerHTML = text;
   }
 
   async _bar(label, duration = 120) {
@@ -443,14 +497,14 @@ export class BootScreen {
     d.className = 'boot-line';
     this.el.appendChild(d);
     const W = 24;
-    if (this.skipped) { d.textContent = `${label}[${'█'.repeat(W)}] OK`; d.classList.add('boot-ok'); return; }
+    if (this.skipped) { d.innerHTML = `${label}[${'█'.repeat(W)}] <span class="boot-ok">OK</span>`; return; }
     for (let i = 0; i <= W; i++) {
       if (this.skipped) { i = W; }
-      d.textContent = `${label}[${'█'.repeat(i)}${'░'.repeat(W - i)}]`;
+      d.innerHTML = `${label}[${'█'.repeat(i)}${'░'.repeat(W - i)}]`;
+      this.audio.chug();
       await this._sleep(duration / W);
     }
-    d.textContent += ' OK';
-    d.classList.add('boot-ok');
+    d.innerHTML += ' <span class="boot-ok">OK</span>';
   }
 
   async _memtest(target = 131072) {
@@ -461,6 +515,7 @@ export class BootScreen {
     for (let v = 0; v <= target; v += step) {
       if (this.skipped) { v = target; }
       d.textContent = `Memory Test: ${(v / 1024).toFixed(0).padStart(4)}K`;
+      this.audio.chug();
       await this._sleep(this.skipped ? 0 : 18);
     }
     d.textContent = `Memory Test:  ${target / 1024}K OK`;
@@ -473,6 +528,7 @@ export class BootScreen {
     for (let i = 0; i < n; i++) {
       if (this.skipped) { d.textContent = '.'.repeat(n); return; }
       d.textContent += '.';
+      this.audio.chug();
       await this._sleep(35);
     }
   }
@@ -494,8 +550,8 @@ export class BootScreen {
       }
       const d = this._line(`  running ${t.l}...`);
       await this._sleep(50 + Math.random() * 80);
-      d.textContent = `  running ${t.l}${t.ms.toFixed(2).padStart(5)}ms  [PASSED]`;
-      d.classList.add('boot-ok');
+      d.innerHTML = `  running ${t.l}${t.ms.toFixed(2).padStart(5)}ms  <span class="boot-ok">[PASSED]</span>`;
+      this.audio.beep(440, 0.05);
     }
   }
 
@@ -505,29 +561,30 @@ export class BootScreen {
   }
 
   async run(containerEl) {
+    this.audio.init();
+    this.audio.beep(880, 0.15, 'square'); // POST beep
+
     // Phase 0: Intro animation
     const anim = INTRO_ANIMS[Math.floor(Math.random() * INTRO_ANIMS.length)];
     await anim(containerEl, () => this.skipped);
     if (this.skipped) return;
 
     // Phase 1: BIOS POST
-    // Skip indicator appears immediately in the terminal
-    const skipHint = this._line('  [SPACE] — skip boot sequence', 'boot-skip-hint');
     this._line('');
 
     for (const entry of BIOS_LINES) {
       if (this.skipped) break;
       if (entry.action === 'memtest') { await this._memtest(); continue; }
       if (entry.action === 'dots')    { await this._dots();    continue; }
-      if (entry.text === '') { this._line(''); await this._sleep(entry.delay || 0); continue; }
-      await this._type(entry.text, entry.delay || 6);
-      await this._sleep(30);
+      if (entry.text === '') { this._line(''); await this._sleep(entry.delay ? entry.delay / 2 : 0); continue; }
+      await this._type(entry.text, entry.delay ? Math.max(1, entry.delay / 4) : 2);
+      await this._sleep(10);
     }
     if (this.skipped) return;
 
     this._line('');
     await this._perfTests();
-    await this._sleep(200);
+    await this._sleep(100);
     if (this.skipped) return;
 
     // Phase 2: Logo + init steps
@@ -535,36 +592,36 @@ export class BootScreen {
 
     for (const line of ASCII_LOGO_SIMPLE) {
       this._line(line, 'boot-logo');
-      await this._sleep(30);
+      await this._sleep(10);
     }
     this._line('');
-    await this._sleep(100);
+    await this._sleep(50);
     if (this.skipped) return;
 
     for (const line of ONBOARDING_HEADER) {
       this._line(line, 'boot-header');
-      await this._sleep(35);
+      await this._sleep(10);
     }
     this._line('');
-    await this._sleep(150);
+    await this._sleep(50);
     if (this.skipped) return;
 
     for (const step of LOADING_STEPS) {
       if (this.skipped) break;
-      await this._bar(step.label, step.duration);
-      await this._sleep(20);
+      await this._bar(step.label, step.duration / 3);
+      await this._sleep(5);
     }
-    await this._sleep(200);
+    await this._sleep(100);
     if (this.skipped) return;
 
     this._line('');
     const tip = TIPS[Math.floor(Math.random() * TIPS.length)];
-    await this._type(`  TIP  ${tip}`, 7, 'boot-dim');
-    await this._sleep(300);
+    await this._type(`  TIP  ${tip}`, 3, 'boot-dim');
+    await this._sleep(150);
     if (this.skipped) return;
 
     this._line('');
-    await this._type('  System ready. Initialising visualiser...', 8, 'boot-bright');
-    await this._sleep(500);
+    await this._type('  System ready. Initialising visualiser...', 4, 'boot-bright');
+    await this._sleep(200);
   }
 }

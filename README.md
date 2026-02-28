@@ -6,11 +6,9 @@ A modular, real-time 3D audio visualiser inspired by Joy Division's *Unknown Ple
 
 ## Features
 
-- **Four Visualisation Modes**: `sphere` (default 3D displacement), `bowl` (classic scanlines), `polar` (circular), and `wave` (time-domain waterfall).
-- **Smooth Shape Morphing**: The export pipeline seamlessly interpolates between geometries (Sphere ⇄ Bowl ⇄ Polar ⇄ Wave) for cinematic transitions.
-- **Dynamic Mode Cycling**: Aggressive peak detection (minimum 3 s spacing, up to 15 triggers) automates transitions and cycles through **six distinct camera perspectives** (Normal, Distant, Birds-eye, Worms-eye, Side-Profile, Oblique).
-- **Director Mode**: Adjust all six export camera positions (X, Y, Z, lookY) from within the parameters panel. Settings persist across sessions.
-- **Camera Preview**: Live-preview any camera style directly in the viewport without starting an export.
+- **Interactive Camera**: Full `OrbitControls` support (Left-drag to orbit, Right-drag to pan, Scroll to zoom). 
+- **Director Mode**: Manual camera override with "Lock" toggle to switch between user-controlled and audio-reactive movement.
+- **Camera Quick-Select**: A grid of 6 customisable camera styles (Normal, Distant, Birds-eye, etc.) with persistent saving and direct selection.
 - **Stereo Reactivity**: Dual-channel FFT analysis (L/R) produces asymmetrical displacement and stereo-tilt effects.
 - **Dual BPM-Synced LFOs**:
   - **LFO 1**: Modulates displacement, bowl shape, camera zoom, and opacity.
@@ -18,6 +16,8 @@ A modular, real-time 3D audio visualiser inspired by Joy Division's *Unknown Ple
   - Both support `sine`, `square`, `sawtooth`, and `triangle` waveforms.
 - **DNB Frequency Mapping**: Genre-aware `dnb` scale allocates 25 % of columns to sub-bass (40–180 Hz), 50 % to mids (500–6000 Hz), and 25 % to treble (6000–16000 Hz).
 - **Advanced UI & Theming**:
+  - **Improved Legibility**: Brighter typography and higher-contrast UI elements.
+  - **Interactive Tooltips**: Detailed descriptions for all parameters in the Mod and Export tabs.
   - **8 Colour Presets**: Default slate + ROYGBIV themes. Select via the circular palette button (bottom-left) — hover to reveal per-colour dot picker.
   - **Dual Modes**: Dark and Light with dedicated ☀/☾ toggle.
   - **Global Randomiser**: One-click parameter exploration (bottom-right) preserving audio stability.
@@ -29,7 +29,7 @@ A modular, real-time 3D audio visualiser inspired by Joy Division's *Unknown Ple
   - **Aspect Ratios**: 16:9 or 4:3 in horizontal or vertical orientation.
   - **Baked Overlays**: Metadata composited per-frame.
 - **Startup Sound**: `Startup.wav` plays through the shared analyser chain on load (lowpass at 165 Hz), driving the visualiser terrain from the first moment.
-- **Boot Sequence**: Full procedural terminal boot animation inspired by 90s proprietary workstations — four distinct canvas animations (terrain materialise, waveform reveal, grid pulse, spectrum bars) randomly selected on each load, all theme-aware and skippable with `[Space]`.
+- **Boot Sequence**: Full procedural terminal boot animation inspired by 90s proprietary workstations — features detailed hardware topology scans and four distinct canvas animations (terrain materialise, waveform reveal, grid pulse, spectrum bars) with enhanced color variety, all theme-aware and skippable with `[Space]`.
 - **Clean Mode**: Hides all UI chrome for OBS / streaming capture. Elements fade back in on hover. Activate via `?clean` or `?obs` URL parameter, or the bottom-left button.
 - **GPU Memory Hygiene**: All vis-mode tear-down functions dispose Three.js geometries and materials explicitly.
 - **Adaptive Pixel Ratio**: Renderer automatically lowers DPR when frame time exceeds 20 ms, restoring it when performance recovers.
@@ -41,9 +41,9 @@ A modular, real-time 3D audio visualiser inspired by Joy Division's *Unknown Ple
 ```
 Avatar/
 ├── index.html          # Entry point: HTML + CSS + tabbed UI + module wiring
-├── engine.js           # Three.js core: renderer, scene, camera, palettes
+├── engine.js           # Three.js core: renderer, scene, camera, palettes, OrbitControls
 ├── audio.js            # Stereo Web Audio API: input, dual analysers, LPF/Gain chain
-├── envelopes.js        # Envelope followers, slew logic, dual BPM LFOs
+├── envelopes.js        # Envelope followers, slew logic, dual BPM LFOs, reactive cam
 ├── dsp.js              # FFT, Hann windowing, bin mapping (linear / log / dnb)
 ├── params.js           # 30+ parameters, camStyles, localStorage persistence, UI bindings
 ├── export.js           # Peak detection, morphing render loop, camera drifts (reads P.camStyles)
@@ -81,9 +81,10 @@ npx serve . --listen 3000
 1. Drag and drop any audio file, or use the pre-loaded **Burden.wav**.
 2. Adjust Sens Envs and LFO routing in the **Mod** tab.
 3. Toggle **cycle modes** in the **Export** tab for automated morphed transitions.
-4. Use **preview cameras** to see how each angle looks before rendering.
-5. Tweak camera positions in the **director** section of the Export tab.
-6. Hit **render video** — output is a dated MP4 in your chosen quality preset.
+4. Use the **camera selector grid** (1-6) to switch between styles instantly.
+5. Use the **lock** toggle to fix the camera if you prefer manual placement over reactivity.
+6. Tweak camera positions in the **director** section of the Export tab.
+7. Hit **render video** — output is a dated MP4 in your chosen quality preset.
 
 ### Config Persistence
 - **Export config** (↓ button): saves all parameters as a `.json` file.
@@ -101,7 +102,10 @@ npx serve . --listen 3000
 | `P` | Toggle parameters panel |
 | `F` | Toggle fullscreen |
 | `Esc` | Exit clean mode |
-| `Space` (during boot) | Skip boot sequence |
+| `S` (during boot) | Skip boot sequence |
+| `Mouse Left` | Orbit Camera |
+| `Mouse Right` | Pan Camera |
+| `Scroll` | Zoom Camera |
 
 ---
 
