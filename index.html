@@ -333,6 +333,7 @@
       flex-direction: column;
       gap: 0;
       width: 320px;
+      transition: filter 3s ease-in-out, box-shadow 3s ease-in-out;
     }
     #infoToggle {
       font-family: var(--mono);
@@ -372,6 +373,16 @@
       border-radius: 2px;
     }
     #infoBox.open #infoBody { display: flex; }
+    #infoBox.glow #infoToggle,
+    #infoBox.glow #infoBody { 
+      box-shadow: 0 0 0 1px var(--m-hi), 0 8px 32px var(--panel-shd);
+      animation: infoGlow 1.5s ease-in-out infinite alternate; 
+    }
+    
+    @keyframes infoGlow {
+      from { box-shadow: 0 0 0 1px var(--m-hi), 0 8px 32px var(--panel-shd); }
+      to   { box-shadow: 0 0 0 2px var(--m-hi), 0 0 12px var(--m-hi); }
+    }
     
     #infoHead {
       display: flex;
@@ -702,7 +713,7 @@
       flex-shrink: 0;
     }
 
-    #lfoMonitor {
+    #lfoMonitor, #lfo2Monitor {
       width: 100%;
       height: 40px;
       max-height: 40px;
@@ -830,6 +841,11 @@
         Real-time 3D audio visualiser in the style of Joy Division's <i>Unknown Pleasures</i>.
         Scanlines are displaced by live FFT data.
       </div>
+      <div class="info-rule"></div>
+      <div class="info-body">
+        <b>getting started:</b> <i>burden.wav</i> is pre-loaded. Click <b>preview</b> 
+        top-right to start, then explore the tabs to sculpt the visual response.
+      </div>
     </div>
     <div id="infoPage2" style="display:none">
       <div class="info-sub">control map</div>
@@ -932,6 +948,28 @@
       <div class="prow"><label>low pass</label>
         <input type="range" id="pLpfCutoff" min="0" max="1" step="0.001" value="1">
         <span class="pval" id="vLpfCutoff">20k</span></div>
+      
+      <div class="psection">filter lfo</div>
+      <canvas id="lfo2Monitor" width="500" height="80"></canvas>
+      <div class="prow"><label>lfo shape</label>
+        <select class="psel" id="pLfo2Waveform">
+          <option value="sine">sine</option>
+          <option value="square">square</option>
+          <option value="sawtooth">sawtooth</option>
+          <option value="triangle">triangle</option>
+        </select>
+        <span class="pval" id="vLfo2Waveform">sine</span></div>
+      <div class="prow"><label>lfo rate</label>
+        <input type="range" id="pLfo2Rate" min="0.01" max="2.0" step="0.01" value="0.5">
+        <span class="pval" id="vLfo2Rate">0.5</span></div>
+      <div class="prow"><label>lfo depth</label>
+        <input type="range" id="pLfo2Depth" min="0" max="1.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfo2Depth">0.0</span></div>
+      <div class="prow"><label>lfo offset</label>
+        <input type="range" id="pLfo2Offset" min="-1.0" max="1.0" step="0.05" value="0.0">
+        <span class="pval" id="vLfo2Offset">0.0</span></div>
+
+      <div class="psection">master</div>
       <div class="prow"><label>volume</label>
         <input type="range" id="pGain" min="0" max="2.0" step="0.1" value="1.0">
         <span class="pval" id="vGain">1.0</span></div>
@@ -1099,7 +1137,16 @@
   import { P, loadParams, saveParams, bindRange, bindSelect, bindText,
            updateTrackDisplay } from './params.js';
   import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioDevices } from './audio.js';
-  import { env, computeEnvelopes, applyModulation, modBowlExp, bpmTick, lfoTick, getLfoVal, modPolarSpacing, modWaveSpacing } from './envelopes.js';
+  import { env, 
+           computeEnvelopes, 
+           applyModulation, 
+           modBowlExp, 
+           bpmTick, 
+           lfoTick, 
+           getLfoVal, 
+           getLfo2Val, 
+           modPolarSpacing, 
+           modWaveSpacing } from './envelopes.js';
   import { refreshBinMap, rebuildHistory } from './vis/shared.js';
   import { rebuildGrid, applyDisplacement, tearDownBowl } from './vis/bowl.js';
   import { rebuildPolar, applyPolar, tearDownPolar } from './vis/polar.js';
@@ -1119,6 +1166,7 @@
       target.classList.add('active');
       // If we switch to modulation tab, ensure canvas size is correct
       if (btn.dataset.tab === 'tMod') modDims = setupSharpCanvas(modCanvas, modCtx);
+      if (btn.dataset.tab === 'tAudio') modDims2 = setupSharpCanvas(modCanvas2, modCtx2);
     });
   });
 
@@ -1492,6 +1540,11 @@
   const modHistory = new Float32Array(500).fill(0);
   let modIdx = 0;
 
+  const modCanvas2 = document.getElementById('lfo2Monitor');
+  const modCtx2 = modCanvas2.getContext('2d');
+  const modHistory2 = new Float32Array(500).fill(0);
+  let modIdx2 = 0;
+
   // Sharp canvas helper
   function setupSharpCanvas(canvas, ctx) {
     const dpr = window.devicePixelRatio || 1;
@@ -1504,6 +1557,7 @@
     return { w: rect.width, h: rect.height };
   }
   let modDims = setupSharpCanvas(modCanvas, modCtx);
+  let modDims2 = setupSharpCanvas(modCanvas2, modCtx2);
 
   function animate() {
     requestAnimationFrame(animate);
@@ -1511,7 +1565,7 @@
     const dt = clock.getDelta();
     lfoTick(dt);
 
-    // Update modulation monitor (Visualising raw LFO)
+    // Update modulation monitor (Visualising raw LFO 1)
     if (document.getElementById('paramsPanel').classList.contains('open') && 
         document.getElementById('tMod').classList.contains('active')) {
       
@@ -1526,12 +1580,34 @@
       for (let i = 0; i < modDims.w; i++) {
         const hIdx = (modIdx + Math.floor(i * (modHistory.length / modDims.w))) % modHistory.length;
         const val = modHistory[hIdx];
-        // Normalise LFO (-1 to 1) to canvas height
-        const y = modDims.h * 0.5 - val * (modDims.h * 0.4);
+        const y = modDims.h * 0.5 - (val / (P.lfoDepth||1)) * (modDims.h * 0.4);
         if (i === 0) modCtx.moveTo(i, y);
         else modCtx.lineTo(i, y);
       }
       modCtx.stroke();
+    }
+
+    // Update filter monitor (Visualising LFO 2)
+    if (document.getElementById('paramsPanel').classList.contains('open') && 
+        document.getElementById('tAudio').classList.contains('active')) {
+      
+      modHistory2[modIdx2] = getLfo2Val();
+      modIdx2 = (modIdx2 + 1) % modHistory2.length;
+      
+      modCtx2.clearRect(0, 0, modDims2.w, modDims2.h);
+      modCtx2.beginPath();
+      modCtx2.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--m-hi');
+      modCtx2.lineWidth = 1.5;
+      
+      for (let i = 0; i < modDims2.w; i++) {
+        const hIdx = (modIdx2 + Math.floor(i * (modHistory2.length / modDims2.w))) % modHistory2.length;
+        const val = modHistory2[hIdx];
+        // Normalise LFO 2 (-1 to 1 range basically) to canvas height
+        const y = modDims2.h * 0.5 - ((val - P.lfo2Offset) / (P.lfo2Depth||1)) * (modDims2.h * 0.4);
+        if (i === 0) modCtx2.moveTo(i, y);
+        else modCtx2.lineTo(i, y);
+      }
+      modCtx2.stroke();
     }
 
     if (isPreviewPlaying && previewBuffer) {
@@ -1551,6 +1627,18 @@
       computeEnvelopes(fdL, fdR);
       bpmTick(dt);
       applyModulation();
+
+      // Audio LFO (LPF modulation)
+      const lfo2 = getLfo2Val(); // -1 to 1 based on depth
+      const lpf = getLPF();
+      if (lpf) {
+        // Modulate current P.lpfCutoff. 
+        // We'll treat lfo2 as a bipolar shift. 
+        // Since frequency is log, we add/sub semitones or just use linear offset?
+        // Let's use linear offset for simplicity but keep it bounded.
+        const modFreq = Math.max(200, Math.min(20000, P.lpfCutoff + lfo2 * 5000));
+        lpf.frequency.setTargetAtTime(modFreq, previewCtx ? previewCtx.currentTime : 0, 0.03);
+      }
 
       const lfo = getLfoVal(); // -1 to 1
 
@@ -1677,6 +1765,11 @@
   bindRange('pLfoDepth',  'vLfoDepth',  'lfoDepth');
   bindRange('pLfoOffset', 'vLfoOffset', 'lfoOffset');
 
+  bindSelect('pLfo2Waveform', 'vLfo2Waveform', 'lfo2Waveform');
+  bindRange('pLfo2Rate',   'vLfo2Rate',   'lfo2Rate');
+  bindRange('pLfo2Depth',  'vLfo2Depth',  'lfo2Depth');
+  bindRange('pLfo2Offset', 'vLfo2Offset', 'lfo2Offset');
+
   bindRange('pLfoToDisp',    'vLfoToDisp',    'lfoToDisp');
   bindRange('pLfoToBowl',    'vLfoToBowl',    'lfoToBowl');
   bindRange('pLfoToZoom',    'vLfoToZoom',    'lfoToZoom');
@@ -1782,6 +1875,45 @@
   updateParamVisibility(visMode);
   animate();
   overlayReady();
+
+  // Onboarding: Auto-load default track
+  async function loadDefaultTrack() {
+    try {
+      logStatus('Loading default track: burden.wav');
+      const res = await fetch('./burden.wav');
+      if (!res.ok) throw new Error('File not found');
+      const blob = await res.blob();
+      const f = new File([blob], 'burden.wav', { type: 'audio/wav' });
+      
+      selectedWavFile = f;
+      topRenderBtn.disabled = false;
+      document.body.classList.add('has-file');
+      topPreviewBtn.style.display = 'inline';
+      sepPreview.style.display    = 'inline';
+      topPreviewBtn.classList.add('btn-active-highlight');
+      topLoadBtn.classList.remove('btn-active-highlight');
+
+      const ab = await blob.arrayBuffer();
+      if (!previewCtx) previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+      previewBuffer = await previewCtx.decodeAudioData(ab);
+      
+      // Default metadata
+      document.getElementById('pTitle').value = 'Burden';
+      document.getElementById('pArtist').value = 'm0rvidd';
+      updateTrackDisplay();
+      
+      logStatus('Ready. Click preview to begin.');
+      
+      // Onboarding glow
+      const ib = document.getElementById('infoBox');
+      ib.classList.add('glow');
+      setTimeout(() => ib.classList.remove('glow'), 4000);
+    } catch (e) { 
+      logStatus('No default track found.'); 
+      topLoadBtn.classList.add('btn-active-highlight');
+    }
+  }
+  loadDefaultTrack();
 
 </script>
 </body>

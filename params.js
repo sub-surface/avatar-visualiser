@@ -19,9 +19,13 @@ export const P = {
   lpfCutoff: 20000,
   gain: 1.0,
   lfoWaveform: 'sine',
-  lfoRate: 0.15,
+  lfoRate: 0.25, // cycles per beat (0.25 = 1 cycle per 4 beats)
   lfoDepth: 1.0,
   lfoOffset: 0.0,
+  lfo2Waveform: 'sine',
+  lfo2Rate: 0.5,
+  lfo2Depth: 0.0,
+  lfo2Offset: 0.0,
   lfoToDisp: 0.0,
   lfoToBowl: 0.5,
   lfoToZoom: 0.0,
@@ -57,8 +61,8 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     const numKeys = ['rows','cols','maxDisp','bowlExp','smoothing','freqRange',
                      'modSub','modKick','modMid','modHigh','modRms','modTrans',
                      'sphereSize', 'waveSpacing', 'polarSpacing', 'lpfCutoff', 'gain',
-                     'lfoRate', 'lfoDepth', 'lfoOffset', 'lfoToDisp', 'lfoToBowl', 
-                     'lfoToZoom', 'lfoToOpacity', 'lfoToPolar', 'lfoToWave', 
+                     'lfoRate', 'lfoDepth', 'lfoOffset', 'lfo2Rate', 'lfo2Depth', 'lfo2Offset',
+                     'lfoToDisp', 'lfoToBowl', 'lfoToZoom', 'lfoToOpacity', 'lfoToPolar', 'lfoToWave', 
                      'uiReactivity', 'colorCycle'];
     for (const k of numKeys) if (saved[k] !== undefined) P[k] = +saved[k];
     if (saved.colorA) P.colorA = saved.colorA;
@@ -82,12 +86,21 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pLfoDepth',  P.lfoDepth);  ss('vLfoDepth',  P.lfoDepth);
     si('pLfoOffset', P.lfoOffset); ss('vLfoOffset', P.lfoOffset);
 
+    si('pLfo2Waveform', P.lfo2Waveform);
+    si('pLfo2Rate',   P.lfo2Rate);   ss('vLfo2Rate',   P.lfo2Rate);
+    si('pLfo2Depth',  P.lfo2Depth);  ss('vLfo2Depth',  P.lfo2Depth);
+    si('pLfo2Offset', P.lfo2Offset); ss('vLfo2Offset', P.lfo2Offset);
+
     si('pLfoToDisp', P.lfoToDisp); ss('vLfoToDisp', P.lfoToDisp);
     si('pLfoToBowl', P.lfoToBowl); ss('vLfoToBowl', P.lfoToBowl);
     si('pLfoToZoom', P.lfoToZoom); ss('vLfoToZoom', P.lfoToZoom);
     si('pLfoToOpacity', P.lfoToOpacity); ss('vLfoToOpacity', P.lfoToOpacity);
     si('pLfoToPolar', P.lfoToPolar); ss('vLfoToPolar', P.lfoToPolar);
     si('pLfoToWave', P.lfoToWave); ss('vLfoToWave', P.lfoToWave);
+
+    si('pLfo2Waveform', P.lfo2Waveform);
+    si('pLfo2Rate',   P.lfo2Rate);   ss('vLfo2Rate',   P.lfo2Rate);
+    si('pLfo2Depth',  P.lfo2Depth);  ss('vLfo2Depth',  P.lfo2Depth);
 
     si('pRows',      P.rows);      ss('vRows',      P.rows);
     si('pCols',      P.cols);      ss('vCols',      P.cols);

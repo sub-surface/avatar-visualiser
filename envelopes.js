@@ -85,28 +85,28 @@ export function computeEnvelopesExport(fd, expEnv, expPrevRms) {
 }
 
 /* ── Modulation ────────────────────────────────────────────── */
-let lfoPhase = 0;
+let lfoPhase1 = 0;
+let lfoPhase2 = 0;
+
 export function lfoTick(dt) { 
-  lfoPhase = (lfoPhase + 2 * Math.PI * P.lfoRate * dt) % (2 * Math.PI); 
+  const bpm = parseFloat(P.bpm) || 120;
+  const bps = bpm / 60; // beats per second
+  lfoPhase1 = (lfoPhase1 + 2 * Math.PI * P.lfoRate * bps * dt) % (2 * Math.PI); 
+  lfoPhase2 = (lfoPhase2 + 2 * Math.PI * P.lfo2Rate * bps * dt) % (2 * Math.PI); 
 }
 
-export function getLfoVal() {
-  const t = lfoPhase / (2 * Math.PI); // 0..1
+function _calcLfo(phase, waveform, depth, offset) {
+  const t = phase / (2 * Math.PI);
   let raw = 0;
-  
-  if (P.lfoWaveform === 'sine') {
-    raw = Math.sin(lfoPhase);
-  } else if (P.lfoWaveform === 'square') {
-    raw = t < 0.5 ? 1 : -1;
-  } else if (P.lfoWaveform === 'sawtooth') {
-    raw = (t * 2) - 1;
-  } else if (P.lfoWaveform === 'triangle') {
-    raw = t < 0.5 ? (t * 4) - 1 : 3 - (t * 4);
-  }
-  
-  // Apply depth and offset
-  return (raw * P.lfoDepth) + P.lfoOffset;
+  if (waveform === 'sine')      raw = Math.sin(phase);
+  else if (waveform === 'square')   raw = t < 0.5 ? 1 : -1;
+  else if (waveform === 'sawtooth') raw = (t * 2) - 1;
+  else if (waveform === 'triangle') raw = t < 0.5 ? (t * 4) - 1 : 3 - (t * 4);
+  return (raw * depth) + offset;
 }
+
+export function getLfoVal()  { return _calcLfo(lfoPhase1, P.lfoWaveform, P.lfoDepth, P.lfoOffset); }
+export function getLfo2Val() { return _calcLfo(lfoPhase2, P.lfo2Waveform, P.lfo2Depth, P.lfo2Offset); }
 
 export function applyModulation() {
   const lfo = getLfoVal();
