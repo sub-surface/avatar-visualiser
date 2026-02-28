@@ -45,40 +45,37 @@
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 7px;
+      gap: 5px;
       font-family: 'Courier New', monospace;
       font-size: 0.72rem;
       letter-spacing: 0.15em;
-      background: rgba(13, 13, 13, 0.78);
-      border: 1px solid rgba(232, 213, 176, 0.16);
-      padding: 11px 15px;
       pointer-events: auto;
       user-select: none;
     }
     #widget a {
-      color: rgba(232, 213, 176, 0.48);
+      color: rgba(232, 213, 176, 0.35);
       text-decoration: none;
       text-transform: lowercase;
       letter-spacing: 0.22em;
-      transition: color 0.2s;
+      transition: color 0.15s;
     }
     #widget a:hover { color: #e8d5b0; }
     #exportBtn {
       background: transparent;
-      border: 1px solid rgba(232, 213, 176, 0.28);
-      color: #e8d5b0;
+      border: none;
+      color: rgba(232, 213, 176, 0.35);
       font-family: 'Courier New', monospace;
       font-size: 0.72rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      padding: 5px 11px;
+      padding: 0;
       cursor: pointer;
-      transition: border-color 0.15s;
+      transition: color 0.15s;
     }
-    #exportBtn:hover:not(:disabled) { border-color: #e8d5b0; }
-    #exportBtn:disabled { opacity: 0.36; cursor: not-allowed; }
+    #exportBtn:hover:not(:disabled) { color: #e8d5b0; }
+    #exportBtn:disabled { opacity: 0.28; cursor: not-allowed; }
     #progress {
-      color: rgba(232, 213, 176, 0.52);
+      color: rgba(232, 213, 176, 0.4);
       font-size: 0.65rem;
       letter-spacing: 0.12em;
       min-height: 0.9em;
@@ -479,33 +476,23 @@
           fastStart: 'in-memory',
         });
 
-        // 5. Configure VideoEncoder
-        const videoEncoder = new VideoEncoder({
+        // 5. Configure VideoEncoder — try High Profile, fall back to Baseline
+        const makeVideoEncoder = () => new VideoEncoder({
           output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-          error:  (e) => { throw e; },
+          error:  (e) => console.error('VideoEncoder error:', e),
         });
-        try {
-          videoEncoder.configure({
-            codec:     'avc1.640028', // H.264 High Profile 4.0
-            width:     EXPORT_W,
-            height:    EXPORT_H,
-            bitrate:   8_000_000,
-            framerate: FPS,
-          });
-        } catch {
-          videoEncoder.configure({
-            codec:     'avc1.42E01E', // H.264 Baseline fallback
-            width:     EXPORT_W,
-            height:    EXPORT_H,
-            bitrate:   8_000_000,
-            framerate: FPS,
-          });
-        }
+
+        const videoCfgBase = { width: EXPORT_W, height: EXPORT_H, bitrate: 8_000_000, framerate: FPS };
+        const highSupport  = await VideoEncoder.isConfigSupported({ codec: 'avc1.640028', ...videoCfgBase });
+        const videoCodec   = highSupport.supported ? 'avc1.640028' : 'avc1.42E01E';
+
+        const videoEncoder = makeVideoEncoder();
+        videoEncoder.configure({ codec: videoCodec, ...videoCfgBase });
 
         // 6. Configure AudioEncoder
         const audioEncoder = new AudioEncoder({
           output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-          error:  (e) => { throw e; },
+          error:  (e) => console.error('AudioEncoder error:', e),
         });
         audioEncoder.configure({
           codec:            'mp4a.40.2', // AAC-LC
