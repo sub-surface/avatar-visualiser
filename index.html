@@ -35,11 +35,59 @@
       user-select: none;
     }
     #overlay.hidden { display: none; }
-  </style>
-</head>
-<body>
 
-  <div id="overlay"><span>Click to start</span></div>
+    /* ── Info widget ─────────────────────────────────────────── */
+    #widget {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 7px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      background: rgba(13, 13, 13, 0.78);
+      border: 1px solid rgba(232, 213, 176, 0.16);
+      padding: 11px 15px;
+      pointer-events: auto;
+      user-select: none;
+    }
+    #widget a {
+      color: rgba(232, 213, 176, 0.48);
+      text-decoration: none;
+      text-transform: lowercase;
+      letter-spacing: 0.22em;
+      transition: color 0.2s;
+    }
+    #widget a:hover { color: #e8d5b0; }
+    #exportBtn {
+      background: transparent;
+      border: 1px solid rgba(232, 213, 176, 0.28);
+      color: #e8d5b0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 5px 11px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    #exportBtn:hover:not(:disabled) { border-color: #e8d5b0; }
+    #exportBtn:disabled { opacity: 0.36; cursor: not-allowed; }
+    #progress {
+      color: rgba(232, 213, 176, 0.52);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      min-height: 0.9em;
+      text-align: right;
+    }
+  </style>
+
+  <!-- mp4-muxer: MP4 container muxing (must come before importmap) -->
+  <script src="https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 
   <script type="importmap">
   {
@@ -48,6 +96,17 @@
     }
   }
   </script>
+</head>
+<body>
+
+  <div id="overlay"><span>Click to start</span></div>
+
+  <div id="widget">
+    <a href="https://sub-surface.net" target="_blank">sub-surface.net</a>
+    <button id="exportBtn">Load &amp; Export</button>
+    <div id="progress"></div>
+  </div>
+  <input type="file" id="wavInput" accept=".wav,audio/wav,audio/x-wav" style="display:none">
 
   <script type="module">
     import * as THREE from 'three';
@@ -63,9 +122,12 @@
     const FLOW_SPEED = 0.4;
     const LINE_COLOR = 0xe8d5b0;
     const BG_COLOR   = 0x0d0d0d;
+    const EXPORT_W   = 1920;
+    const EXPORT_H   = 1080;
+    let   isExporting = false;
 
     /* ── Renderer ───────────────────────────────────────────── */
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(BG_COLOR, 1);
@@ -85,8 +147,7 @@
     /* ── Grid ───────────────────────────────────────────────── */
     const lines      = [];
     const posBuffers = [];
-
-    const material = new THREE.LineBasicMaterial({ color: LINE_COLOR });
+    const material   = new THREE.LineBasicMaterial({ color: LINE_COLOR });
 
     for (let r = 0; r < ROWS; r++) {
       const t_row = r / (ROWS - 1);
@@ -102,14 +163,13 @@
 
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
       const line = new THREE.Line(geo, material);
       scene.add(line);
       lines.push(line);
       posBuffers.push(positions);
     }
 
-    /* ── Audio ──────────────────────────────────────────────── */
+    /* ── Audio (live mic) ────────────────────────────────────── */
     let analyser   = null;
     let freqData   = null;
     let audioReady = false;
@@ -119,14 +179,14 @@
       const ctx    = new AudioContext();
       const source = ctx.createMediaStreamSource(stream);
       analyser     = ctx.createAnalyser();
-      analyser.fftSize              = FFT_SIZE;
+      analyser.fftSize               = FFT_SIZE;
       analyser.smoothingTimeConstant = 0.80;
       source.connect(analyser);
-      freqData   = new Uint8Array(analyser.frequencyBinCount); // 256 bins
+      freqData   = new Uint8Array(analyser.frequencyBinCount);
       audioReady = true;
     }
 
-    /* ── Overlay / Start gate ───────────────────────────────── */
+    /* ── Overlay / Start gate ────────────────────────────────── */
     const overlay = document.getElementById('overlay');
     let started   = false;
 
@@ -138,14 +198,43 @@
       catch (err) { console.error('Audio init failed:', err); }
     });
 
-    /* ── Resize ─────────────────────────────────────────────── */
+    /* ── Resize ──────────────────────────────────────────────── */
     window.addEventListener('resize', () => {
+      if (isExporting) return;
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    /* ── Animation loop ─────────────────────────────────────── */
+    /* ── Shared displacement helper ──────────────────────────── */
+    // Used by both the live animate() loop and the offline export loop.
+    function applyDisplacement(fd, timeAcc) {
+      const halfCols  = COLS / 2;
+      const bins      = fd.length;
+      const flowPhase = timeAcc * FLOW_SPEED;
+
+      for (let r = 0; r < ROWS; r++) {
+        const positions  = posBuffers[r];
+        const t_row      = r / (ROWS - 1);
+        const centreDist = Math.abs(t_row - 0.5) * 2;
+        const bowlFactor = Math.pow(1.0 - centreDist, BOWL_EXP);
+
+        for (let c = 0; c < COLS; c++) {
+          const colMirror  = c < halfCols ? c : COLS - 1 - c;
+          const binIndex   = Math.floor((colMirror / halfCols) * bins * 0.6);
+          const binValue   = fd[Math.min(binIndex, bins - 1)] / 255;
+          const rowOffset  = Math.floor(((t_row + flowPhase) % 1) * bins * 0.4);
+          const shiftedBin = (binIndex + rowOffset) % bins;
+          const shiftedVal = fd[shiftedBin] / 255;
+          const blended    = binValue * 0.6 + shiftedVal * 0.4;
+          positions[c * 3 + 1] = -blended * bowlFactor * MAX_DISP;
+        }
+
+        lines[r].geometry.attributes.position.needsUpdate = true;
+      }
+    }
+
+    /* ── Live animation loop ─────────────────────────────────── */
     const clock = new THREE.Clock();
     let timeAccum = 0;
 
@@ -155,44 +244,333 @@
 
       if (audioReady) {
         analyser.getByteFrequencyData(freqData);
-      }
-
-      const halfCols  = COLS / 2;
-      const bins      = freqData ? freqData.length : 1;
-      const flowPhase = timeAccum * FLOW_SPEED;
-
-      for (let r = 0; r < ROWS; r++) {
-        const positions    = posBuffers[r];
-        const t_row        = r / (ROWS - 1);
-        const centreDist   = Math.abs(t_row - 0.5) * 2;
-        const bowlFactor   = Math.pow(1.0 - centreDist, BOWL_EXP);
-
-        for (let c = 0; c < COLS; c++) {
-          let y = 0;
-
-          if (audioReady) {
-            const colMirror = c < halfCols ? c : COLS - 1 - c;
-            const binIndex  = Math.floor((colMirror / halfCols) * bins * 0.6);
-            const binValue  = freqData[Math.min(binIndex, bins - 1)] / 255;
-
-            const rowOffset = Math.floor(((t_row + flowPhase) % 1) * bins * 0.4);
-            const shiftedBin = (binIndex + rowOffset) % bins;
-            const shiftedVal = freqData[shiftedBin] / 255;
-
-            const blended = binValue * 0.6 + shiftedVal * 0.4;
-            y = -blended * bowlFactor * MAX_DISP;
-          }
-
-          positions[c * 3 + 1] = y;
-        }
-
-        lines[r].geometry.attributes.position.needsUpdate = true;
+        applyDisplacement(freqData, timeAccum);
       }
 
       renderer.render(scene, camera);
     }
 
     animate();
+
+    /* ══════════════════════════════════════════════════════════
+       EXPORT PIPELINE
+    ══════════════════════════════════════════════════════════ */
+
+    /* ── Inline Cooley-Tukey FFT ─────────────────────────────── */
+    function applyHannWindow(buf) {
+      const N = buf.length;
+      for (let i = 0; i < N; i++) {
+        buf[i] *= 0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
+      }
+    }
+
+    function fftRadix2(re, im) {
+      const N = re.length;
+      // Bit-reversal permutation
+      let j = 0;
+      for (let i = 1; i < N; i++) {
+        let bit = N >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) {
+          [re[i], re[j]] = [re[j], re[i]];
+          [im[i], im[j]] = [im[j], im[i]];
+        }
+      }
+      // Butterfly stages
+      for (let len = 2; len <= N; len <<= 1) {
+        const ang = (-2 * Math.PI) / len;
+        const wRe = Math.cos(ang);
+        const wIm = Math.sin(ang);
+        for (let i = 0; i < N; i += len) {
+          let curRe = 1, curIm = 0;
+          for (let k = 0; k < len / 2; k++) {
+            const uRe = re[i + k],             uIm = im[i + k];
+            const vRe = re[i + k + len/2] * curRe - im[i + k + len/2] * curIm;
+            const vIm = re[i + k + len/2] * curIm + im[i + k + len/2] * curRe;
+            re[i + k]          = uRe + vRe;  im[i + k]          = uIm + vIm;
+            re[i + k + len/2]  = uRe - vRe;  im[i + k + len/2]  = uIm - vIm;
+            const nextRe = curRe * wRe - curIm * wIm;
+            curIm = curRe * wIm + curIm * wRe;
+            curRe = nextRe;
+          }
+        }
+      }
+    }
+
+    // Matches Web Audio AnalyserNode default: minDecibels -100, maxDecibels -30
+    const WA_MIN_DB = -100;
+    const WA_MAX_DB = -30;
+
+    function computeFFTBins(pcmWindow) {
+      const N  = FFT_SIZE;
+      const re = new Float32Array(pcmWindow);
+      const im = new Float32Array(N);
+      applyHannWindow(re);
+      fftRadix2(re, im);
+      const numBins = N / 2;
+      const out     = new Uint8Array(numBins);
+      for (let k = 0; k < numBins; k++) {
+        const mag     = Math.sqrt(re[k] * re[k] + im[k] * im[k]) / N;
+        const db      = mag > 0 ? 20 * Math.log10(mag) : WA_MIN_DB;
+        const clamped = Math.max(WA_MIN_DB, Math.min(WA_MAX_DB, db));
+        out[k]        = Math.round(((clamped - WA_MIN_DB) / (WA_MAX_DB - WA_MIN_DB)) * 255);
+      }
+      return out;
+    }
+
+    /* ── Pre-compute per-frame FFT data ──────────────────────── */
+    function precomputeFrameData(audioBuffer, fps) {
+      const sr             = audioBuffer.sampleRate;
+      const totalSamples   = audioBuffer.length;
+      const samplesPerFrame = Math.ceil(sr / fps);
+      const totalFrames    = Math.ceil(totalSamples / samplesPerFrame);
+      const halfFFT        = FFT_SIZE / 2;
+
+      // Mix to mono
+      const ch0      = audioBuffer.getChannelData(0);
+      const ch1      = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
+      const mono     = new Float32Array(totalSamples);
+      for (let i = 0; i < totalSamples; i++) {
+        mono[i] = ch1 ? (ch0[i] + ch1[i]) * 0.5 : ch0[i];
+      }
+
+      const frameFreqData = new Array(totalFrames);
+      let prevBins        = new Uint8Array(halfFFT);
+
+      for (let f = 0; f < totalFrames; f++) {
+        const windowStart = f * samplesPerFrame - halfFFT;
+        const pcmWindow   = new Float32Array(FFT_SIZE);
+        for (let i = 0; i < FFT_SIZE; i++) {
+          const idx      = windowStart + i;
+          pcmWindow[i]   = (idx >= 0 && idx < totalSamples) ? mono[idx] : 0;
+        }
+
+        const rawBins  = computeFFTBins(pcmWindow);
+        const smoothed = new Uint8Array(halfFFT);
+        for (let k = 0; k < halfFFT; k++) {
+          smoothed[k] = Math.round(0.80 * prevBins[k] + 0.20 * rawBins[k]);
+        }
+        prevBins            = smoothed;
+        frameFreqData[f]    = smoothed;
+      }
+
+      return { frameFreqData, totalFrames };
+    }
+
+    /* ── Renderer resize helpers ─────────────────────────────── */
+    let savedDims = null;
+
+    function beginExportResize() {
+      savedDims = { w: window.innerWidth, h: window.innerHeight };
+      renderer.setPixelRatio(1);
+      renderer.setSize(EXPORT_W, EXPORT_H);
+      camera.aspect = EXPORT_W / EXPORT_H;
+      camera.updateProjectionMatrix();
+      renderer.domElement.style.visibility = 'hidden';
+    }
+
+    function endExportResize() {
+      if (!savedDims) return;
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(savedDims.w, savedDims.h);
+      camera.aspect = savedDims.w / savedDims.h;
+      camera.updateProjectionMatrix();
+      renderer.domElement.style.visibility = '';
+      savedDims = null;
+    }
+
+    /* ── Encode audio track ──────────────────────────────────── */
+    async function encodeAudio(audioEncoder, audioBuffer) {
+      const sr         = audioBuffer.sampleRate;
+      const numCh      = audioBuffer.numberOfChannels;
+      const total      = audioBuffer.length;
+      const CHUNK      = 4096;
+
+      for (let offset = 0; offset < total; offset += CHUNK) {
+        const count       = Math.min(CHUNK, total - offset);
+        const interleaved = new Float32Array(count * numCh);
+        for (let ch = 0; ch < numCh; ch++) {
+          const chData = audioBuffer.getChannelData(ch);
+          for (let i = 0; i < count; i++) {
+            interleaved[i * numCh + ch] = chData[offset + i];
+          }
+        }
+        const audioData = new AudioData({
+          format:           'f32',
+          sampleRate:       sr,
+          numberOfChannels: numCh,
+          numberOfFrames:   count,
+          timestamp:        Math.round((offset / sr) * 1_000_000),
+          data:             interleaved,
+        });
+        audioEncoder.encode(audioData);
+        audioData.close();
+      }
+      await audioEncoder.flush();
+    }
+
+    /* ── Frame render + encode loop ──────────────────────────── */
+    async function runFrameLoop(videoEncoder, frameFreqData, totalFrames, fps, onProgress) {
+      const frameDt        = 1 / fps;
+      const exportFreqData = new Uint8Array(256);
+      let   exportTimeAccum = 0;
+
+      for (let f = 0; f < totalFrames; f++) {
+        exportFreqData.set(frameFreqData[f]);
+        exportTimeAccum += frameDt;
+
+        applyDisplacement(exportFreqData, exportTimeAccum);
+        renderer.render(scene, camera);
+
+        const bitmap     = await createImageBitmap(renderer.domElement);
+        const videoFrame = new VideoFrame(bitmap, {
+          timestamp: Math.round(f * (1_000_000 / fps)),
+          duration:  Math.round(1_000_000 / fps),
+        });
+        videoEncoder.encode(videoFrame, { keyFrame: f % (fps * 2) === 0 });
+        videoFrame.close();
+        bitmap.close();
+
+        if (f % 30 === 0) {
+          onProgress(Math.round((f / totalFrames) * 100));
+          await new Promise(r => setTimeout(r, 0)); // yield to browser
+        }
+      }
+    }
+
+    /* ── Export orchestrator ─────────────────────────────────── */
+    const exportBtn  = document.getElementById('exportBtn');
+    const progressEl = document.getElementById('progress');
+    const wavInput   = document.getElementById('wavInput');
+
+    async function startExport(wavFile) {
+      if (isExporting) return;
+      isExporting        = true;
+      exportBtn.disabled = true;
+      const FPS          = 30;
+
+      try {
+        // 1. Decode WAV
+        progressEl.textContent = 'Decoding audio...';
+        const arrayBuffer = await wavFile.arrayBuffer();
+        const tmpCtx      = new AudioContext();
+        const audioBuffer = await tmpCtx.decodeAudioData(arrayBuffer);
+        await tmpCtx.close();
+
+        // 2. Pre-compute FFT per frame
+        progressEl.textContent = 'Analysing frequencies...';
+        const { frameFreqData, totalFrames } = precomputeFrameData(audioBuffer, FPS);
+
+        // 3. Resize renderer to export resolution
+        beginExportResize();
+
+        // 4. Set up muxer
+        const { Muxer, ArrayBufferTarget } = Mp4Muxer;
+        const target = new ArrayBufferTarget();
+        const muxer  = new Muxer({
+          target,
+          video: { codec: 'avc', width: EXPORT_W, height: EXPORT_H },
+          audio: {
+            codec:            'aac',
+            sampleRate:       audioBuffer.sampleRate,
+            numberOfChannels: audioBuffer.numberOfChannels,
+          },
+          fastStart: 'in-memory',
+        });
+
+        // 5. Configure VideoEncoder
+        const videoEncoder = new VideoEncoder({
+          output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+          error:  (e) => { throw e; },
+        });
+        try {
+          videoEncoder.configure({
+            codec:     'avc1.640028', // H.264 High Profile 4.0
+            width:     EXPORT_W,
+            height:    EXPORT_H,
+            bitrate:   8_000_000,
+            framerate: FPS,
+          });
+        } catch {
+          videoEncoder.configure({
+            codec:     'avc1.42E01E', // H.264 Baseline fallback
+            width:     EXPORT_W,
+            height:    EXPORT_H,
+            bitrate:   8_000_000,
+            framerate: FPS,
+          });
+        }
+
+        // 6. Configure AudioEncoder
+        const audioEncoder = new AudioEncoder({
+          output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+          error:  (e) => { throw e; },
+        });
+        audioEncoder.configure({
+          codec:            'mp4a.40.2', // AAC-LC
+          sampleRate:       audioBuffer.sampleRate,
+          numberOfChannels: audioBuffer.numberOfChannels,
+          bitrate:          192_000,
+        });
+
+        // 7. Render + encode video frames
+        progressEl.textContent = `0% — 0/${totalFrames} frames`;
+        await runFrameLoop(videoEncoder, frameFreqData, totalFrames, FPS, (pct) => {
+          progressEl.textContent = `${pct}%`;
+        });
+
+        // 8. Encode audio
+        progressEl.textContent = 'Encoding audio...';
+        await encodeAudio(audioEncoder, audioBuffer);
+
+        // 9. Flush + finalise
+        progressEl.textContent = 'Muxing...';
+        await videoEncoder.flush();
+        muxer.finalize();
+
+        // 10. Download
+        const blob = new Blob([target.buffer], { type: 'video/mp4' });
+        const url  = URL.createObjectURL(blob);
+        const stem = wavFile.name.replace(/\.[^.]+$/, '');
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `${stem}_psychograph.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        progressEl.textContent = 'Done.';
+
+      } catch (err) {
+        console.error('Export failed:', err);
+        progressEl.textContent = `Error: ${err.message ?? err}`;
+      } finally {
+        endExportResize();
+        isExporting        = false;
+        exportBtn.disabled = false;
+      }
+    }
+
+    /* ── Widget wiring ───────────────────────────────────────── */
+    if (typeof VideoEncoder === 'undefined') {
+      progressEl.textContent = 'Chrome 94+ required';
+      exportBtn.disabled = true;
+    }
+
+    exportBtn.addEventListener('click', () => {
+      if (!isExporting) wavInput.click();
+    });
+
+    wavInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        startExport(file);
+        wavInput.value = ''; // allow re-selecting same file
+      }
+    });
+
   </script>
 </body>
 </html>
