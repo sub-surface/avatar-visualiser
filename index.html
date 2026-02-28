@@ -113,10 +113,9 @@
     const COLS       = 128;
     const GRID_W     = 10;
     const GRID_D     = 10;
-    const FFT_SIZE   = 512;
+    const FFT_SIZE   = 2048;  // 4x resolution: ~21Hz/bin at 44.1kHz vs ~86Hz before
     const MAX_DISP   = 2.2;
     const BOWL_EXP   = 2.0;
-    const FLOW_SPEED = 0.4;
     const LINE_COLOR = 0xe8d5b0;
     const BG_COLOR   = 0x0d0d0d;
     const EXPORT_W   = 1920;
@@ -177,7 +176,7 @@
       const source = ctx.createMediaStreamSource(stream);
       analyser     = ctx.createAnalyser();
       analyser.fftSize               = FFT_SIZE;
-      analyser.smoothingTimeConstant = 0.80;
+      analyser.smoothingTimeConstant = 0.55; // sharper transients vs 0.80
       source.connect(analyser);
       freqData   = new Uint8Array(analyser.frequencyBinCount);
       audioReady = true;
@@ -203,28 +202,73 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
+    /* ── Frequency history ring buffer ──────────────────────── */
+    // Each row shows a different moment in time: row 0 (front) = newest,
+    // row ROWS-1 (back) = oldest. This is what gives the "terrain scrolling
+    // toward the viewer" look of the reference image.
+    const NUM_BINS   = FFT_SIZE / 2;              // 1024 bins
+    const histBuf    = new Array(ROWS).fill(null).map(() => new Float32Array(NUM_BINS));
+    let   histHead   = 0;                         // index of the newest row
+
+    // A-weighting approximation: boosts perceptually loud mids, rolls off
+    // sub-bass and ultra-high. Bin k at sample rate sr maps to freq f = k*sr/FFT_SIZE.
+    function aWeight(f) {
+      const f2 = f * f;
+      const f4 = f2 * f2;
+      // Numerator / denominator approximation of the A(f) curve
+      const num = 1.562339 * f4;
+      const den = (f2 + 107.65265) * (f2 + 737.86223);
+      const aden = (f2 + 20.598997) * (f2 + 12194.217);
+      return (num / (den * aden * aden)) * 1e16; // scale so peak ≈ 1
+    }
+
+    // Pre-compute A-weight gain per bin (clamped 0–1, peaked at ~3.5kHz)
+    const aWeightGain = new Float32Array(NUM_BINS);
+    {
+      const sr = 44100; // assume 44.1kHz; recalculated on first audio frame if needed
+      let peak = 0;
+      for (let k = 0; k < NUM_BINS; k++) {
+        const f = Math.max(1, k * sr / FFT_SIZE);
+        aWeightGain[k] = aWeight(f);
+        if (aWeightGain[k] > peak) peak = aWeightGain[k];
+      }
+      // Normalise so max gain = 1, then blend with flat response (0.5 flat + 0.5 weighted)
+      for (let k = 0; k < NUM_BINS; k++) {
+        aWeightGain[k] = 0.5 + 0.5 * (aWeightGain[k] / peak);
+      }
+    }
+
+    /* ── Push a new frequency snapshot into the history ─────── */
+    function pushHistory(fd) {
+      histHead = (histHead + ROWS - 1) % ROWS; // advance head backward (newest at front)
+      const row = histBuf[histHead];
+      for (let k = 0; k < NUM_BINS; k++) {
+        row[k] = (fd[k] / 255) * aWeightGain[k];
+      }
+    }
+
     /* ── Shared displacement helper ──────────────────────────── */
-    // Used by both the live animate() loop and the offline export loop.
-    function applyDisplacement(fd, timeAcc) {
-      const halfCols  = COLS / 2;
-      const bins      = fd.length;
-      const flowPhase = timeAcc * FLOW_SPEED;
+    // fd / timeAcc args kept for API compatibility but only fd is used to push history.
+    function applyDisplacement(fd, _timeAcc) {
+      pushHistory(fd);
+
+      const halfCols = COLS / 2;
 
       for (let r = 0; r < ROWS; r++) {
         const positions  = posBuffers[r];
+        // Row r reads from history offset r: row 0 = newest, row ROWS-1 = oldest
+        const histRow    = histBuf[(histHead + r) % ROWS];
+
         const t_row      = r / (ROWS - 1);
         const centreDist = Math.abs(t_row - 0.5) * 2;
         const bowlFactor = Math.pow(1.0 - centreDist, BOWL_EXP);
 
         for (let c = 0; c < COLS; c++) {
-          const colMirror  = c < halfCols ? c : COLS - 1 - c;
-          const binIndex   = Math.floor((colMirror / halfCols) * bins * 0.6);
-          const binValue   = fd[Math.min(binIndex, bins - 1)] / 255;
-          const rowOffset  = Math.floor(((t_row + flowPhase) % 1) * bins * 0.4);
-          const shiftedBin = (binIndex + rowOffset) % bins;
-          const shiftedVal = fd[shiftedBin] / 255;
-          const blended    = binValue * 0.6 + shiftedVal * 0.4;
-          positions[c * 3 + 1] = -blended * bowlFactor * MAX_DISP;
+          // Mirror left/right for symmetry; map to lower 55% of bins (sub-bass to ~10kHz)
+          const colMirror = c < halfCols ? c : COLS - 1 - c;
+          const binIndex  = Math.floor((colMirror / halfCols) * NUM_BINS * 0.55);
+          const val       = histRow[Math.min(binIndex, NUM_BINS - 1)];
+          positions[c * 3 + 1] = -val * bowlFactor * MAX_DISP;
         }
 
         lines[r].geometry.attributes.position.needsUpdate = true;
@@ -300,12 +344,12 @@
     const WA_MAX_DB = -30;
 
     function computeFFTBins(pcmWindow) {
-      const N  = FFT_SIZE;
+      const N  = FFT_SIZE; // 2048
       const re = new Float32Array(pcmWindow);
       const im = new Float32Array(N);
       applyHannWindow(re);
       fftRadix2(re, im);
-      const numBins = N / 2;
+      const numBins = N / 2; // 1024
       const out     = new Uint8Array(numBins);
       for (let k = 0; k < numBins; k++) {
         const mag     = Math.sqrt(re[k] * re[k] + im[k] * im[k]) / N;
@@ -318,16 +362,16 @@
 
     /* ── Pre-compute per-frame FFT data ──────────────────────── */
     function precomputeFrameData(audioBuffer, fps) {
-      const sr             = audioBuffer.sampleRate;
-      const totalSamples   = audioBuffer.length;
+      const sr              = audioBuffer.sampleRate;
+      const totalSamples    = audioBuffer.length;
       const samplesPerFrame = Math.ceil(sr / fps);
-      const totalFrames    = Math.ceil(totalSamples / samplesPerFrame);
-      const halfFFT        = FFT_SIZE / 2;
+      const totalFrames     = Math.ceil(totalSamples / samplesPerFrame);
+      const halfFFT         = FFT_SIZE / 2; // 1024
 
       // Mix to mono
-      const ch0      = audioBuffer.getChannelData(0);
-      const ch1      = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
-      const mono     = new Float32Array(totalSamples);
+      const ch0  = audioBuffer.getChannelData(0);
+      const ch1  = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
+      const mono = new Float32Array(totalSamples);
       for (let i = 0; i < totalSamples; i++) {
         mono[i] = ch1 ? (ch0[i] + ch1[i]) * 0.5 : ch0[i];
       }
@@ -336,20 +380,22 @@
       let prevBins        = new Uint8Array(halfFFT);
 
       for (let f = 0; f < totalFrames; f++) {
+        // Centre the 2048-sample window on this frame's midpoint
         const windowStart = f * samplesPerFrame - halfFFT;
         const pcmWindow   = new Float32Array(FFT_SIZE);
         for (let i = 0; i < FFT_SIZE; i++) {
-          const idx      = windowStart + i;
-          pcmWindow[i]   = (idx >= 0 && idx < totalSamples) ? mono[idx] : 0;
+          const idx    = windowStart + i;
+          pcmWindow[i] = (idx >= 0 && idx < totalSamples) ? mono[idx] : 0;
         }
 
         const rawBins  = computeFFTBins(pcmWindow);
         const smoothed = new Uint8Array(halfFFT);
+        // Match live smoothingTimeConstant = 0.55
         for (let k = 0; k < halfFFT; k++) {
-          smoothed[k] = Math.round(0.80 * prevBins[k] + 0.20 * rawBins[k]);
+          smoothed[k] = Math.round(0.55 * prevBins[k] + 0.45 * rawBins[k]);
         }
-        prevBins            = smoothed;
-        frameFreqData[f]    = smoothed;
+        prevBins         = smoothed;
+        frameFreqData[f] = smoothed;
       }
 
       return { frameFreqData, totalFrames };
@@ -424,14 +470,15 @@
         applyDisplacement(exportFreqData, exportTimeAccum);
         renderer.render(scene, camera);
 
-        const bitmap     = await createImageBitmap(renderer.domElement);
-        const videoFrame = new VideoFrame(bitmap, {
+        // Construct VideoFrame directly from canvas — reads true pixel buffer
+        // dimensions (1920×1080) without going through createImageBitmap which
+        // can be confused by CSS display-size overrides
+        const videoFrame = new VideoFrame(renderer.domElement, {
           timestamp: Math.round(f * (1_000_000 / fps)),
           duration:  Math.round(1_000_000 / fps),
         });
         videoEncoder.encode(videoFrame, { keyFrame: f % (fps * 2) === 0 });
         videoFrame.close();
-        bitmap.close();
 
         // Yield every frame to keep browser responsive
         if (f % 5 === 0) {
