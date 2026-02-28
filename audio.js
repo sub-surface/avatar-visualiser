@@ -27,7 +27,13 @@ export async function getAudioDevices() {
 }
 
 export function setupAnalyser(ctx) {
-  if (analyserL) return analyserL;
+  if (analyserL && analyserL.context === ctx) return analyserL;
+  
+  // If context changed or not initialized, rebuild everything
+  analyserL = null;
+  analyserR = null;
+  lowPassFilter = null;
+  gainNode = null;
   
   gainNode = ctx.createGain();
   gainNode.gain.value = P.gain;

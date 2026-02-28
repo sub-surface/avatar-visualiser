@@ -42,10 +42,13 @@ export function applyDisplacement(fdL, fdR, bowlExp, dispScale) {
   const disp = dispScale !== undefined ? dispScale : modDisp();
   const half = P.cols / 2;
   for (let r = 0; r < P.rows; r++) {
+    const bf   = bowlFactor(r, P.rows, bowlExp);
+    // Skip rows with negligible displacement
+    if (bf < 0.01) { lines[r].visible = false; continue; }
+    lines[r].visible = true;
     const pos  = posBuffers[r];
     const col  = colBuffers[r];
     const hrow = histBuf[(histHead + r) % P.rows];
-    const bf   = bowlFactor(r, P.rows, bowlExp);
     for (let c = 0; c < P.cols; c++) {
       const isRight = c >= half;
       const m = c < half ? c : P.cols - 1 - c;
@@ -67,6 +70,6 @@ export function applyDisplacement(fdL, fdR, bowlExp, dispScale) {
 }
 
 export function tearDownBowl() {
-  lines.forEach(l => scene.remove(l));
+  lines.forEach(l => { l.geometry.dispose(); scene.remove(l); });
   lines.length = posBuffers.length = colBuffers.length = 0;
 }

@@ -96,6 +96,6 @@ export function ensureTimeDomainData(analyser) {
 }
 
 export function tearDownWave() {
-  waveLines.forEach(l => scene.remove(l));
+  waveLines.forEach(l => { l.geometry.dispose(); l.material.dispose(); scene.remove(l); });
   waveLines.length = waveBufs.length = waveMats.length = tdHistory.length = tdEnergy.length = 0;
 }

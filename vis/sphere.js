@@ -101,6 +101,6 @@ export function applySphere(fdL, fdR, dispScale) {
 }
 
 export function tearDownSphere() {
-  sphereLines.forEach(l => scene.remove(l));
+  sphereLines.forEach(l => { l.geometry.dispose(); scene.remove(l); });
   sphereLines.length = sphereBufs.length = sphereCols.length = sphereBase.length = 0;
 }

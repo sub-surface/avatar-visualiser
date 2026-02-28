@@ -114,6 +114,20 @@ export function buildBinMap(scale, halfCols, numBins, freqRange, sr) {
     if (scale === 'linear') {
       f = t * freqRange * nyq;
 
+    } else if (scale === 'dnb') {
+      // Genre-optimised: sub-bass | mids | treble
+      const q1 = Math.floor(halfCols * 0.25);
+      const q3 = Math.floor(halfCols * 0.75);
+      if (c < q1) {
+        const u = q1 > 1 ? c / (q1 - 1) : 0;
+        f = 40 + u * (180 - 40);
+      } else if (c < q3) {
+        const u = (q3 - q1) > 1 ? (c - q1) / (q3 - q1 - 1) : 0;
+        f = 500 + u * (6000 - 500);
+      } else {
+        const u = (halfCols - q3) > 1 ? (c - q3) / (halfCols - q3 - 1) : 0;
+        f = 6000 + u * (16000 - 6000);
+      }
     } else {
       // 'log'
       const fMin = 20;

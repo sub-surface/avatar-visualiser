@@ -110,9 +110,12 @@ export function getLfo2Val() { return _calcLfo(lfoPhase2, P.lfo2Waveform, P.lfo2
 
 export function applyModulation() {
   const lfo = getLfoVal();
-  camera.position.y    = CAM_BASE.y + env.mid * P.modMid;
-  camera.position.z    = CAM_BASE.z - (env.rms * P.modRms + lfo * P.lfoToZoom) + env.kick * P.modKick;
-  camera.lookAt(0, -0.5, 0);
+  
+  if (!window.isUserInteractingWithCamera) {
+    camera.position.y    = CAM_BASE.y + env.mid * P.modMid;
+    camera.position.z    = CAM_BASE.z - (env.rms * P.modRms + lfo * P.lfoToZoom) + env.kick * P.modKick;
+    camera.lookAt(0, -0.5, 0);
+  }
   
   const targetOp       = 0.6 + env.trans * P.modTrans + lfo * P.lfoToOpacity * 0.3;
   material.opacity     = Math.max(0.1, Math.min(1, targetOp));

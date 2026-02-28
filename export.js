@@ -32,11 +32,11 @@ function findModeTriggers(mono, sr, count = 6) {
   }
 
   const triggers = [];
-  const minSpacing = 15 * sr;
+  const minSpacing = 3 * sr; // 3s minimum between cuts
   const sorted = [...energy].sort((a, b) => b.rms - a.rms);
 
   for (const p of sorted) {
-    if (triggers.length >= count) break;
+    if (triggers.length >= 15) break; // More triggers
     const tooClose = triggers.some(t => Math.abs(t.frame - p.frame) < minSpacing);
     if (!tooClose) triggers.push(p);
   }
@@ -130,6 +130,16 @@ function calcSpherePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp, 
   out[2] = x * Math.sin(rot) + z * Math.cos(rot);
 }
 
+function calcWavePos(out, r, c, rows, cols, hrowL, hrowR, half, binMap, disp, space) {
+  const isRight = c >= half;
+  const m = isRight ? cols - 1 - c : c;
+  const bin = binMap[Math.min(m, half - 1)];
+  const fv = (isRight ? hrowR[bin] : hrowL[bin]);
+  out[0] = (c / (cols - 1) - 0.5) * GRID_W;
+  out[1] = (r / (rows - 1) - 0.5) * -4.0; 
+  out[2] = -fv * disp * 2.0;
+}
+
 /* ── Single-pass render loop ──────────────────────────────── */
 async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) {
   const sr              = audioBuffer.sampleRate;
@@ -169,7 +179,7 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
   const dt = 1 / fps;
   const meta = getTrackMeta();
   const half = cols / 2;
-  const cycleList = ['bowl', 'polar', 'sphere'];
+  const cycleList = ['bowl', 'polar', 'sphere', 'wave'];
 
   let currentModeIdx = cycleList.indexOf(visMode);
   if (currentModeIdx === -1) currentModeIdx = 0;
@@ -177,6 +187,10 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
   let morphTargetIdx = currentModeIdx;
   let morphAlpha = 1.0; 
   const MORPH_SPEED = 0.04;
+  
+  // Camera Styles: Normal, Distant, Birds-eye, Worms-eye, Side-Profile, Oblique
+  const camStyles = ['normal', 'distant', 'birds', 'worms', 'side', 'oblique'];
+  let camStyleIdx = 0;
 
   for (let f = 0; f < totalFrames; f++) {
     while (venc.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 0));
@@ -185,7 +199,8 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
     if (triggerFrames.includes(currentSample)) {
       morphTargetIdx = (currentModeIdx + 1) % cycleList.length;
       morphAlpha = 0.0;
-      logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]}`);
+      camStyleIdx = (camStyleIdx + 1) % camStyles.length; // Cycle through styles
+      logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${camStyles[camStyleIdx]} view)`);
     }
 
     if (morphAlpha < 1.0) {
@@ -255,6 +270,21 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
     let baseY = (camMode === 'sphere') ? 0 : (CAM_BASE.y + expEnv.mid * P.modMid);
     let baseZ = (camMode === 'sphere' ? 12 : CAM_BASE.z) - (expEnv.rms * P.modRms + lfo * P.lfoToZoom) + expEnv.kick * P.modKick;
 
+    let lookX = baseX + (Math.sin(ambientTime * 0.2) * 0.1);
+    let lookY = (camMode === 'sphere' ? 0 : -0.5);
+    let lookZ = 0;
+
+    // Apply Camera Style (read from P.camStyles for director mode support)
+    const style = camStyles[camStyleIdx];
+    const cs = P.camStyles && P.camStyles[style];
+    if (cs && style !== 'normal') {
+      baseX = cs.x;
+      baseY = cs.y;
+      baseZ = cs.z;
+      lookY = cs.lookY;
+      if (style === 'side') lookX = 0;
+    }
+
     camera.position.set(baseX + driftX, baseY + driftY, baseZ + dollyZ);
     
     if (P.exportPreset === 'lofi') {
@@ -266,7 +296,7 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
       if (Math.random() > 0.98) camera.position.y += 0.1;
     }
 
-    camera.lookAt(baseX + (Math.sin(ambientTime * 0.2) * 0.1), (camMode === 'sphere' ? 0 : -0.5), 0);
+    camera.lookAt(lookX, lookY, lookZ);
 
     const targetOp = 0.6 + expEnv.trans * P.modTrans + lfo * P.lfoToOpacity * 0.3;
     material.opacity = Math.max(0.1, Math.min(1, targetOp));
@@ -301,11 +331,13 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
       for (let c = 0; c < cols; c++) {
         if (currentMode === 'bowl') calcBowlPos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp);
         else if (currentMode === 'polar') calcPolarPos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp, P.polarSpacing + lfo * P.lfoToPolar);
-        else calcSpherePos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.sphereSize, expSphereRot);
+        else if (currentMode === 'sphere') calcSpherePos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.sphereSize, expSphereRot);
+        else calcWavePos(pA, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.waveSpacing);
 
         if (targetMode === 'bowl') calcBowlPos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp);
         else if (targetMode === 'polar') calcPolarPos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, bf, disp, P.polarSpacing + lfo * P.lfoToPolar);
-        else calcSpherePos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.sphereSize, expSphereRot);
+        else if (targetMode === 'sphere') calcSpherePos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.sphereSize, expSphereRot);
+        else calcWavePos(pB, r, c, rows, cols, hrowL, hrowR, half, expBinMap, disp, P.waveSpacing);
 
         const x = pA[0] + (pB[0] - pA[0]) * morphAlpha;
         const y = pA[1] + (pB[1] - pA[1]) * morphAlpha;
@@ -393,12 +425,26 @@ export async function startExport(wavFile, visMode) {
 
     let EXPORT_W, EXPORT_H;
     const isVert = P.exportOrientation === 'vertical';
+    const is43   = P.exportAspect === '4:3';
+
     if (P.exportPreset === 'lofi') {
-      EXPORT_W = isVert ? 480 : 640;
-      EXPORT_H = isVert ? 640 : 480;
+      // Lo-fi preset always uses a specific low-res target
+      if (is43) {
+        EXPORT_W = isVert ? 480 : 640;
+        EXPORT_H = isVert ? 640 : 480;
+      } else {
+        EXPORT_W = isVert ? 360 : 640;
+        EXPORT_H = isVert ? 640 : 360;
+      }
     } else {
-      EXPORT_W = isVert ? 1080 : 1920;
-      EXPORT_H = isVert ? 1920 : 1080;
+      // Standard/Lossless use HD targets
+      if (is43) {
+        EXPORT_W = isVert ? 1080 : 1440;
+        EXPORT_H = isVert ? 1440 : 1080;
+      } else {
+        EXPORT_W = isVert ? 1080 : 1920;
+        EXPORT_H = isVert ? 1920 : 1080;
+      }
     }
 
     allocExportScratch();

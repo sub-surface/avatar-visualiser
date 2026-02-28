@@ -73,6 +73,6 @@ export function applyPolar(fdL, fdR, bowlExp, dispScale, spacing) {
 }
 
 export function tearDownPolar() {
-  polarLines.forEach(l => scene.remove(l));
-  polarLines.length = polarBufs.length = 0;
+  polarLines.forEach(l => { l.geometry.dispose(); scene.remove(l); });
+  polarLines.length = polarBufs.length = polarCols.length = 0;
 }

@@ -39,6 +39,16 @@ export const P = {
   cycleModes: false,
   exportPreset: 'standard',
   exportOrientation: 'horizontal',
+  exportAspect: '16:9',
+  uiPalette: 'default',
+  camStyles: {
+    normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
+    distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
+    birds:   { x: 0,    y: 15.0, z: 1.0,  lookY: 0 },
+    worms:   { x: 0,    y: 0.5,  z: 6.0,  lookY: 2.0 },
+    side:    { x: 12.0, y: 2.0,  z: 0,    lookY: 0 },
+    oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
+  },
 };
 
 /* ── localStorage persistence ─────────────────────────────── */
@@ -70,6 +80,11 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     if (saved.freqScale) P.freqScale = saved.freqScale;
     if (saved.exportPreset) P.exportPreset = saved.exportPreset;
     if (saved.exportOrientation) P.exportOrientation = saved.exportOrientation;
+    if (saved.exportAspect) P.exportAspect = saved.exportAspect;
+    if (saved.uiPalette) {
+      P.uiPalette = saved.uiPalette;
+      document.body.setAttribute('data-palette', P.uiPalette);
+    }
 
     if (saved.isLight) document.body.classList.add('light-mode');
 
@@ -134,6 +149,13 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
 
     si('pExportPreset', P.exportPreset); ss('vExportPreset', P.exportPreset);
     si('pExportOrient', P.exportOrientation); ss('vExportOrient', P.exportOrientation);
+    si('pExportAspect', P.exportAspect); ss('vExportAspect', P.exportAspect);
+
+    if (saved.camStyles && typeof saved.camStyles === 'object') {
+      for (const k of Object.keys(P.camStyles)) {
+        if (saved.camStyles[k]) Object.assign(P.camStyles[k], saved.camStyles[k]);
+      }
+    }
 
     if (saved.title)  si('pTitle',  saved.title);
     else si('pTitle', '[TITLE]');

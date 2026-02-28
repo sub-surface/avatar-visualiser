@@ -25,30 +25,71 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     /*
-      Two-colour scheme: slate + mauve only.
-      Scanlines remain gold (Three.js material, not CSS).
-
-      --s   cool slate   hsl(205, 18%, 68%)   primary text, active
-      --m   dusty mauve  hsl(315, 16%, 68%)   accent, artist, rule
+      UI Colors - Independent of visualizer palette.
+      Separated into 7 themes: Red, Orange, Yellow, Green, Blue, Indigo, Violet.
     */
     :root {
-      --s-hi:    rgba(162, 182, 192, 0.85);
-      --s-mid:   rgba(162, 182, 192, 0.45);
-      --s-lo:    rgba(162, 182, 192, 0.18);
-      --s-rule:  rgba(162, 182, 192, 0.12);
+      --ui-accent:    #a2b6c0; /* Slate Default */
+      --ui-secondary: #6a8a99;
+      --ui-tertiary:  #c2d1d9;
+      --ui-accent-rgb: 162, 182, 192;
+      
+      --s-hi:    rgba(var(--ui-accent-rgb), 0.85);
+      --s-mid:   rgba(var(--ui-accent-rgb), 0.45);
+      --s-lo:    rgba(var(--ui-accent-rgb), 0.18);
+      --s-rule:  var(--ui-secondary);
 
-      --m-hi:    rgba(192, 162, 184, 0.80);
-      --m-mid:   rgba(192, 162, 184, 0.40);
-      --m-lo:    rgba(192, 162, 184, 0.15);
-      --m-rule:  rgba(192, 162, 184, 0.20);
+      --m-hi:    var(--ui-accent);
+      --m-mid:   var(--ui-secondary);
+      --m-lo:    rgba(var(--ui-accent-rgb), 0.15);
+      --m-rule:  var(--ui-tertiary);
 
       --bg:      #0d0d0d;
       --panel-bg:   rgba(15, 18, 22, 0.45);
       --panel-shd:  rgba(0, 0, 0, 0.5);
       --btn-hi-txt: #ffffff;
+      --btn-active-bg: #ffffff;
+      --btn-active-fg: #0d0d0d;
+      --option-bg: #111;
 
       --serif:  'DM Serif Display', Georgia, serif;
       --mono:   'DM Mono', 'Courier New', monospace;
+    }
+
+    /* ROYGBIV Presets - Triad colors (Primary, Secondary, Tertiary) */
+    body[data-palette="red"] { 
+      --ui-accent: #ff4d4d; --ui-secondary: #cc0000; --ui-tertiary: #ff9999; --ui-accent-rgb: 255, 77, 77; 
+    }
+    body[data-palette="orange"] { 
+      --ui-accent: #ff944d; --ui-secondary: #e65c00; --ui-tertiary: #ffc299; --ui-accent-rgb: 255, 148, 77; 
+    }
+    body[data-palette="yellow"] { 
+      --ui-accent: #ffdb4d; --ui-secondary: #e6b800; --ui-tertiary: #fff0b3; --ui-accent-rgb: 255, 219, 77; 
+    }
+    body[data-palette="green"] { 
+      --ui-accent: #4dff88; --ui-secondary: #00cc44; --ui-tertiary: #b3ffd1; --ui-accent-rgb: 77, 255, 136; 
+    }
+    body[data-palette="blue"] { 
+      --ui-accent: #4da6ff; --ui-secondary: #0073e6; --ui-tertiary: #b3d9ff; --ui-accent-rgb: 77, 166, 255; 
+    }
+    body[data-palette="indigo"] { 
+      --ui-accent: #8c4dff; --ui-secondary: #5900e6; --ui-tertiary: #ccb3ff; --ui-accent-rgb: 140, 77, 255; 
+    }
+    body[data-palette="violet"] { 
+      --ui-accent: #ff4dff; --ui-secondary: #e600e6; --ui-tertiary: #ffb3ff; --ui-accent-rgb: 255, 77, 255; 
+    }
+
+    /* Apply those accents back to the main UI variables in both modes */
+    :root, body {
+      --s-hi:    rgba(var(--ui-accent-rgb), 0.85);
+      --s-mid:   rgba(var(--ui-accent-rgb), 0.45);
+      --s-lo:    rgba(var(--ui-accent-rgb), 0.18);
+      --s-rule:  var(--ui-secondary);
+
+      --m-hi:    var(--ui-accent);
+      --m-mid:   var(--ui-secondary);
+      --m-lo:    rgba(var(--ui-accent-rgb), 0.15);
+      --m-rule:  var(--ui-tertiary);
     }
 
     body.light-mode {
@@ -56,16 +97,20 @@
       --panel-bg:   rgba(255, 255, 255, 0.35);
       --panel-shd:  rgba(0, 0, 0, 0.12);
       --btn-hi-txt: #f4f4f4;
+      --btn-active-bg: #000000;
+      --btn-active-fg: #f4f4f4;
+      --option-bg: #fff;
 
-      --s-hi:    rgba(20, 30, 40, 0.95);
-      --s-mid:   rgba(20, 30, 40, 0.65);
-      --s-lo:    rgba(20, 30, 40, 0.45);
-      --s-rule:  rgba(20, 30, 40, 0.15);
+      --s-hi:    rgba(0, 0, 0, 0.85); /* Black for text in light mode */
+      --s-mid:   rgba(0, 0, 0, 0.55);
+      --s-lo:    rgba(0, 0, 0, 0.25);
+      --s-rule:  rgba(0, 0, 0, 0.10);
 
-      --m-hi:    rgba(120, 40, 100, 0.85);
-      --m-mid:   rgba(120, 40, 100, 0.55);
-      --m-lo:    rgba(120, 40, 100, 0.25);
-      --m-rule:  rgba(120, 40, 100, 0.20);
+      /* Highlight the accent color in light mode where appropriate */
+      --m-hi:    var(--ui-accent);
+      --m-mid:   rgba(var(--ui-accent-rgb), 0.65);
+      --m-lo:    rgba(var(--ui-accent-rgb), 0.35);
+      --m-rule:  rgba(var(--ui-accent-rgb), 0.15);
     }
 
     body {
@@ -160,7 +205,7 @@
       border: none;
       cursor: pointer;
       user-select: none;
-      padding: 0;
+      padding: 4px 12px;
       text-shadow:
         0 0  40px hsl(205 18% 68% / 0.35),
         0 0  80px hsl(205 18% 68% / 0.18),
@@ -235,6 +280,7 @@
 
     #previewScrub {
       -webkit-appearance: none;
+      appearance: none;
       flex: 1;
       height: 1px;
       background: var(--s-lo);
@@ -323,6 +369,19 @@
        FIXED CHROME — bottom-left and bottom-right
     ═══════════════════════════════════════════════════════════ */
 
+    /* ── Realtime clock (top-left, beside infoToggle) ─────────── */
+    #liveClock {
+      font-family: var(--mono);
+      font-weight: 300;
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      color: var(--s-lo);
+      user-select: none;
+      white-space: nowrap;
+      padding: 2px 4px;
+      transition: color 0.2s;
+    }
+
     /* ── Info box (top-left, expandable) ──────────────────────── */
     #infoBox {
       position: fixed;
@@ -344,7 +403,7 @@
       text-transform: lowercase;
       background: transparent;
       border: none;
-      padding: 0;
+      padding: 2px 6px;
       cursor: pointer;
       text-align: left;
       transition: color 0.2s;
@@ -367,7 +426,7 @@
       gap: 8px;
       margin-top: 10px;
       padding: 14px;
-      background: var(--panel-bg);
+      background: rgba(15, 18, 22, 0.15);
       box-shadow: 0 8px 32px var(--panel-shd), 0 2px 8px var(--panel-shd);
       backdrop-filter: blur(10px);
       border-radius: 2px;
@@ -375,13 +434,13 @@
     #infoBox.open #infoBody { display: flex; }
     #infoBox.glow #infoToggle,
     #infoBox.glow #infoBody { 
-      box-shadow: 0 0 0 1px var(--m-hi), 0 8px 32px var(--panel-shd);
-      animation: infoGlow 1.5s ease-in-out infinite alternate; 
+      box-shadow: 0 0 0 1px rgba(var(--ui-accent-rgb), 0.15), 0 8px 32px var(--panel-shd);
+      animation: infoGlow 3.0s ease-in-out infinite alternate; 
     }
     
     @keyframes infoGlow {
-      from { box-shadow: 0 0 0 1px var(--m-hi), 0 8px 32px var(--panel-shd); }
-      to   { box-shadow: 0 0 0 2px var(--m-hi), 0 0 12px var(--m-hi); }
+      from { box-shadow: 0 0 0 1px rgba(var(--ui-accent-rgb), 0.05), 0 8px 32px var(--panel-shd); }
+      to   { box-shadow: 0 0 4px 1px rgba(var(--ui-accent-rgb), 0.15), 0 0 12px rgba(var(--ui-accent-rgb), 0.05); }
     }
     
     #infoHead {
@@ -426,6 +485,15 @@
       color: var(--s-hi);
       font-weight: 400;
     }
+    .info-action {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-color: var(--s-rule);
+      transition: color 0.2s;
+    }
+    .info-action:hover {
+      color: var(--m-hi) !important;
+    }
     #infoBox a.info-link {
       font-family: var(--mono);
       font-size: 0.65rem;
@@ -434,25 +502,54 @@
       text-decoration: none;
       letter-spacing: 0.12em;
       transition: color 0.2s;
+      padding: 2px 6px;
     }
     #infoBox a.info-link:hover { color: var(--s-mid); }
 
-    /* Status Log Area */
-    #statusLog {
-      margin-top: 10px;
+    /* ── Floating status stream (bottom-left, fades in/out) ───── */
+    #statusStream {
+      position: fixed;
+      bottom: 56px;
+      left: 28px;
+      z-index: 99;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 1px;
+      pointer-events: none;
+      width: 320px;
+    }
+    .stream-msg {
       font-family: var(--mono);
-      font-size: 0.6rem;
+      font-weight: 300;
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
       line-height: 1.4;
       color: var(--m-hi);
-      max-height: 60px;
-      overflow-y: auto;
-      border-top: 1px solid var(--s-rule);
-      padding-top: 8px;
-      display: none;
+      opacity: 0;
+      transform: translateY(6px);
+      animation: streamIn 0.4s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: opacity 0.8s ease;
     }
-    #statusLog.has-content { display: block; }
-    .status-msg { margin-bottom: 2px; }
-    .status-msg b { color: var(--s-hi); }
+    .stream-msg b { color: var(--s-hi); font-weight: 400; opacity: 0.8; }
+
+    /* Soft Falloff: Newer messages (bottom) are bright, older ones (top) fade out */
+    .stream-msg:nth-child(1) { opacity: 0.85; }
+    .stream-msg:nth-child(2) { opacity: 0.65; }
+    .stream-msg:nth-child(3) { opacity: 0.45; }
+    .stream-msg:nth-child(4) { opacity: 0.30; }
+    .stream-msg:nth-child(5) { opacity: 0.20; }
+    .stream-msg:nth-child(6) { opacity: 0.12; }
+    .stream-msg:nth-child(7) { opacity: 0.08; }
+    .stream-msg:nth-child(8) { opacity: 0.04; }
+    .stream-msg:nth-child(n+9) { opacity: 0; }
+
+    @keyframes streamIn {
+      to { transform: translateY(0); }
+    }
+    body.obs-active #statusStream { display: none; }
 
     /* ── Top-right chrome (mode toggle + export actions) ──────── */
     #topRight {
@@ -488,11 +585,25 @@
     .mode-btn.active { color: var(--m-hi); }
     .mode-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     
+    .cam-sel-btn.active { 
+      background: var(--s-mid) !important; 
+      color: var(--btn-active-fg) !important; 
+    }
+    
     .btn-active-highlight {
-      border: 1px solid var(--m-hi) !important;
+      border: 1px solid var(--btn-active-bg) !important;
       padding: 0px 4px !important;
-      color: var(--btn-hi-txt) !important;
-      text-shadow: 0 0 8px var(--m-hi);
+      color: var(--btn-active-bg) !important;
+      text-shadow: 0 0 8px var(--btn-active-bg);
+      background: transparent;
+    }
+
+    /* Highlight white/black on click */
+    button:active, .chrome:active, .mode-btn:active, .vis-btn:active, .ptab-btn:active, .info-link:active {
+      background: var(--btn-active-bg) !important;
+      color: var(--btn-active-fg) !important;
+      text-shadow: none !important;
+      opacity: 1 !important;
     }
 
     #modeSep, .mode-sep {
@@ -527,7 +638,7 @@
       user-select: none;
     }
     .vis-btn:hover { color: var(--s-mid); }
-    .vis-btn.active { color: var(--m-hi); }
+    .vis-btn.active { color: var(--m-hi); font-weight: bold; }
     .vis-sep {
       font-family: var(--mono);
       font-size: 0.5rem;
@@ -535,7 +646,7 @@
       pointer-events: none;
     }
 
-    /* ── OBS / Clean mode ────────────────────────────────────── */
+    /* ── Clean mode (formerly OBS mode) ─────────────────────── */
     body.obs-active #infoBox,
     body.obs-active #visStrip,
     body.obs-active #controls,
@@ -551,6 +662,13 @@
       transition: opacity 0.2s;
     }
     body.obs-active #topRight:hover {
+      opacity: 1;
+    }
+    body.obs-active #bottomLeft {
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    body.obs-active #bottomLeft:hover {
       opacity: 1;
     }
 
@@ -576,7 +694,7 @@
       text-decoration: none;
       background: transparent;
       border: none;
-      padding: 0;
+      padding: 2px 6px;
       cursor: pointer;
       transition: color 0.2s;
       text-transform: lowercase;
@@ -596,6 +714,65 @@
       gap: 12px;
     }
 
+    /* Palette button + popout */
+    #paletteWrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    #btnCycle {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid var(--s-lo);
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s;
+    }
+    #btnCycle:hover { border-color: var(--s-mid); }
+    #paletteDot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--ui-accent);
+      pointer-events: none;
+    }
+    #palettePop {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) scale(0.8);
+      display: flex;
+      gap: 5px;
+      padding: 5px 8px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      border: 1px solid var(--s-lo);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    #paletteWrap:hover #palettePop,
+    #palettePop.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) scale(1);
+    }
+    .pal-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      background: var(--dot-color);
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .pal-dot:hover { transform: scale(1.3); }
+    .pal-dot.active { border-color: #fff; }
+
     /* Bottom-right: controls */
     #controls {
       position: fixed;
@@ -606,6 +783,12 @@
       flex-direction: column;
       align-items: flex-end;
       gap: 4px;
+    }
+    #paramsToggle {
+      border: 1px solid var(--s-rule);
+    }
+    #paramsToggle:hover {
+      border-color: var(--s-mid);
     }
 
     #progress {
@@ -702,6 +885,12 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .prow label[title] {
+      cursor: help;
+      text-decoration: underline dotted;
+      text-decoration-color: var(--s-lo);
+      text-underline-offset: 2px;
+    }
     .prow .pval {
       font-family: var(--mono);
       font-weight: 400;
@@ -776,16 +965,69 @@
       cursor: pointer;
       padding: 1px 0;
       min-width: 0;
+      transition: border-bottom-color 0.2s;
     }
-    select.psel option { background: #111; }
+    select.psel:hover { border-bottom-color: var(--s-mid); }
+    select.psel option {
+      background: var(--option-bg);
+      color: var(--s-hi);
+    }
+
+    /* ── Boot Screen ───────────────────────────────────────── */
+    #bootScreen {
+      position: fixed; inset: 0;
+      background: #000;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: opacity 0.5s ease;
+    }
+    #bootScreen.done { opacity: 0; pointer-events: none; }
+    #bootTerminal {
+      flex: 1;
+      padding: 24px 28px;
+      overflow-y: auto;
+      font-family: 'DM Mono', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--s-hi);
+      white-space: pre;
+      scrollbar-width: none;
+    }
+    #bootTerminal::-webkit-scrollbar { display: none; }
+    /* #bootSkip is now inside the terminal output as .boot-skip-hint */
+    #bootSkip { display: none; }
+    .boot-line { min-height: 1.6em; color: var(--s-mid); }
+    .boot-dim   { color: rgba(var(--ui-accent-rgb), 0.35); font-style: italic; }
+    .boot-bright { color: var(--s-hi); font-weight: 600; letter-spacing: 0.05em; }
+    .boot-ok    { color: var(--m-hi); }
+    .boot-logo  { color: var(--s-mid); text-align: center; font-size: 13px; letter-spacing: 0.04em; }
+    .boot-header { color: var(--s-hi); text-align: center; font-weight: 600; }
+    .boot-skip-hint {
+      color: rgba(var(--ui-accent-rgb), 0.4);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: lowercase;
+      padding-bottom: 4px;
+    }
   </style>
 
   <script src="https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
   <script type="importmap">
-  { "imports": { "three": "https://unpkg.com/three@0.169.0/build/three.module.js" } }
+  { "imports": { 
+      "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+    } }
   </script>
 </head>
 <body>
+
+<!-- ── Boot Screen ──────────────────────────────────────────── -->
+<div id="bootScreen">
+  <div id="bootTerminal"></div>
+  <div id="bootSkip">[SPACE] skip</div>
+</div>
 
 <div id="overlay">
   <div id="loadBar"></div>
@@ -825,9 +1067,12 @@
 <!-- ── Fade veil for visualiser transitions ────────────────────── -->
 <div id="fadeVeil"></div>
 
-<!-- ── Top-left: info box ──────────────────────────────────────── -->
-<div id="infoBox" class="open">
-  <button id="infoToggle">avatar visualiser</button>
+<!-- ── Top-left: clock + info box ────────────────────────────── -->
+<div id="infoBox">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <span id="liveClock"></span>
+    <button id="infoToggle">avatar visualiser</button>
+  </div>
   <div id="infoBody">
     <div id="infoHead">
       <div class="info-heading" id="infoTitleText">AVATAR VISUALISER</div>
@@ -843,8 +1088,8 @@
       </div>
       <div class="info-rule"></div>
       <div class="info-body">
-        <b>getting started:</b> <i>burden.wav</i> is pre-loaded. Click <b>preview</b> 
-        top-right to start, then explore the tabs to sculpt the visual response.
+        <b>getting started:</b> <i>burden.wav</i> is pre-loaded. Click <b class="info-action" data-target="topPreviewBtn">preview</b> 
+        top-right to start, then explore the <b class="info-action" data-target="paramsToggle">parameter menu</b> bottom-right to sculpt the visual response.
       </div>
     </div>
     <div id="infoPage2" style="display:none">
@@ -854,7 +1099,7 @@
         <b>1—4</b> &nbsp; switch vis modes<br>
         <b>space</b> &nbsp; toggle export/live<br>
         <b>f</b> &nbsp; fullscreen &nbsp; | &nbsp; <b>p</b> &nbsp; params<br>
-        <b>esc</b> &nbsp; exit obs / clean mode
+        <b>esc</b> &nbsp; exit clean mode
       </div>
     </div>
     <div id="infoPage3" style="display:none">
@@ -866,22 +1111,24 @@
       </div>
       <div class="info-rule"></div>
       <div class="info-body">
-        <b>live</b> — click to grant mic access. Optimized for OBS via 
-        <code>?obs=1</code> URL parameter.
+        <b>live</b> — click to grant mic access. Optimized for streaming via
+        <code>?clean</code> or <code>?obs</code> URL parameter.
       </div>
     </div>
     <div class="info-rule"></div>
     <div style="display:flex; justify-content:flex-end;">
       <a class="info-link" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
     </div>
-    <div id="statusLog"></div>
   </div>
 </div>
+
+<!-- ── Floating status stream (bottom-left) ──────────────────── -->
+<div id="statusStream"></div>
 
 <!-- ── Top-right: app mode toggle & export actions ───────────── -->
 <div id="topRight">
   <div id="modeToggle">
-    <button class="mode-btn" id="btnExport" data-mode="export">export</button>
+    <button class="mode-btn" id="btnExport" data-mode="export">studio</button>
     <span id="modeSep">·</span>
     <button class="mode-btn" id="btnLive" data-mode="live">live</button>
   </div>
@@ -893,17 +1140,16 @@
     <button class="mode-btn" id="topRenderBtn" disabled>render video</button>
   </div>
   <div id="liveActions" style="display:none">
-    <button class="mode-btn" id="btnObs">obs mode</button>
   </div>
 </div>
 
 <!-- ── Bottom-centre: visualiser type strip ────────────────────── -->
 <div id="visStrip">
-  <button class="vis-btn active" data-vis="bowl">bowl</button>
+  <button class="vis-btn" data-vis="sphere">sphere</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="bowl">bowl</button>
   <span class="vis-sep">·</span>
   <button class="vis-btn" data-vis="polar">polar</button>
-  <span class="vis-sep">·</span>
-  <button class="vis-btn" data-vis="sphere">sphere</button>
   <span class="vis-sep">·</span>
   <button class="vis-btn" data-vis="wave">wave</button>
 </div>
@@ -912,7 +1158,23 @@
 <div id="bottomLeft">
   <a class="chrome" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
   <span class="mode-sep">·</span>
-  <button class="chrome" id="btnTheme">theme</button>
+  <button class="chrome" id="btnObs">clean mode</button>
+  <span class="mode-sep">·</span>
+  <div id="paletteWrap">
+    <button id="btnCycle" title="UI palette"><span id="paletteDot"></span></button>
+    <div id="palettePop">
+      <button class="pal-dot" data-pal="default" style="--dot-color:#a2b6c0" title="default"></button>
+      <button class="pal-dot" data-pal="red" style="--dot-color:#ff4d4d" title="red"></button>
+      <button class="pal-dot" data-pal="orange" style="--dot-color:#ff944d" title="orange"></button>
+      <button class="pal-dot" data-pal="yellow" style="--dot-color:#ffdb4d" title="yellow"></button>
+      <button class="pal-dot" data-pal="green" style="--dot-color:#4dff88" title="green"></button>
+      <button class="pal-dot" data-pal="blue" style="--dot-color:#4da6ff" title="blue"></button>
+      <button class="pal-dot" data-pal="indigo" style="--dot-color:#8c4dff" title="indigo"></button>
+      <button class="pal-dot" data-pal="violet" style="--dot-color:#ff4dff" title="violet"></button>
+    </div>
+  </div>
+  <span class="mode-sep">·</span>
+  <button class="chrome" id="btnTheme" style="font-weight:bold; font-size: 0.85rem;"><span id="themeIcon">☾</span></button>
 </div>
 
 <!-- ── Bottom-right: controls + params panel ───────────────────── -->
@@ -929,29 +1191,29 @@
 
     <!-- Track Tab -->
     <div id="tTrack" class="ptab-content active" data-modes="all">
-      <div class="prow"><label>title</label>
+      <div class="prow"><label title="Track title shown in the overlay">title</label>
         <input type="text" class="ptxt" id="pTitle" placeholder="—" maxlength="60"></div>
-      <div class="prow"><label>artist</label>
+      <div class="prow"><label title="Artist name shown in the overlay">artist</label>
         <input type="text" class="ptxt" id="pArtist" placeholder="—" maxlength="60"></div>
-      <div class="prow"><label>bpm</label>
+      <div class="prow"><label title="Beats per minute — shown in the overlay metadata">bpm</label>
         <input type="text" class="ptxt" id="pBpm" placeholder="—" maxlength="8"></div>
-      <div class="prow"><label>genre</label>
+      <div class="prow"><label title="Genre label shown in the overlay metadata">genre</label>
         <input type="text" class="ptxt" id="pGenre" placeholder="—" maxlength="30"></div>
     </div>
 
     <!-- Audio Tab -->
     <div id="tAudio" class="ptab-content" data-modes="all">
-      <div class="prow"><label>input</label>
+      <div class="prow"><label title="Select audio input device (microphone or loopback)">input</label>
         <select class="psel" id="pAudioDevice" style="max-width:140px;">
           <option value="">default</option>
         </select></div>
-      <div class="prow"><label>low pass</label>
+      <div class="prow"><label title="Low-pass filter cutoff — reduces high frequencies. Drag left for a warm, muffled sound">low pass</label>
         <input type="range" id="pLpfCutoff" min="0" max="1" step="0.001" value="1">
         <span class="pval" id="vLpfCutoff">20k</span></div>
-      
+
       <div class="psection">filter lfo</div>
       <canvas id="lfo2Monitor" width="500" height="80"></canvas>
-      <div class="prow"><label>lfo shape</label>
+      <div class="prow"><label title="Waveform shape of the filter LFO — affects how the cutoff oscillates">lfo shape</label>
         <select class="psel" id="pLfo2Waveform">
           <option value="sine">sine</option>
           <option value="square">square</option>
@@ -959,21 +1221,21 @@
           <option value="triangle">triangle</option>
         </select>
         <span class="pval" id="vLfo2Waveform">sine</span></div>
-      <div class="prow"><label>lfo rate</label>
+      <div class="prow"><label title="Speed of the filter LFO oscillation (cycles per beat)">lfo rate</label>
         <input type="range" id="pLfo2Rate" min="0.01" max="2.0" step="0.01" value="0.5">
         <span class="pval" id="vLfo2Rate">0.5</span></div>
-      <div class="prow"><label>lfo depth</label>
+      <div class="prow"><label title="Depth of the filter LFO sweep — 0 disables it">lfo depth</label>
         <input type="range" id="pLfo2Depth" min="0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vLfo2Depth">0.0</span></div>
-      <div class="prow"><label>lfo offset</label>
+      <div class="prow"><label title="Phase offset for the filter LFO — shifts when in the cycle it starts">lfo offset</label>
         <input type="range" id="pLfo2Offset" min="-1.0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vLfo2Offset">0.0</span></div>
 
       <div class="psection">master</div>
-      <div class="prow"><label>volume</label>
+      <div class="prow"><label title="Master input gain — boosts or reduces the signal before analysis">volume</label>
         <input type="range" id="pGain" min="0" max="2.0" step="0.1" value="1.0">
-        <span class="pval" id="vGain">1.0</span></div>
-      <div class="prow"><label>smoothing</label>
+        <span class="pval" id="vGain">0.5</span></div>
+      <div class="prow"><label title="FFT temporal smoothing — higher values make the visualiser respond more slowly">smoothing</label>
         <input type="range" id="pSmoothing" min="0.1" max="0.95" step="0.05" value="0.55">
         <span class="pval" id="vSmoothing">0.55</span></div>
     </div>
@@ -981,48 +1243,48 @@
     <!-- Visual Tab -->
     <div id="tVisual" class="ptab-content">
       <div class="psection">palette</div>
-      <div class="prow"><label>base color</label>
+      <div class="prow"><label title="Base wireframe colour — applied to quiet/low-energy lines">base color</label>
         <input type="color" id="pColorA" value="#e8d5b0" style="width:40px; height:18px; border:none; background:none; cursor:pointer;"></div>
-      <div class="prow"><label>peak color</label>
+      <div class="prow"><label title="Peak colour — blended in on loud transients and high displacement">peak color</label>
         <input type="color" id="pColorB" value="#b090c8" style="width:40px; height:18px; border:none; background:none; cursor:pointer;"></div>
-      <div class="prow"><label>color cycle</label>
+      <div class="prow"><label title="How much the LFO drives colour oscillation between base and peak">color cycle</label>
         <input type="range" id="pColorCycle" min="0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vColorCycle">0.0</span></div>
 
       <div class="psection">dsp</div>
-      <div class="prow"><label>freq scale</label>
+      <div class="prow"><label title="Frequency axis mapping: log = perceptual/musical, linear = equal Hz per column, dnb = sub/kick/treble emphasis">freq scale</label>
         <select class="psel" id="pFreqScale">
           <option value="log" selected>log</option>
           <option value="linear">linear</option>
         </select>
         <span class="pval" id="vFreqScale">log</span></div>
-      <div class="prow"><label>freq range</label>
+      <div class="prow"><label title="How much of the frequency spectrum is mapped across the grid width — lower values focus on low frequencies">freq range</label>
         <input type="range" id="pFreqRange" min="0.2" max="1.0" step="0.05" value="0.55">
         <span class="pval" id="vFreqRange">0.55</span></div>
 
       <div class="psection">shape</div>
-      <div class="prow"><label>displacement</label>
+      <div class="prow"><label title="Maximum vertical displacement of terrain rows at peak frequency energy">displacement</label>
         <input type="range" id="pMaxDisp" min="0.5" max="5.0" step="0.1" value="2.2">
         <span class="pval" id="vMaxDisp">2.2</span></div>
-      <div class="prow" data-modes="bowl,polar"><label>bowl shape</label>
+      <div class="prow" data-modes="bowl,polar"><label title="Curvature of the bowl falloff — higher values narrow the active region toward the centre">bowl shape</label>
         <input type="range" id="pBowlExp" min="0.5" max="4.0" step="0.1" value="2.0">
         <span class="pval" id="vBowlExp">2.0</span></div>
-      
-      <div class="prow" data-modes="sphere"><label>sphere size</label>
+
+      <div class="prow" data-modes="sphere"><label title="Radius of the sphere visualiser geometry">sphere size</label>
         <input type="range" id="pSphereSize" min="1.0" max="6.0" step="0.1" value="3.0">
         <span class="pval" id="vSphereSize">3.0</span></div>
-      <div class="prow" data-modes="wave"><label>wave spacing</label>
+      <div class="prow" data-modes="wave"><label title="Vertical gap between waveform lines in wave mode">wave spacing</label>
         <input type="range" id="pWaveSpacing" min="0.1" max="1.5" step="0.05" value="0.4">
         <span class="pval" id="vWaveSpacing">0.4</span></div>
-      <div class="prow" data-modes="polar"><label>polar lift</label>
+      <div class="prow" data-modes="polar"><label title="Vertical lift offset for polar mode — negative values push lines below centre">polar lift</label>
         <input type="range" id="pPolarSpacing" min="-6.0" max="0.0" step="0.2" value="-3.0">
         <span class="pval" id="vPolarSpacing">-3.0</span></div>
 
       <div class="psection">geometry</div>
-      <div class="prow" data-modes="bowl,polar"><label>rows</label>
+      <div class="prow" data-modes="bowl,polar"><label title="Number of scanline rows — more rows = smoother terrain, higher GPU load">rows</label>
         <input type="range" id="pRows" min="20" max="120" step="10" value="60">
         <span class="pval" id="vRows">60</span></div>
-      <div class="prow"><label>cols</label>
+      <div class="prow"><label title="Number of vertices per row — higher values give more frequency resolution">cols</label>
         <input type="range" id="pCols" min="64" max="256" step="32" value="128">
         <span class="pval" id="vCols">128</span></div>
     </div>
@@ -1072,7 +1334,7 @@
         <input type="range" id="pLfoToOpacity" min="0" max="1.0" step="0.05" value="0.0">
         <span class="pval" id="vLfoToOpacity">0.0</span></div>
 
-      <div class="psection">audio envs</div>
+      <div class="psection">Sens Envs</div>
       <div class="prow"><label>sub→disp</label>
         <input type="range" id="pModSub" min="0" max="1.0" step="0.05" value="0.5">
         <span class="pval" id="vModSub">0.5</span></div>
@@ -1092,7 +1354,9 @@
         <input type="range" id="pModTrans" min="0" max="1.0" step="0.05" value="0.4">
         <span class="pval" id="vModTrans">0.4</span></div>
 
-      <div class="psection">interface</div>
+      <div class="psection" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>interface</span>
+      </div>
       <div class="prow"><label>ui reactivity</label>
         <input type="range" id="pUiReactivity" min="0" max="1.0" step="0.05" value="0.5">
         <span class="pval" id="vUiReactivity">0.5</span></div>
@@ -1108,6 +1372,12 @@
         </select>
         <span class="pval" id="vExportPreset">standard</span></div>
       <div class="prow"><label>aspect</label>
+        <select class="psel" id="pExportAspect">
+          <option value="16:9" selected>16:9</option>
+          <option value="4:3">4:3</option>
+        </select>
+        <span class="pval" id="vExportAspect">16:9</span></div>
+      <div class="prow"><label>orientation</label>
         <select class="psel" id="pExportOrient">
           <option value="horizontal" selected>horizontal</option>
           <option value="vertical">vertical</option>
@@ -1115,6 +1385,44 @@
         <span class="pval" id="vExportOrient">horiz</span></div>
       <div class="prow"><label>cycle modes</label>
         <input type="checkbox" id="pCycleModes" style="cursor:pointer; width:12px; height:12px; margin-left:auto;"></div>
+
+      <div class="psection">cameras</div>
+      <div id="camSelectorGrid" class="prow" style="flex-wrap:wrap; justify-content:center; gap:4px; padding:6px 0;">
+        <button class="chrome cam-sel-btn" data-style="normal">1</button>
+        <button class="chrome cam-sel-btn" data-style="distant">2</button>
+        <button class="chrome cam-sel-btn" data-style="birds">3</button>
+        <button class="chrome cam-sel-btn" data-style="worms">4</button>
+        <button class="chrome cam-sel-btn" data-style="side">5</button>
+        <button class="chrome cam-sel-btn" data-style="oblique">6</button>
+        <div style="width:1px; height:12px; background:var(--s-rule); margin:0 4px;"></div>
+        <button class="chrome" id="btnCamLock" title="Toggle audio reactivity" style="border:1px solid var(--s-lo); padding:2px 6px;">lock</button>
+      </div>
+
+      <div class="prow"><label>camera</label>
+        <select class="psel" id="pDirStyle">
+          <option value="normal">normal</option>
+          <option value="distant">distant</option>
+          <option value="birds">birds-eye</option>
+          <option value="worms">worms-eye</option>
+          <option value="side">side</option>
+          <option value="oblique">oblique</option>
+        </select></div>
+      <div class="prow"><label>x</label>
+        <input type="range" id="pDirX" min="-15" max="15" step="0.5" value="0">
+        <span class="pval" id="vDirX">0</span></div>
+      <div class="prow"><label>y</label>
+        <input type="range" id="pDirY" min="-2" max="20" step="0.5" value="5.5">
+        <span class="pval" id="vDirY">5.5</span></div>
+      <div class="prow"><label>z</label>
+        <input type="range" id="pDirZ" min="-2" max="20" step="0.5" value="9">
+        <span class="pval" id="vDirZ">9</span></div>
+      <div class="prow"><label>look y</label>
+        <input type="range" id="pDirLookY" min="-2" max="5" step="0.5" value="-0.5">
+        <span class="pval" id="vDirLookY">-0.5</span></div>
+      <div class="prow" style="justify-content:center; gap:8px; padding-top:4px;">
+        <button class="chrome" id="btnDirPreview" style="border:1px solid var(--s-lo); padding:2px 8px;">preview</button>
+        <button class="chrome" id="btnDirReset" style="border:1px solid var(--s-lo); padding:2px 8px;">reset</button>
+      </div>
 
       <div class="psection">debug</div>
       <div class="prow" style="justify-content:center; padding-top:4px;">
@@ -1124,7 +1432,13 @@
 
   </div><!-- /paramsPanel -->
 
-  <button class="chrome" id="paramsToggle">parameters</button>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button class="chrome" id="btnExportConfig" title="Export config" style="border:1px solid var(--s-lo); padding:2px 6px; font-size:0.75rem; line-height:1;">↓</button>
+    <button class="chrome" id="btnImportConfig" title="Import config" style="border:1px solid var(--s-lo); padding:2px 6px; font-size:0.75rem; line-height:1;">↑</button>
+    <button class="chrome" id="btnRandomAll" style="border:1px solid var(--s-lo); padding:2px 8px;">randomise</button>
+    <button class="chrome" id="paramsToggle" style="border:1px solid var(--s-lo); padding:2px 8px;">parameters</button>
+  </div>
+  <input type="file" id="configInput" accept=".json" style="display:none">
   <div id="progress"></div>
 
 </div>
@@ -1133,7 +1447,46 @@
 
 <script type="module">
   import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
   import { renderer, scene, camera, CAM_BASE, fadeOut, fadeIn, setTheme, setColors } from './engine.js';
+  
+  // Initialise Camera Controls
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.rotateSpeed = 0.8;
+  controls.panSpeed = 0.8;
+  controls.mouseButtons = {
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.PAN
+  };
+  // Default target is the lookY from the 'normal' style
+  controls.target.set(0, P.camStyles.normal.lookY, 0);
+  controls.update();
+
+  window.isUserInteractingWithCamera = false;
+  controls.addEventListener('start', () => {
+    window.isUserInteractingWithCamera = true;
+    stopCamPreview();
+  });
+  
+  // When user moves camera, update the currently selected "Director" style
+  controls.addEventListener('change', () => {
+    if (window.isUserInteractingWithCamera && !isExporting) {
+      const cs = P.camStyles[dirStyle.value];
+      cs.x = Number(camera.position.x.toFixed(2));
+      cs.y = Number(camera.position.y.toFixed(2));
+      cs.z = Number(camera.position.z.toFixed(2));
+      cs.lookY = Number(controls.target.y.toFixed(2));
+      loadDirSliders(); // Update UI
+      saveParams();
+    }
+  });
+  
+  // We want to stop the "manual override" when switching modes or presets, 
+  // or provide a way to snap back. For now, it stays until changed.
+  
   import { P, loadParams, saveParams, bindRange, bindSelect, bindText,
            updateTrackDisplay } from './params.js';
   import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioDevices } from './audio.js';
@@ -1155,7 +1508,7 @@
   import { startExport, isExporting } from './export.js';
 
   /* ── Visualiser mode switching ──────────────────────────── */
-  let visMode = 'bowl';
+  let visMode = 'sphere';
 
   // Tab switching
   document.querySelectorAll('.ptab-btn').forEach(btn => {
@@ -1167,6 +1520,84 @@
       // If we switch to modulation tab, ensure canvas size is correct
       if (btn.dataset.tab === 'tMod') modDims = setupSharpCanvas(modCanvas, modCtx);
       if (btn.dataset.tab === 'tAudio') modDims2 = setupSharpCanvas(modCanvas2, modCtx2);
+    });
+  });
+
+  // Randomise broad parameters (excluding audio/meta)
+  document.getElementById('btnRandomAll').addEventListener('click', () => {
+    const config = [
+      // Visuals
+      { id: 'pMaxDisp',   key: 'maxDisp',   min: 0.5, max: 4.5 },
+      { id: 'pBowlExp',   key: 'bowlExp',   min: 1.0, max: 4.0 },
+      { id: 'pSmoothing', key: 'smoothing', min: 0.2, max: 0.9 },
+      { id: 'pFreqRange', key: 'freqRange', min: 0.1, max: 1.0 },
+      { id: 'pColorCycle',key: 'colorCycle',min: 0,   max: 1.0 },
+      
+      // Sens Envs
+      { id: 'pModSub',    key: 'modSub',    min: 0.1, max: 1.0 },
+      { id: 'pModHigh',   key: 'modHigh',   min: 0.1, max: 1.2 },
+      { id: 'pModTrans',  key: 'modTrans',  min: 0.1, max: 1.0 },
+      
+      // LFO 1
+      { id: 'pLfoRate',   key: 'lfoRate',   min: 0.05, max: 0.8 },
+      { id: 'pLfoDepth',  key: 'lfoDepth',  min: 0.2,  max: 2.0 },
+      { id: 'pLfoOffset', key: 'lfoOffset', min: -0.5, max: 0.5 },
+      { id: 'pLfoToDisp', key: 'lfoToDisp', min: 0,    max: 0.8 },
+      { id: 'pLfoToBowl', key: 'lfoToBowl', min: 0,    max: 1.5 },
+      { id: 'pLfoToOpacity', key: 'lfoToOpacity', min: 0, max: 1.0 },
+      { id: 'pLfoToPolar', key: 'lfoToPolar', min: 0, max: 2.0 },
+      { id: 'pLfoToWave', key: 'lfoToWave', min: 0, max: 1.0 },
+
+      // Specifics
+      { id: 'pSphereSize', key: 'sphereSize', min: 1.0, max: 6.0 },
+      { id: 'pWaveSpacing', key: 'waveSpacing', min: 0.1, max: 1.0 },
+      { id: 'pPolarSpacing', key: 'polarSpacing', min: -6.0, max: 0 },
+    ];
+
+    config.forEach(m => {
+      const val = m.min + Math.random() * (m.max - m.min);
+      const el = document.getElementById(m.id);
+      if (el) {
+        el.value = val;
+        P[m.key] = val;
+        const lbl = document.getElementById('v' + m.id.substring(1));
+        if (lbl) lbl.textContent = val.toFixed(2);
+      }
+    });
+
+    // Randomize Colors
+    const randomHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    P.colorA = randomHex();
+    P.colorB = randomHex();
+    const elA = document.getElementById('pColorA');
+    const elB = document.getElementById('pColorB');
+    if (elA) elA.value = P.colorA;
+    if (elB) elB.value = P.colorB;
+    
+    // Randomize Selects
+    const waveTypes = ['sine', 'square', 'sawtooth', 'triangle'];
+    const scales = ['log', 'linear', 'dnb'];
+    
+    P.lfoWaveform = waveTypes[Math.floor(Math.random()*waveTypes.length)];
+    const elLfo = document.getElementById('pLfoWaveform');
+    if (elLfo) elLfo.value = P.lfoWaveform;
+
+    P.freqScale = scales[Math.floor(Math.random()*scales.length)];
+    const elScale = document.getElementById('pFreqScale');
+    if (elScale) elScale.value = P.freqScale;
+
+    logStatus('Visual parameters randomised');
+    saveParams();
+    rebuildGrid();
+    refreshBinMap();
+    rebuildHistory();
+  });
+
+  // Action links within info box
+  document.querySelectorAll('.info-action').forEach(el => {
+    el.addEventListener('click', () => {
+      const target = document.getElementById(el.dataset.target);
+      if (target) target.click();
     });
   });
 
@@ -1200,9 +1631,9 @@
       camera.lookAt(0, 0, 0);
     } else if (mode === 'sphere') {
       rebuildSphere();
-      // Offset camera to the left so visualiser appears on the right
-      camera.position.set(-4.5, 0, 12);
-      camera.lookAt(-4.5, 0, 0);
+      // Center the sphere more clearly
+      camera.position.set(0, 0, 12);
+      camera.lookAt(0, 0, 0);
     } else if (mode === 'wave') {
       rebuildWave();
       camera.position.set(0, 1, 10);
@@ -1246,7 +1677,6 @@
   const p3 = document.getElementById('infoPage3');
   const nextBtn = document.getElementById('infoNext');
   const infoTitleText = document.getElementById('infoTitleText');
-  const statusLog = document.getElementById('statusLog');
   let curPage = 1;
   nextBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1262,27 +1692,110 @@
     if (curPage === 3) infoTitleText.textContent = 'MODES & EXPORT';
   });
 
-  export function logStatus(msg) {
+  const statusStream = document.getElementById('statusStream');
+
+  export function logStatus(msg, { open = false } = {}) {
     const div = document.createElement('div');
-    div.className = 'status-msg';
+    div.className = 'stream-msg';
     div.innerHTML = `<b>[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}]</b> ${msg}`;
-    statusLog.appendChild(div);
-    statusLog.classList.add('has-content');
-    statusLog.scrollTop = statusLog.scrollHeight;
-    // Ensure infoBox is open to see the message
-    infoBox.classList.add('open');
+    statusStream.prepend(div);
+    // Keep more messages for the soft falloff effect
+    while (statusStream.children.length > 12) {
+      statusStream.removeChild(statusStream.lastChild);
+    }
+    if (open) infoBox.classList.add('open');
   }
 
   // Listen for status updates from other modules (like export.js)
   window.addEventListener('avatar-status', e => logStatus(e.detail));
   window.addEventListener('avatar-rebuild-vis', () => buildVis(visMode));
 
-  // Theme toggle
-  document.getElementById('btnTheme').addEventListener('click', () => {
+  // Config export/import
+  document.getElementById('btnExportConfig').addEventListener('click', () => {
+    const config = JSON.parse(localStorage.getItem('psychograph_params') || '{}');
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `avatar-config-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logStatus('Config exported', { open: false });
+  });
+
+  const configInput = document.getElementById('configInput');
+  document.getElementById('btnImportConfig').addEventListener('click', () => configInput.click());
+  configInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const config = JSON.parse(text);
+      localStorage.setItem('psychograph_params', JSON.stringify(config));
+      logStatus('Config imported — reloading...');
+      setTimeout(() => location.reload(), 500);
+    } catch (err) {
+      logStatus('Invalid config file');
+    }
+    configInput.value = '';
+  });
+
+  // Palette selection (ROYGBIV)
+  const palettes = ['default', 'red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
+
+  function updatePalActive() {
+    document.querySelectorAll('.pal-dot').forEach(d => {
+      d.classList.toggle('active', d.dataset.pal === P.uiPalette);
+    });
+  }
+  updatePalActive();
+
+  // Clicking the circle cycles through palettes
+  document.getElementById('btnCycle').addEventListener('click', () => {
+    let idx = palettes.indexOf(P.uiPalette);
+    idx = (idx + 1) % palettes.length;
+    P.uiPalette = palettes[idx];
+    document.body.setAttribute('data-palette', P.uiPalette);
+    saveParams();
+    updatePalActive();
+    logStatus(`UI Theme switched to ${P.uiPalette}`, { open: false });
+  });
+
+  // Clicking a dot in the popout selects that palette directly
+  document.querySelectorAll('.pal-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      P.uiPalette = dot.dataset.pal;
+      document.body.setAttribute('data-palette', P.uiPalette);
+      saveParams();
+      updatePalActive();
+      logStatus(`UI Theme switched to ${P.uiPalette}`, { open: false });
+    });
+  });
+
+  // Theme toggle (Light/Dark)
+  const themeBtn = document.getElementById('btnTheme');
+  const themeIcon = document.getElementById('themeIcon');
+  const updateThemeUI = (isLight) => {
+    if (themeIcon) themeIcon.textContent = isLight ? '☀' : '☾';
+  };
+
+  themeBtn.addEventListener('click', () => {
     const isLight = document.body.classList.toggle('light-mode');
     import('./engine.js').then(m => m.setTheme(isLight));
+    updateThemeUI(isLight);
     saveParams();
-    logStatus(`Theme switched to ${isLight ? 'Light' : 'Dark'}`);
+    logStatus(`Theme switched to ${isLight ? 'Light' : 'Dark'}`, { open: false });
+  });
+
+  // Initial theme icon state (run after params load)
+  setTimeout(() => updateThemeUI(document.body.classList.contains('light-mode')), 100);
+
+  // Clean mode toggle (formerly OBS mode)
+  const btnObs = document.getElementById('btnObs');
+  btnObs.addEventListener('click', () => {
+    const active = document.body.classList.toggle('obs-active');
+    btnObs.textContent = active ? 'exit clean' : 'clean mode';
+    if (active) logStatus('Clean mode active (UI hidden)', { open: false });
   });
 
   /* ── App mode (export | live) ──────────────────────────── */
@@ -1344,14 +1857,6 @@
     }
   }
 
-  // OBS mode toggle
-  const btnObs = document.getElementById('btnObs');
-  btnObs.addEventListener('click', () => {
-    const active = document.body.classList.toggle('obs-active');
-    btnObs.textContent = active ? 'exit obs' : 'obs mode';
-    logStatus(`OBS mode ${active ? 'enabled' : 'disabled'}`);
-  });
-
   // Live mode: click to grant mic
   let liveStarted = false;
   overlay.addEventListener('click', async () => {
@@ -1380,10 +1885,13 @@
   });
 
   let selectedWavFile = null;
+  let isDefaultFile   = false;
+
   wavInput.addEventListener('change', async e => {
     const f = e.target.files[0];
     if (f) {
       selectedWavFile = f;
+      isDefaultFile   = false;
       topRenderBtn.disabled = false;
       topRenderBtn.classList.add('btn-active-highlight');
       topLoadBtn.classList.remove('btn-active-highlight');
@@ -1421,6 +1929,10 @@
 
   function startPreview(startTime = 0) {
     if (isPreviewPlaying || !previewBuffer) return;
+    
+    // Clear any existing live audio/analysers to avoid context mismatch
+    stopAudio();
+    
     previewSource = previewCtx.createBufferSource();
     previewSource.buffer = previewBuffer;
     previewSource.loop = true;
@@ -1465,6 +1977,7 @@
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('audio/')) {
       selectedWavFile = file;
+      isDefaultFile   = false;
       topRenderBtn.disabled = false;
       topRenderBtn.classList.add('btn-active-highlight');
       topLoadBtn.classList.remove('btn-active-highlight');
@@ -1499,7 +2012,7 @@
     if (appMode === 'export') { stopPreview(); }
     
     document.body.classList.remove('obs-active');
-    btnObs.textContent = 'obs mode';
+    btnObs.textContent = 'clean mode';
     
     appMode = mode;
     document.getElementById('btnExport').classList.toggle('active', mode === 'export');
@@ -1511,12 +2024,21 @@
       topLoadBtn.classList.add('btn-active-highlight');
       topRenderBtn.classList.remove('btn-active-highlight');
     } else if (mode === 'export' && selectedWavFile) {
-      topLoadBtn.classList.remove('btn-active-highlight');
-      topRenderBtn.classList.add('btn-active-highlight');
+      if (isDefaultFile) {
+        topLoadBtn.classList.add('btn-active-highlight');
+        topRenderBtn.classList.remove('btn-active-highlight');
+      } else {
+        topLoadBtn.classList.remove('btn-active-highlight');
+        topRenderBtn.classList.add('btn-active-highlight');
+      }
     } else {
       topLoadBtn.classList.remove('btn-active-highlight');
       topRenderBtn.classList.remove('btn-active-highlight');
     }
+    
+    // Always keep parameters and preview (if file) bright
+    if (selectedWavFile) topPreviewBtn.classList.add('btn-active-highlight');
+    document.getElementById('paramsToggle').classList.add('btn-active-highlight');
   }
   document.getElementById('btnExport').classList.add('active');
 
@@ -1527,10 +2049,11 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  /* ── OBS mode ──────────────────────────────────────────── */
-  if (new URLSearchParams(location.search).has('obs')) {
+  /* ── Clean mode (URL param) ────────────────────────────── */
+  const sp = new URLSearchParams(location.search);
+  if (sp.has('obs') || sp.has('clean')) {
     document.body.classList.add('obs-active');
-    btnObs.textContent = 'exit obs';
+    btnObs.textContent = 'exit clean';
   }
 
   /* ── Animation loop ────────────────────────────────────── */
@@ -1559,11 +2082,30 @@
   let modDims = setupSharpCanvas(modCanvas, modCtx);
   let modDims2 = setupSharpCanvas(modCanvas2, modCtx2);
 
-  function animate() {
+  // Adaptive pixel ratio — drop quality if framerate dips
+  let _avgFrameTime = 16.67;
+  let _lastFrameTs = 0;
+  const _maxDPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  function animate(timestamp) {
     requestAnimationFrame(animate);
     if (document.visibilityState === 'hidden' || isExporting) return;
+
+    // Adaptive quality
+    if (_lastFrameTs) {
+      const delta = timestamp - _lastFrameTs;
+      _avgFrameTime = _avgFrameTime * 0.9 + delta * 0.1;
+      if (_avgFrameTime > 20 && renderer.getPixelRatio() > 1) {
+        renderer.setPixelRatio(1);
+      } else if (_avgFrameTime < 14 && renderer.getPixelRatio() < _maxDPR) {
+        renderer.setPixelRatio(_maxDPR);
+      }
+    }
+    _lastFrameTs = timestamp;
+
     const dt = clock.getDelta();
     lfoTick(dt);
+    controls.update();
 
     // Update modulation monitor (Visualising raw LFO 1)
     if (document.getElementById('paramsPanel').classList.contains('open') && 
@@ -1794,6 +2336,7 @@
   bindRange('pPolarSpacing', 'vPolarSpacing', 'polarSpacing', () => buildVis(visMode));
 
   bindSelect('pExportPreset', 'vExportPreset', 'exportPreset');
+  bindSelect('pExportAspect', 'vExportAspect', 'exportAspect');
   bindSelect('pExportOrient', 'vExportOrient', 'exportOrientation', (v) => {
     document.getElementById('vExportOrient').textContent = v === 'horizontal' ? 'horiz' : 'vert';
   });
@@ -1809,6 +2352,115 @@
     import('./engine.js').then(m => m.setTheme(true));
   }
   refreshBinMap();
+
+  // Camera selector grid logic
+  const camSelBtns = document.querySelectorAll('.cam-sel-btn');
+  const btnCamLock = document.getElementById('btnCamLock');
+
+  function updateCamSelUI() {
+    camSelBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.style === dirStyle.value);
+    });
+    btnCamLock.classList.toggle('btn-active-highlight', window.isUserInteractingWithCamera);
+    btnCamLock.textContent = window.isUserInteractingWithCamera ? 'unlock' : 'lock';
+  }
+
+  camSelBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const styleName = btn.dataset.style;
+      dirStyle.value = styleName;
+      loadDirSliders();
+      applyCamStyle(styleName);
+      updateCamSelUI();
+    });
+  });
+
+  btnCamLock.addEventListener('click', () => {
+    window.isUserInteractingWithCamera = !window.isUserInteractingWithCamera;
+    if (!window.isUserInteractingWithCamera) {
+      // Snap back to base if unlocking
+      camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
+      controls.target.set(0, -0.5, 0);
+    }
+    updateCamSelUI();
+    logStatus(`Camera ${window.isUserInteractingWithCamera ? 'locked' : 'reactive'}`, { open: false });
+  });
+
+  function applyCamStyle(name) {
+    const cs = P.camStyles[name];
+    camera.position.set(cs.x, cs.y, cs.z);
+    controls.target.set(0, cs.lookY, 0);
+    controls.update();
+    logStatus(`Camera: ${name}`, { open: false });
+  }
+
+  // Preview cycle is removed in favor of direct selection, 
+  // but we'll keep a legacy stopCamPreview for interaction cleanup.
+  function stopCamPreview() {
+    // legacy - can be removed if certain no other part of code calls it
+  }
+
+  // Director mode — edit camera style positions
+  const dirStyle = document.getElementById('pDirStyle');
+  const dirX = document.getElementById('pDirX');
+  const dirY = document.getElementById('pDirY');
+  const dirZ = document.getElementById('pDirZ');
+  const dirLookY = document.getElementById('pDirLookY');
+  const vDirX = document.getElementById('vDirX');
+  const vDirY = document.getElementById('vDirY');
+  const vDirZ = document.getElementById('vDirZ');
+  const vDirLookY = document.getElementById('vDirLookY');
+
+  function loadDirSliders() {
+    const cs = P.camStyles[dirStyle.value];
+    dirX.value = cs.x;      vDirX.textContent = cs.x;
+    dirY.value = cs.y;      vDirY.textContent = cs.y;
+    dirZ.value = cs.z;      vDirZ.textContent = cs.z;
+    dirLookY.value = cs.lookY; vDirLookY.textContent = cs.lookY;
+  }
+
+  function saveDirSliders() {
+    const cs = P.camStyles[dirStyle.value];
+    cs.x = parseFloat(dirX.value);     vDirX.textContent = dirX.value;
+    cs.y = parseFloat(dirY.value);     vDirY.textContent = dirY.value;
+    cs.z = parseFloat(dirZ.value);     vDirZ.textContent = dirZ.value;
+    cs.lookY = parseFloat(dirLookY.value); vDirLookY.textContent = dirLookY.value;
+    saveParams();
+  }
+
+  dirStyle.addEventListener('change', () => {
+    loadDirSliders();
+    applyCamStyle(dirStyle.value);
+    updateCamSelUI();
+  });
+  dirX.addEventListener('input', saveDirSliders);
+  dirY.addEventListener('input', saveDirSliders);
+  dirZ.addEventListener('input', saveDirSliders);
+  dirLookY.addEventListener('input', saveDirSliders);
+  loadDirSliders();
+  updateCamSelUI(); // Initialise UI state
+
+  document.getElementById('btnDirPreview').addEventListener('click', () => {
+    stopCamPreview();
+    applyCamStyle(dirStyle.value);
+  });
+
+  const defaultCamStyles = {
+    normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
+    distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
+    birds:   { x: 0,    y: 15.0, z: 1.0,  lookY: 0 },
+    worms:   { x: 0,    y: 0.5,  z: 6.0,  lookY: 2.0 },
+    side:    { x: 12.0, y: 2.0,  z: 0,    lookY: 0 },
+    oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
+  };
+  document.getElementById('btnDirReset').addEventListener('click', () => {
+    const name = dirStyle.value;
+    Object.assign(P.camStyles[name], defaultCamStyles[name]);
+    loadDirSliders();
+    applyCamStyle(name); // Apply immediately to view the reset
+    saveParams();
+    logStatus(`Camera '${name}' reset to default`, { open: false });
+  });
 
   // Debug: Capture tests
   document.getElementById('btnTestCapture').addEventListener('click', async () => {
@@ -1844,14 +2496,29 @@
     logStatus('Test captures complete');
   });
 
+  /* ── Realtime clock ────────────────────────────────────── */
+  (function startClock() {
+    const el = document.getElementById('liveClock');
+    function tick() {
+      const now = new Date();
+      let h = now.getHours();
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const ampm = h >= 12 ? 'pm' : 'am';
+      h = h % 12 || 12;
+      el.textContent = `${h}:${m} ${ampm}`;
+    }
+    tick();
+    setInterval(tick, 30000);
+  })();
+
   /* ── Keyboard shortcuts ────────────────────────────────── */
   document.addEventListener('keydown', e => {
     // Ignore when typing in an input
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     switch (e.key) {
-      case 'Escape': 
-        document.body.classList.remove('obs-active'); 
-        btnObs.textContent = 'obs mode';
+      case 'Escape':
+        document.body.classList.remove('obs-active');
+        btnObs.textContent = 'clean mode';
         break;
       case ' ':  e.preventDefault(); setAppMode(appMode === 'export' ? 'live' : 'export'); break;
       case '1':  setVisMode('bowl');   break;
@@ -1870,28 +2537,101 @@
     topRenderBtn.disabled = true;
   }
 
-  document.body.classList.add('vis-bowl');
-  rebuildGrid();
-  updateParamVisibility(visMode);
-  animate();
-  overlayReady();
+  // Startup chord — lowpass filtered at 165 Hz
+  async function playStartupSound() {
+    try {
+      const res = await fetch('./Startup.wav');
+      if (!res.ok) return;
+      const ab = await res.arrayBuffer();
+      // Create a fresh AudioContext and route through the shared analyser chain
+      // so the startup chord drives the visualiser FFT
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await ctx.decodeAudioData(ab);
+
+      // Initialise the analyser chain (sets audioReady = true, fills analyserL/R)
+      setupAnalyser(ctx);
+      // Temporarily set the chain's LPF to 165 Hz for the warm boot chord
+      const chainLpf = getLPF();
+      const prevCutoff = chainLpf.frequency.value;
+      chainLpf.frequency.value = 165;
+
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(chainLpf); // feeds through LPF → gain → splitter → analysers → destination
+
+      const play = () => src.start(0);
+      if (ctx.state === 'suspended') {
+        const resume = () => { ctx.resume().then(play); };
+        document.addEventListener('click',   resume, { once: true });
+        document.addEventListener('keydown', resume, { once: true });
+      } else {
+        play();
+      }
+      src.onended = () => {
+        // Restore LPF cutoff; leave analysers alive for the main app to reuse/replace
+        chainLpf.frequency.value = prevCutoff;
+      };
+    } catch (e) { /* silently fail */ }
+  }
+
+  function initApp() {
+    document.body.classList.add('vis-sphere');
+    buildVis(visMode);
+    document.querySelectorAll('.vis-btn').forEach(b => {
+      if (b.dataset.vis === 'sphere') b.classList.add('active');
+    });
+    animate();
+    overlayReady();
+    playStartupSound();
+    loadDefaultTrack();
+  }
+
+  // Boot sequence
+  const bootEl = document.getElementById('bootScreen');
+  if (bootEl) {
+    import('./boot.js').then(({ BootScreen }) => {
+      const boot = new BootScreen(document.getElementById('bootTerminal'));
+
+      document.addEventListener('keydown', function bootKey(e) {
+        if (e.code === 'Space' && bootEl.parentNode) {
+          e.preventDefault();
+          boot.skipped = true;
+        }
+      });
+
+      boot.run(bootEl).then(() => {
+        bootEl.classList.add('done');
+        setTimeout(() => bootEl.remove(), 500);
+        initApp();
+      });
+    }).catch(() => {
+      // If boot.js fails to load, just init the app
+      bootEl.remove();
+      initApp();
+    });
+  } else {
+    initApp();
+  }
 
   // Onboarding: Auto-load default track
   async function loadDefaultTrack() {
     try {
-      logStatus('Loading default track: burden.wav');
-      const res = await fetch('./burden.wav');
+      logStatus('Loading default track: Burden.wav');
+      const res = await fetch('./Burden.wav');
       if (!res.ok) throw new Error('File not found');
       const blob = await res.blob();
-      const f = new File([blob], 'burden.wav', { type: 'audio/wav' });
+      const f = new File([blob], 'Burden.wav', { type: 'audio/wav' });
       
       selectedWavFile = f;
+      isDefaultFile   = true;
       topRenderBtn.disabled = false;
       document.body.classList.add('has-file');
       topPreviewBtn.style.display = 'inline';
       sepPreview.style.display    = 'inline';
+      
       topPreviewBtn.classList.add('btn-active-highlight');
-      topLoadBtn.classList.remove('btn-active-highlight');
+      topLoadBtn.classList.add('btn-active-highlight');
+      topRenderBtn.classList.remove('btn-active-highlight');
 
       const ab = await blob.arrayBuffer();
       if (!previewCtx) previewCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1904,16 +2644,18 @@
       
       logStatus('Ready. Click preview to begin.');
       
-      // Onboarding glow
-      const ib = document.getElementById('infoBox');
-      ib.classList.add('glow');
-      setTimeout(() => ib.classList.remove('glow'), 4000);
+      // Onboarding glow — first visit only
+      if (!localStorage.getItem('psychograph_visited')) {
+        const ib = document.getElementById('infoBox');
+        ib.classList.add('glow');
+        setTimeout(() => ib.classList.remove('glow'), 4000);
+        localStorage.setItem('psychograph_visited', '1');
+      }
     } catch (e) { 
       logStatus('No default track found.'); 
       topLoadBtn.classList.add('btn-active-highlight');
     }
   }
-  loadDefaultTrack();
 
 </script>
 </body>
