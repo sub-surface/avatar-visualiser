@@ -33,7 +33,10 @@ function findModeTriggers(mono, sr, count = 6) {
   }
 
   const triggers = [];
-  const minSpacing = 3 * sr; // 3s minimum between cuts
+  // peakSens 0–1: 0 = very spaced (8s), 1 = more frequent (3s)
+  const sens = Math.max(0, Math.min(1, typeof P.peakSens === 'number' ? P.peakSens : 0.5));
+  const minSpacingSec = 8 - sens * 5; // 8s at sens=0, 3s at sens=1
+  const minSpacing = minSpacingSec * sr;
   const sorted = [...energy].sort((a, b) => b.rms - a.rms);
 
   for (const p of sorted) {
@@ -138,8 +141,14 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
   let morphAlpha = 1.0; 
   const MORPH_SPEED = 0.04;
   
-  // Camera presets from P.camStyles (spherical array)
-  let camStyleIdx = 0;
+  // Camera presets: use selected group's subset, or all presets
+  const _groupIdx = typeof P.exportCamGroupIdx === 'number' ? P.exportCamGroupIdx : -1;
+  const _group = (_groupIdx >= 0 && P.camGroups[_groupIdx]) ? P.camGroups[_groupIdx] : null;
+  const camStyleList = _group
+    ? _group.presets.filter(i => P.camStyles[i]).map(i => i)
+    : P.camStyles.map((_, i) => i);
+  const camStyleListLen = camStyleList.length || 1;
+  let camStyleListIdx = 0;
 
   // Initialise morph state if we ARE cycling vis types
   if (P.cycleMode === 'types' || P.cycleMode === 'random') {
@@ -153,16 +162,17 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
     if (triggerFrames.includes(currentSample)) {
       // cinematic / types / random: cut to next camera position
       if (P.cycleMode === 'cinematic' || P.cycleMode === 'types' || P.cycleMode === 'random') {
-        camStyleIdx = (camStyleIdx + 1) % P.camStyles.length;
+        camStyleListIdx = (camStyleListIdx + 1) % camStyleListLen;
       }
 
       if (P.cycleMode === 'types' || P.cycleMode === 'random') {
         // Cycle vis mode morph
         morphTargetIdx = (currentModeIdx + 1) % cycleList.length;
         morphAlpha = 0.0;
-        logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${P.camStyles[camStyleIdx]?.name ?? camStyleIdx} view)`);
+        const _csName = P.camStyles[camStyleList[camStyleListIdx]]?.name ?? camStyleListIdx;
+        logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${_csName} view)`);
       } else if (P.cycleMode === 'cinematic') {
-        logStatus(`Peak hit! Camera cut to ${P.camStyles[camStyleIdx]?.name ?? camStyleIdx} view`);
+        logStatus(`Peak hit! Camera cut to ${P.camStyles[camStyleList[camStyleListIdx]]?.name ?? camStyleListIdx} view`);
       }
 
       // random: also randomise visual parameters on each peak
@@ -243,8 +253,8 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
     let lookY = (camMode === 'sphere' ? 0 : -0.5);
     let lookZ = 0;
 
-    // Apply Camera Style (read from P.camStyles spherical array)
-    const cs = P.camStyles[camStyleIdx];
+    // Apply Camera Style (read from P.camStyles spherical array, respecting group)
+    const cs = P.camStyles[camStyleList[camStyleListIdx]];
     if (cs) {
       const pos = sphericalToCart(cs.az, cs.el, cs.dist);
       baseX = pos.x;

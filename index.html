@@ -664,24 +664,38 @@
       color: var(--btn-active-fg) !important;
     }
 
-    /* ── Director Panel (floating, bottom-centre) ─────────────── */
-    #directorPanel {
+    /* ── Director wrapper + panel (floating, bottom-centre) ──── */
+    #directorWrap {
       position: fixed;
       bottom: 56px;          /* sit above the visStrip (~34px) + gap */
       left: 50%;
       transform: translateX(-50%);
       z-index: 150;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: 8px;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.18s ease;
     }
-    #directorPanel.open {
+    #directorWrap.open {
       opacity: 1;
       pointer-events: auto;
+    }
+    #directorPanel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    /* Side action buttons (▶ ↺) pinned to right of panel */
+    #dirSideActions {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      padding-bottom: 2px;
     }
     /* Preset pill row */
     #dirPresetList {
@@ -733,6 +747,34 @@
       line-height: 1;
     }
     .dir-preset-del:hover { opacity: 1; }
+    /* Group bar */
+    #dirGroupBar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--s-lo);
+      border-radius: 2px;
+      padding: 3px 8px;
+    }
+    .dir-group-label {
+      font-family: var(--mono);
+      font-size: 0.55rem;
+      color: var(--s-mid);
+      letter-spacing: 0.08em;
+    }
+    .dir-group-sel {
+      background: none;
+      border: none;
+      color: var(--s-hi);
+      font-family: var(--mono);
+      font-size: 0.55rem;
+      outline: none;
+      cursor: pointer;
+      max-width: 120px;
+    }
     /* Controls row: two slider columns + action buttons */
     #dirControls {
       display: flex;
@@ -868,7 +910,8 @@
     body.obs-active #infoBox,
     body.obs-active #visStrip,
     body.obs-active #trackInfo,
-    body.obs-active #overlay {
+    body.obs-active #overlay,
+    body.obs-active #directorWrap {
       display: none !important;
     }
     body.obs-active #controls {
@@ -1431,8 +1474,6 @@
     <button class="mode-btn" id="btnExport" data-mode="export">studio</button>
     <span id="modeSep">·</span>
     <button class="mode-btn" id="btnLive" data-mode="live">live</button>
-    <span class="mode-sep">·</span>
-    <button class="mode-btn" id="btnDirector">director</button>
   </div>
   <div id="exportActions">
     <button class="mode-btn btn-active-highlight" id="topLoadBtn">load file</button>
@@ -1445,9 +1486,16 @@
   </div>
 </div>
 
-<!-- ── Director Panel (floating, bottom-centre above visStrip) ── -->
+<!-- ── Director wrapper (contains panel + side actions) ──────── -->
+<div id="directorWrap">
 <div id="directorPanel">
   <div id="dirPresetList"></div>
+  <div id="dirGroupBar">
+    <span class="dir-group-label">group:</span>
+    <select id="dirGroupSel" class="dir-group-sel"></select>
+    <button class="chrome dir-act-btn" id="btnDirGroupSave" title="Save current preset selection to a new group">save</button>
+    <button class="chrome dir-act-btn" id="btnDirGroupDel" title="Delete selected group">✕</button>
+  </div>
   <div id="dirControls">
     <div class="dir-col">
       <div class="dir-row">
@@ -1474,12 +1522,20 @@
       </div>
     </div>
     <div class="dir-btns">
-      <button class="chrome dir-act-btn" id="btnDirAddPreset">+</button>
-      <button class="chrome dir-act-btn" id="btnDirLock">free</button>
-      <button class="chrome dir-act-btn" id="btnDirResetPreset">↺</button>
+      <button class="chrome dir-act-btn" id="btnDirAddPreset" title="Capture current camera position as a new preset">+</button>
+      <button class="chrome dir-act-btn" id="btnDirRandomCams" title="Randomise camera positions (up to 10). Shift+click to choose how many.">rnd</button>
+      <button class="chrome dir-act-btn" id="btnDirLock" title="Toggle camera lock">unlocked</button>
+      <button class="chrome dir-act-btn" id="btnDirGizmo" title="Toggle XYZ axis gizmo at orbit target">xyz</button>
     </div>
   </div>
 </div>
+
+<!-- ── Director side actions (right of panel) ── -->
+<div id="dirSideActions">
+  <button class="chrome dir-act-btn" id="btnDirPreview" title="Cycle through all camera presets at 2-second intervals">▶</button>
+  <button class="chrome dir-act-btn" id="btnDirResetPreset" title="Reset active preset to factory default">↺</button>
+</div>
+</div><!-- /directorWrap -->
 
 <!-- ── Bottom-centre: visualiser type strip ────────────────────── -->
 <div id="visStrip">
@@ -1744,13 +1800,15 @@
           <option value="random" title="Morphs vis, cuts camera, and randomises visual parameters on every peak">random</option>
         </select>
         <span class="pval" id="vCycleMode">off</span></div>
+      <div class="prow"><label title="Energy peak sensitivity — higher = more frequent camera/vis cuts (min 3s spacing); lower = fewer cuts (min 8s spacing). Only active when cycle mode is not off.">peak sens</label>
+        <input type="range" class="pslider" id="pPeakSens" min="0" max="1" step="0.05" value="0.5">
+        <span class="pval" id="vPeakSens">0.5</span></div>
 
       <div class="psection">camera</div>
-      <div class="prow"><label title="Camera preset used during export">preset</label>
-        <select class="psel" id="pExportCamPreset"></select></div>
-      <div class="prow" style="justify-content:center;">
-        <button class="chrome" id="btnCamLock" title="Locked: fix camera to your manual position (overrides reactivity). Unlocked: allow audio-reactive movement." style="border:1px solid var(--s-lo); padding:2px 8px;">unlocked</button>
-      </div>
+      <div class="prow"><label title="Camera group for export — cycles through the group's presets on energy peaks">group</label>
+        <select class="psel" id="pExportCamGroup">
+          <option value="-1">— all presets —</option>
+        </select></div>
 
       <div class="psection">boot</div>
       <div class="prow" style="align-items:center; gap:8px; padding:4px 0;">
@@ -1771,6 +1829,7 @@
     <button class="chrome" id="btnExportConfig" title="Export config" style="border:1px solid var(--s-lo); padding:2px 6px; font-size:0.75rem; line-height:1;">↓</button>
     <button class="chrome" id="btnImportConfig" title="Import config" style="border:1px solid var(--s-lo); padding:2px 6px; font-size:0.75rem; line-height:1;">↑</button>
     <button class="chrome" id="btnRandomAll" style="border:1px solid var(--s-lo); padding:2px 8px;">randomise</button>
+    <button class="chrome" id="btnDirector" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Open camera director panel">director</button>
     <button class="chrome" id="paramsToggle" style="border:1px solid var(--s-lo); padding:2px 8px;">parameters</button>
   </div>
   <input type="file" id="configInput" accept=".json" style="display:none">
@@ -2661,6 +2720,7 @@
     document.getElementById('vExportOrient').textContent = v === 'horizontal' ? 'horiz' : 'vert';
   });
   bindSelect('pCycleMode', 'vCycleMode', 'cycleMode');
+  bindRange('pPeakSens', 'vPeakSens', 'peakSens');
 
   document.getElementById('pFastBoot').addEventListener('change', e => {
     P.fastBoot = e.target.checked;
@@ -2772,7 +2832,7 @@
   });
 
   // ── Director Panel ────────────────────────────────────────────
-  const directorPanel  = document.getElementById('directorPanel');
+  const directorWrap   = document.getElementById('directorWrap');
   const btnDirector    = document.getElementById('btnDirector');
   const dAz    = document.getElementById('dAz');
   const dEl    = document.getElementById('dEl');
@@ -2785,15 +2845,73 @@
   const btnDirLock        = document.getElementById('btnDirLock');
   const btnDirResetPreset = document.getElementById('btnDirResetPreset');
   const btnDirAddPreset   = document.getElementById('btnDirAddPreset');
-  const btnCamLock        = document.getElementById('btnCamLock');
+  // ── Camera Groups ─────────────────────────────────────────────
+  const dirGroupSel       = document.getElementById('dirGroupSel');
+  const btnDirGroupSave   = document.getElementById('btnDirGroupSave');
+  const btnDirGroupDel    = document.getElementById('btnDirGroupDel');
 
-  function updateExportCamDropdown() {
-    const sel = document.getElementById('pExportCamPreset');
-    if (!sel) return;
-    const cur = sel.value;
-    sel.innerHTML = P.camStyles.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
-    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  function renderGroupDropdowns() {
+    // Director group selector
+    const curDir = dirGroupSel.value;
+    dirGroupSel.innerHTML = '<option value="-1">— none —</option>' +
+      P.camGroups.map((g, i) => `<option value="${i}">${g.name}</option>`).join('');
+    if ([...dirGroupSel.options].some(o => o.value === curDir)) dirGroupSel.value = curDir;
+
+    // Export group selector
+    const expSel = document.getElementById('pExportCamGroup');
+    if (!expSel) return;
+    expSel.innerHTML = '<option value="-1">— all presets —</option>' +
+      P.camGroups.map((g, i) => `<option value="${i}">${g.name} (${g.presets.length})</option>`).join('');
+    // Restore saved group selection from P
+    const savedIdx = String(P.exportCamGroupIdx ?? -1);
+    if ([...expSel.options].some(o => o.value === savedIdx)) expSel.value = savedIdx;
   }
+
+  // Save group: collect all selected (highlighted) presets, prompt for name
+  btnDirGroupSave.addEventListener('click', () => {
+    if (P.camGroups.length >= 10) { logStatus('Max 10 groups', { open: false }); return; }
+    const name = prompt('Group name:', 'Group ' + (P.camGroups.length + 1));
+    if (!name) return;
+    // Use all presets if none specifically selected, otherwise use current
+    const indices = P.camStyles.map((_, i) => i);
+    P.camGroups.push({ name: name.trim(), presets: indices });
+    saveParams();
+    renderGroupDropdowns();
+    dirGroupSel.value = String(P.camGroups.length - 1);
+    logStatus(`Group "${name}" saved (${indices.length} presets)`, { open: false });
+  });
+
+  btnDirGroupDel.addEventListener('click', () => {
+    const idx = parseInt(dirGroupSel.value);
+    if (idx < 0 || !P.camGroups[idx]) return;
+    const name = P.camGroups[idx].name;
+    P.camGroups.splice(idx, 1);
+    saveParams();
+    renderGroupDropdowns();
+    logStatus(`Group "${name}" deleted`, { open: false });
+  });
+
+  // Export group dropdown → update P
+  document.getElementById('pExportCamGroup').addEventListener('change', function() {
+    P.exportCamGroupIdx = parseInt(this.value);
+    saveParams();
+  });
+
+  // When a group is selected in director, load its first preset
+  dirGroupSel.addEventListener('change', () => {
+    const idx = parseInt(dirGroupSel.value);
+    if (idx < 0 || !P.camGroups[idx]) return;
+    const group = P.camGroups[idx];
+    if (group.presets.length > 0) {
+      const firstPresetIdx = group.presets[0];
+      if (P.camStyles[firstPresetIdx]) {
+        camState.activePresetIdx = firstPresetIdx;
+        applyDirPreset(firstPresetIdx);
+        loadDirSliders();
+        renderDirPresets();
+      }
+    }
+  });
 
   function renderDirPresets() {
     const list = document.getElementById('dirPresetList');
@@ -2821,7 +2939,7 @@
           inp.replaceWith(nameSpan);
           nameSpan.textContent = preset.name;
           saveParams();
-          updateExportCamDropdown();
+          renderGroupDropdowns();
         };
         inp.addEventListener('blur', commit);
         inp.addEventListener('keydown', e => {
@@ -2856,7 +2974,7 @@
         camState.activePresetIdx = Math.min(camState.activePresetIdx, P.camStyles.length - 1);
         saveParams();
         renderDirPresets();
-        updateExportCamDropdown();
+        renderGroupDropdowns();
       });
 
       item.addEventListener('click', e => {
@@ -2901,7 +3019,7 @@
   }
 
   function openDirector() {
-    directorPanel.classList.add('open');
+    directorWrap.classList.add('open');
     setDirectorOpen(true);
     renderDirPresets();
     loadDirSliders();
@@ -2912,13 +3030,13 @@
   }
 
   function closeDirector() {
-    directorPanel.classList.remove('open');
+    directorWrap.classList.remove('open');
     setDirectorOpen(false);
     btnDirector.classList.remove('btn-active-highlight');
   }
 
   btnDirector.addEventListener('click', () => {
-    if (directorPanel.classList.contains('open')) closeDirector();
+    if (directorWrap.classList.contains('open')) closeDirector();
     else openDirector();
   });
 
@@ -2933,24 +3051,16 @@
     camState.activePresetIdx = P.camStyles.length - 1;
     saveParams();
     renderDirPresets();
-    updateExportCamDropdown();
+    renderGroupDropdowns();
   });
 
   function updateLockUI() {
     const locked = camState.locked;
     btnDirLock.textContent = locked ? 'locked' : 'unlocked';
     btnDirLock.classList.toggle('btn-active-highlight', locked);
-    btnCamLock.textContent = locked ? 'locked' : 'unlocked';
-    btnCamLock.classList.toggle('btn-active-highlight', locked);
   }
 
   btnDirLock.addEventListener('click', () => {
-    toggleLock();
-    updateLockUI();
-    logStatus(`Camera ${camState.locked ? 'locked' : 'reactive'}`, { open: false });
-  });
-
-  btnCamLock.addEventListener('click', () => {
     toggleLock();
     updateLockUI();
     logStatus(`Camera ${camState.locked ? 'locked' : 'reactive'}`, { open: false });
@@ -2965,6 +3075,92 @@
     applyDirPreset(camState.activePresetIdx);
     saveParams();
     logStatus(`Camera '${preset.name}' reset`, { open: false });
+  });
+
+  // ── Random cameras ────────────────────────────────────────────
+  const btnDirRandomCams = document.getElementById('btnDirRandomCams');
+  btnDirRandomCams.addEventListener('click', e => {
+    const MAX = 10;
+    let count;
+    if (e.shiftKey) {
+      const ans = prompt(`How many random cameras? (1–${MAX})`, '3');
+      if (ans === null) return;
+      count = Math.max(1, Math.min(MAX, parseInt(ans) || 3));
+    } else {
+      count = 3;
+    }
+    const randEl  = () => +(Math.random() * 80 - 10).toFixed(0);   // -10° to 70°
+    const randAz  = () => +(Math.random() * 360).toFixed(0);
+    const randDist= () => +(6 + Math.random() * 20).toFixed(1);    // 6–26
+    const randLookY = () => +((Math.random() * 4) - 1).toFixed(1); // -1 to 3
+    for (let i = 0; i < count; i++) {
+      if (P.camStyles.length >= MAX) break;
+      P.camStyles.push({
+        id: 'rand_' + Date.now() + '_' + i,
+        name: 'Rand ' + (P.camStyles.length + 1),
+        az: randAz(), el: randEl(), dist: randDist(), lookY: randLookY(),
+      });
+    }
+    camState.activePresetIdx = P.camStyles.length - 1;
+    saveParams();
+    renderDirPresets();
+    renderGroupDropdowns();
+    logStatus(`Added ${count} random camera(s)`, { open: false });
+  });
+
+  // ── Preview cameras ───────────────────────────────────────────
+  const btnDirPreview = document.getElementById('btnDirPreview');
+  let dirPreviewTimer = null;
+
+  function stopDirPreview() {
+    if (dirPreviewTimer) { clearInterval(dirPreviewTimer); dirPreviewTimer = null; }
+    btnDirPreview.textContent = '▶';
+    btnDirPreview.classList.remove('btn-active-highlight');
+  }
+
+  btnDirPreview.addEventListener('click', () => {
+    if (dirPreviewTimer) { stopDirPreview(); return; }
+    if (P.camStyles.length < 2) { logStatus('Need ≥2 presets to preview', { open: false }); return; }
+    btnDirPreview.textContent = '■';
+    btnDirPreview.classList.add('btn-active-highlight');
+    let previewIdx = camState.activePresetIdx;
+    const interval = 2000; // 2 seconds per preset
+    dirPreviewTimer = setInterval(() => {
+      previewIdx = (previewIdx + 1) % P.camStyles.length;
+      camState.activePresetIdx = previewIdx;
+      applyDirPreset(previewIdx);
+      loadDirSliders();
+      renderDirPresets();
+    }, interval);
+  });
+
+  // Stop preview on manual orbit drag
+  controls.addEventListener('start', () => { if (dirPreviewTimer) stopDirPreview(); });
+
+  // ── XYZ Gizmo ────────────────────────────────────────────────
+  const btnDirGizmo = document.getElementById('btnDirGizmo');
+  let _axesHelper = null;
+
+  btnDirGizmo.addEventListener('click', () => {
+    if (_axesHelper) {
+      scene.remove(_axesHelper);
+      _axesHelper.dispose();
+      _axesHelper = null;
+      btnDirGizmo.classList.remove('btn-active-highlight');
+      logStatus('Gizmo hidden', { open: false });
+    } else {
+      _axesHelper = new THREE.AxesHelper(2);
+      // Position at orbit target so it marks what the camera revolves around
+      _axesHelper.position.copy(controls.target);
+      scene.add(_axesHelper);
+      btnDirGizmo.classList.add('btn-active-highlight');
+      logStatus('Gizmo: red=X  green=Y  blue=Z', { open: false });
+    }
+  });
+
+  // Keep gizmo at orbit target if target changes (e.g. pan)
+  controls.addEventListener('change', () => {
+    if (_axesHelper) _axesHelper.position.copy(controls.target);
   });
 
   // Director slider input → update preset + camera live
@@ -3020,7 +3216,7 @@
     if (camState.sliderDragging) { endSliderDrag(); controls.enabled = true; }
   });
 
-  updateExportCamDropdown();
+  renderGroupDropdowns();
   updateLockUI();
 
   // Color randomiser specific to palette
@@ -3126,7 +3322,22 @@
         document.body.classList.remove('obs-active');
         btnObs.textContent = 'clean mode';
         break;
-      case ' ':  e.preventDefault(); setAppMode(appMode === 'export' ? 'live' : 'export'); break;
+      case ' ':
+        e.preventDefault();
+        // Spacebar = full preview toggle: audio/vis preview + camera preset cycling
+        if (appMode === 'export') {
+          togglePreview();
+          // Sync camera preview: start if audio starting, stop if pausing
+          if (isPreviewPlaying) {
+            if (!dirPreviewTimer && P.camStyles.length >= 2) btnDirPreview.click();
+          } else {
+            if (dirPreviewTimer) stopDirPreview();
+          }
+        } else {
+          // In live mode, spacebar still switches back to export/studio
+          setAppMode('export');
+        }
+        break;
       case '1':  setVisMode('bowl');   break;
       case '2':  setVisMode('polar');  break;
       case '3':  setVisMode('sphere'); break;
@@ -3194,7 +3405,30 @@
     animate();
     overlayReady();
     playStartupSound();
-    loadDefaultTrack();
+    // Create default camera group on first load (when no groups saved yet)
+    if (P.camGroups.length === 0) {
+      P.camGroups.push({
+        name: 'default',
+        presets: P.camStyles.map((_, i) => i),
+      });
+      P.exportCamGroupIdx = 0;
+      saveParams();
+      renderGroupDropdowns();
+    }
+    // Set default metadata if not already loaded from localStorage
+    const titleEl = document.getElementById('pTitle');
+    const artistEl = document.getElementById('pArtist');
+    if (!titleEl.value) titleEl.value = 'AVATAR VISUALISER';
+    if (!artistEl.value) artistEl.value = 'sub-surface technologies:';
+    updateTrackDisplay();
+    topLoadBtn.classList.add('btn-active-highlight');
+    // Onboarding glow — first visit only
+    if (!localStorage.getItem('psychograph_visited')) {
+      const ib = document.getElementById('infoBox');
+      ib.classList.add('glow');
+      setTimeout(() => ib.classList.remove('glow'), 4000);
+      localStorage.setItem('psychograph_visited', '1');
+    }
   }
 
   // Boot sequence
@@ -3266,49 +3500,6 @@
     initApp();
   }
 
-  // Onboarding: Auto-load default track
-  async function loadDefaultTrack() {
-    try {
-      logStatus('Loading default track: Burden.wav');
-      const res = await fetch('./Burden.wav');
-      if (!res.ok) throw new Error('File not found');
-      const blob = await res.blob();
-      const f = new File([blob], 'Burden.wav', { type: 'audio/wav' });
-      
-      selectedWavFile = f;
-      isDefaultFile   = true;
-      topRenderBtn.disabled = false;
-      document.body.classList.add('has-file');
-      topPreviewBtn.style.display = 'inline';
-      sepPreview.style.display    = 'inline';
-      
-      topPreviewBtn.classList.add('btn-active-highlight');
-      topLoadBtn.classList.add('btn-active-highlight');
-      topRenderBtn.classList.remove('btn-active-highlight');
-
-      const ab = await blob.arrayBuffer();
-      if (!previewCtx) previewCtx = new (window.AudioContext || window.webkitAudioContext)();
-      previewBuffer = await previewCtx.decodeAudioData(ab);
-      
-      // Default metadata
-      document.getElementById('pTitle').value = 'Burden';
-      document.getElementById('pArtist').value = 'm0rvidd';
-      updateTrackDisplay();
-      
-      logStatus('Ready. Click preview to begin.');
-      
-      // Onboarding glow — first visit only
-      if (!localStorage.getItem('psychograph_visited')) {
-        const ib = document.getElementById('infoBox');
-        ib.classList.add('glow');
-        setTimeout(() => ib.classList.remove('glow'), 4000);
-        localStorage.setItem('psychograph_visited', '1');
-      }
-    } catch (e) { 
-      logStatus('No default track found.'); 
-      topLoadBtn.classList.add('btn-active-highlight');
-    }
-  }
 
 </script>
 </body>

@@ -45,6 +45,9 @@ export const P = {
   uiPalette: 'default',
   fastBoot: false,
   camStyles: PRESET_DEFAULTS.map(p => ({ ...p })),
+  camGroups: [],          // [{ name, presets: [idx, ...] }] — up to 10 groups
+  exportCamGroupIdx: -1,  // -1 = all presets; ≥0 = index into camGroups
+  peakSens: 0.5,          // Peak detection sensitivity 0–1 (maps to minSpacing 8s→3s)
 };
 
 /** Columns derived from complexity — use this everywhere instead of P.complexity * 32 inline. */
@@ -85,7 +88,7 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
                      'sphereSize', 'waveSpacing', 'polarSpacing', 'lpfCutoff', 'gain',
                      'lfoRate', 'lfoDepth', 'lfoOffset', 'lfo2Rate', 'lfo2Depth', 'lfo2Offset',
                      'lfoToDisp', 'lfoToBowl', 'lfoToZoom', 'lfoToOpacity', 'lfoToPolar', 'lfoToWave', 
-                     'uiReactivity', 'colorCycle', 'morph'];
+                     'uiReactivity', 'colorCycle', 'morph', 'peakSens'];
     for (const k of numKeys) if (saved[k] !== undefined) P[k] = +saved[k];
     if (saved.colorA) P.colorA = saved.colorA;
     if (saved.colorB) P.colorB = saved.colorB;
@@ -95,7 +98,9 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     if (saved.exportAspect) P.exportAspect = saved.exportAspect;
     if (saved.cycleMode) P.cycleMode = saved.cycleMode;
     if (saved.fastBoot !== undefined) P.fastBoot = !!saved.fastBoot;
-    
+    if (Array.isArray(saved.camGroups)) P.camGroups = saved.camGroups;
+    if (saved.exportCamGroupIdx !== undefined) P.exportCamGroupIdx = +saved.exportCamGroupIdx;
+
     // Validate parameters to prevent NaN errors
     validateParams();
     if (saved.uiPalette) {
@@ -160,6 +165,7 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     si('pUiReactivity', P.uiReactivity); ss('vUiReactivity', P.uiReactivity);
 
     si('pCycleMode', P.cycleMode); ss('vCycleMode', P.cycleMode);
+    si('pPeakSens', P.peakSens); ss('vPeakSens', P.peakSens);
 
     si('pExportPreset', P.exportPreset); ss('vExportPreset', P.exportPreset);
     si('pExportOrient', P.exportOrientation); ss('vExportOrient', P.exportOrientation);
@@ -188,10 +194,7 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     }
 
     if (saved.title)  si('pTitle',  saved.title);
-    else si('pTitle', '[TITLE]');
-    
     if (saved.artist) si('pArtist', saved.artist);
-    else si('pArtist', '[ARTIST]');
     
     if (saved.bpm)    si('pBpm',    saved.bpm);
     if (saved.genre)  si('pGenre',  saved.genre);
