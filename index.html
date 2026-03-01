@@ -461,8 +461,10 @@
       flex-direction: column;
       gap: 0;
       width: 320px;
+      pointer-events: none;
       transition: filter 3s ease-in-out, box-shadow 3s ease-in-out;
     }
+    #infoBox > * { pointer-events: auto; }
     #infoToggle {
       font-family: var(--mono);
       font-weight: 300;
@@ -630,7 +632,9 @@
       flex-direction: column;
       align-items: flex-end;
       gap: 8px;
+      pointer-events: none;
     }
+    #topRight > * { pointer-events: auto; }
     #modeToggle, #exportActions {
       display: flex;
       gap: 2px;
@@ -691,7 +695,9 @@
       display: flex;
       gap: 2px;
       align-items: center;
+      pointer-events: none;
     }
+    #visStrip > * { pointer-events: auto; }
     .vis-btn {
       font-family: var(--mono);
       font-weight: 300;
@@ -718,10 +724,16 @@
     /* ── Clean mode (formerly OBS mode) ─────────────────────── */
     body.obs-active #infoBox,
     body.obs-active #visStrip,
-    body.obs-active #controls,
     body.obs-active #trackInfo,
     body.obs-active #overlay {
       display: none !important;
+    }
+    body.obs-active #controls {
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    body.obs-active #controls:hover {
+      opacity: 1;
     }
     body.obs-active #modeToggle {
       display: none !important;
@@ -781,7 +793,9 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      pointer-events: none;
     }
+    #bottomLeft > * { pointer-events: auto; }
 
     /* Palette button + popout */
     #paletteWrap {
@@ -871,7 +885,9 @@
       flex-direction: column;
       align-items: flex-end;
       gap: 4px;
+      pointer-events: none;
     }
+    #controls > * { pointer-events: auto; }
     #paramsToggle {
       border: 1px solid var(--s-rule);
     }
@@ -1638,8 +1654,6 @@
   controls.target.set(0, -0.5, 0); // Temporary default
   controls.update();
 
-  window.isUserInteractingWithCamera = false;
-
   // ── Lean camera debug (silent; call checkCamera() in console when needed) ──
   const cameraDebug = {
     isEnabled: false,
@@ -1680,6 +1694,13 @@
   import { rebuildSphere, applySphere, tearDownSphere } from './vis/sphere.js';
   import { rebuildWave, applyWave, ensureTimeDomainData, tearDownWave } from './vis/wave.js';
   import { startExport, isExporting } from './export.js';
+  import {
+    camState, shouldWriteBack, shouldControlsBeEnabled,
+    startDrag, endDrag, toggleLock, setLocked,
+    startSliderDrag, endSliderDrag,
+    beginProgrammatic, endProgrammatic, resetAll,
+    getVisDefault, getStyleDefault, STYLE_LIST
+  } from './cam.js';
 
   // Now that P is imported, update the camera target to use the proper look-at position
   if (P && P.camStyles && P.camStyles.normal) {
@@ -1731,24 +1752,22 @@
 
   function buildVis(mode) {
     tearDownVis();
+    beginProgrammatic();
+    const d = getVisDefault(mode);
     if (mode === 'bowl') {
       rebuildGrid();
-      camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
-      controls.target.set(0, -0.5, 0);
     } else if (mode === 'polar') {
       rebuildPolar();
-      camera.position.set(0, 9, 0);
-      controls.target.set(0, 0, 0);
     } else if (mode === 'sphere') {
       rebuildSphere();
-      camera.position.set(0, 0, 12);
-      controls.target.set(0, 0, 0);
     } else if (mode === 'wave') {
       rebuildWave();
-      camera.position.set(0, 1, 10);
-      controls.target.set(0, 0, 0);
     }
+    camera.position.set(d.x, d.y, d.z);
+    controls.target.set(0, d.lookY, 0);
     controls.update();
+    endProgrammatic();
+    setLocked(false);
     updateParamVisibility(mode);
   }
 
@@ -2594,8 +2613,8 @@
     camSelBtns.forEach(b => {
       b.classList.toggle('active', b.dataset.style === dirStyle.value);
     });
-    btnCamLock.classList.toggle('btn-active-highlight', window.isUserInteractingWithCamera);
-    btnCamLock.textContent = window.isUserInteractingWithCamera ? 'locked' : 'unlocked';
+    btnCamLock.classList.toggle('btn-active-highlight', camState.locked);
+    btnCamLock.textContent = camState.locked ? 'locked' : 'unlocked';
   }
 
   camSelBtns.forEach(btn => {
@@ -2609,26 +2628,32 @@
   });
 
   btnCamLock.addEventListener('click', () => {
-    window.isUserInteractingWithCamera = !window.isUserInteractingWithCamera;
-    if (!window.isUserInteractingWithCamera) {
+    const nowLocked = toggleLock();
+    if (!nowLocked) {
       // Snap back to base if unlocking
+      beginProgrammatic();
       camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
       controls.target.set(0, -0.5, 0);
+      controls.update();
+      endProgrammatic();
     }
     updateCamSelUI();
-    logStatus(`Camera ${window.isUserInteractingWithCamera ? 'locked' : 'reactive'}`, { open: false });
+    logStatus(`Camera ${nowLocked ? 'locked' : 'reactive'}`, { open: false });
   });
 
   function applyCamStyle(name) {
+    beginProgrammatic();
     const cs = P.camStyles[name];
     camera.position.set(cs.x, cs.y, cs.z);
     controls.target.set(0, cs.lookY, 0);
     controls.update();
+    camState.activeStyle = name;
+    endProgrammatic();
     logStatus(`Camera: ${name}`, { open: false });
   }
 
   // Restore Camera Preview cycling
-  const CAM_STYLES_LIST = ['normal', 'distant', 'birds', 'worms', 'side', 'oblique'];
+  const CAM_STYLES_LIST = STYLE_LIST;
   let camPreviewActive = false;
   let camPreviewIdx = 0;
   let camPreviewTimer = null;
@@ -2700,18 +2725,21 @@
 
   // Prevent camera controls from interfering when dragging slider handles
   const sliderElements = [dirX, dirY, dirZ, dirLookY];
-  let isSliderBeingDragged = false;
-  
+
+  function syncControlsEnabled() {
+    controls.enabled = shouldControlsBeEnabled();
+  }
+
   sliderElements.forEach(slider => {
     slider.addEventListener('pointerdown', e => {
       e.stopPropagation();
-      isSliderBeingDragged = true;
-      controls.enabled = false;
+      startSliderDrag();
+      syncControlsEnabled();
     });
     slider.addEventListener('pointerup', e => {
       e.stopPropagation();
-      isSliderBeingDragged = false;
-      controls.enabled = true;
+      endSliderDrag();
+      syncControlsEnabled();
     });
     slider.addEventListener('pointermove', e => {
       if (e.buttons === 1) e.stopPropagation();
@@ -2719,40 +2747,40 @@
     // Also handle mouse events for older browsers
     slider.addEventListener('mousedown', e => {
       e.stopPropagation();
-      isSliderBeingDragged = true;
-      controls.enabled = false;
+      startSliderDrag();
+      syncControlsEnabled();
     });
     slider.addEventListener('mouseup', e => {
       e.stopPropagation();
-      isSliderBeingDragged = false;
-      controls.enabled = true;
+      endSliderDrag();
+      syncControlsEnabled();
     });
   });
 
   // Global document handlers to catch mouseup/pointerup even if mouse moves away from slider
   document.addEventListener('pointerup', () => {
-    if (isSliderBeingDragged) { isSliderBeingDragged = false; controls.enabled = true; }
+    if (camState.sliderDragging) { endSliderDrag(); syncControlsEnabled(); }
   });
   document.addEventListener('mouseup', () => {
-    if (isSliderBeingDragged) { isSliderBeingDragged = false; controls.enabled = true; }
+    if (camState.sliderDragging) { endSliderDrag(); syncControlsEnabled(); }
   });
 
   loadDirSliders();
   updateCamSelUI();
 
   controls.addEventListener('start', () => {
-    window.isUserInteractingWithCamera = true;
+    startDrag();
     stopCamPreview();
     updateCamSelUI();
   });
 
   controls.addEventListener('end', () => {
-    // Keep interaction flag true — manual override persists until mode/preset change.
+    endDrag();
   });
 
   controls.addEventListener('change', () => {
-    if (window.isUserInteractingWithCamera && !isExporting) {
-      const cs = P.camStyles[dirStyle.value];
+    if (shouldWriteBack() && !isExporting) {
+      const cs = P.camStyles[camState.activeStyle];
       cs.x = Number(camera.position.x.toFixed(2));
       cs.y = Number(camera.position.y.toFixed(2));
       cs.z = Number(camera.position.z.toFixed(2));
@@ -2775,15 +2803,7 @@
 
   document.getElementById('btnDirReset').addEventListener('click', () => {
     const name = dirStyle.value;
-    const defaultCamStyles = {
-      normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
-      distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
-      birds:   { x: 0,    y: 15.0, z: 1.0,  lookY: 0 },
-      worms:   { x: 0,    y: 0.5,  z: 6.0,  lookY: 2.0 },
-      side:    { x: 12.0, y: 2.0,  z: 0,    lookY: 0 },
-      oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
-    };
-    Object.assign(P.camStyles[name], defaultCamStyles[name]);
+    Object.assign(P.camStyles[name], getStyleDefault(name));
     loadDirSliders();
     applyCamStyle(name);
     saveParams();
@@ -2807,28 +2827,24 @@
     // Snapshot state before reset for console diagnostics
     const before = {
       enabled: controls.enabled,
-      locked: window.isUserInteractingWithCamera,
-      sliderDragged: isSliderBeingDragged,
+      locked: camState.locked,
+      sliderDragging: camState.sliderDragging,
+      dragging: camState.dragging,
       pos: { x: +camera.position.x.toFixed(3), y: +camera.position.y.toFixed(3), z: +camera.position.z.toFixed(3) },
       target: { x: +controls.target.x.toFixed(3), y: +controls.target.y.toFixed(3), z: +controls.target.z.toFixed(3) },
     };
 
     // Force-clear all blocking state
+    resetAll();
     controls.enabled = true;
-    isSliderBeingDragged = false;
-    window.isUserInteractingWithCamera = false;
 
     // Snap camera to default position for the current vis mode
-    const defaults = {
-      bowl:   { px: 0, py: CAM_BASE.y, pz: CAM_BASE.z, ty: -0.5 },
-      polar:  { px: 0, py: 9,          pz: 0,           ty: 0    },
-      sphere: { px: 0, py: 0,          pz: 12,          ty: 0    },
-      wave:   { px: 0, py: 1,          pz: 10,          ty: 0    },
-    };
-    const d = defaults[visMode] || defaults.bowl;
-    camera.position.set(d.px, d.py, d.pz);
-    controls.target.set(0, d.ty, 0);
+    beginProgrammatic();
+    const d = getVisDefault(visMode);
+    camera.position.set(d.x, d.y, d.z);
+    controls.target.set(0, d.lookY, 0);
     controls.update();
+    endProgrammatic();
 
     updateCamSelUI();
 

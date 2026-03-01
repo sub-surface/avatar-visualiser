@@ -29,6 +29,15 @@
     buildBinMap, bowlFactor, buildAWeightGain
   } from './dsp.js';
 
+  import {
+    camState, shouldModulate, shouldWriteBack, shouldControlsBeEnabled,
+    startDrag, endDrag, toggleLock, setLocked,
+    startSliderDrag, endSliderDrag,
+    beginProgrammatic, endProgrammatic, resetAll,
+    getVisDefault, getStyleDefault,
+    VIS_DEFAULTS, STYLE_DEFAULTS, STYLE_LIST
+  } from './cam.js';
+
   /* ── Minimal test harness ──────────────────────────────────── */
   const results = [];
   const out     = document.getElementById('out');
@@ -422,11 +431,18 @@
     assertClose(outR[0],  5.0, 0.01, 'right edge x');
   });
 
-  test('calcPolarPos: silence → radius = BASE_R (bowl factor 1)', () => {
+  test('calcPolarPos: silence + bf=0 → radius = BASE_R', () => {
+    const out = [0, 0, 0];
+    calcPolarPos(out, 30, 0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 0, 0, 0);
+    const r = Math.sqrt(out[0] ** 2 + out[2] ** 2);
+    assertClose(r, 0.4, 0.01, 'radius should be BASE_R when bf=0');
+  });
+
+  test('calcPolarPos: silence + bf=1 → radius = MAX_R', () => {
     const out = [0, 0, 0];
     calcPolarPos(out, 30, 0, ROWS, COLS, zeroRow, zeroRow, HALF, flatBinMap, 1.0, 0, 0);
     const r = Math.sqrt(out[0] ** 2 + out[2] ** 2);
-    assertClose(r, 0.4, 0.01, 'radius should be BASE_R for silence with bf=1, disp=0');
+    assertClose(r, 4.5, 0.01, 'radius should be MAX_R when bf=1, disp=0, silence');
   });
 
   test('calcPolarPos: y spans polarSpacing range', () => {
@@ -604,6 +620,163 @@
     // index.html uses an importmap — presence here means the browser parsed it.
     // In tests.html there is no importmap, so null is expected and fine.
     assert(true, 'importmap syntax is valid (parsed by browser to reach this line)');
+  });
+
+  /* ════════════════════════════════════════════════════════════
+     CAMERA STATE MACHINE
+  ════════════════════════════════════════════════════════════ */
+  section('Camera state machine');
+
+  test('initial state: all flags false', () => {
+    resetAll();
+    assert(!camState.locked, 'locked should be false');
+    assert(!camState.dragging, 'dragging should be false');
+    assert(!camState.sliderDragging, 'sliderDragging should be false');
+    assert(!camState.programmatic, 'programmatic should be false');
+  });
+
+  test('shouldModulate: true when idle', () => {
+    resetAll();
+    assert(shouldModulate() === true, 'should modulate in default state');
+  });
+
+  test('shouldModulate: false when locked', () => {
+    resetAll();
+    setLocked(true);
+    assert(shouldModulate() === false, 'should not modulate when locked');
+    resetAll();
+  });
+
+  test('shouldModulate: false when dragging', () => {
+    resetAll();
+    startDrag();
+    assert(shouldModulate() === false, 'should not modulate during drag');
+    resetAll();
+  });
+
+  test('shouldModulate: false when both locked and dragging', () => {
+    resetAll();
+    setLocked(true);
+    startDrag();
+    assert(shouldModulate() === false, 'should not modulate when locked+dragging');
+    resetAll();
+  });
+
+  test('shouldWriteBack: false when idle', () => {
+    resetAll();
+    assert(shouldWriteBack() === false, 'false when idle');
+  });
+
+  test('shouldWriteBack: true when dragging', () => {
+    resetAll();
+    startDrag();
+    assert(shouldWriteBack() === true, 'true when dragging');
+    resetAll();
+  });
+
+  test('shouldWriteBack: false when dragging + programmatic', () => {
+    resetAll();
+    startDrag();
+    beginProgrammatic();
+    assert(shouldWriteBack() === false, 'false when dragging+programmatic');
+    endProgrammatic();
+    assert(shouldWriteBack() === true, 'true again after endProgrammatic');
+    resetAll();
+  });
+
+  test('shouldWriteBack: false during programmatic update alone', () => {
+    resetAll();
+    beginProgrammatic();
+    assert(shouldWriteBack() === false, 'should not write back during programmatic');
+    resetAll();
+  });
+
+  test('shouldControlsBeEnabled: true by default, false during slider drag', () => {
+    resetAll();
+    assert(shouldControlsBeEnabled() === true, 'enabled by default');
+    startSliderDrag();
+    assert(shouldControlsBeEnabled() === false, 'disabled during slider drag');
+    endSliderDrag();
+    assert(shouldControlsBeEnabled() === true, 'enabled after slider drag ends');
+  });
+
+  test('toggleLock: toggles and returns new value', () => {
+    resetAll();
+    const r1 = toggleLock();
+    assert(r1 === true, 'first toggle should return true');
+    assert(camState.locked === true, 'state should match return');
+    const r2 = toggleLock();
+    assert(r2 === false, 'second toggle should return false');
+    assert(camState.locked === false, 'state should match return');
+  });
+
+  test('resetAll: clears all transient state', () => {
+    camState.locked = true;
+    camState.dragging = true;
+    camState.sliderDragging = true;
+    camState.programmatic = true;
+    resetAll();
+    assert(!camState.locked && !camState.dragging &&
+           !camState.sliderDragging && !camState.programmatic,
+      'all flags should be false after resetAll');
+  });
+
+  test('getVisDefault: returns independent copies', () => {
+    const d1 = getVisDefault('bowl');
+    const d2 = getVisDefault('bowl');
+    d1.y = 999;
+    assert(d2.y !== 999, 'should return independent copies');
+  });
+
+  test('getVisDefault: all modes have finite defaults', () => {
+    for (const mode of ['bowl', 'polar', 'sphere', 'wave']) {
+      const d = getVisDefault(mode);
+      assert(isFinite(d.x) && isFinite(d.y) && isFinite(d.z) && isFinite(d.lookY),
+        `${mode} default has non-finite value`);
+    }
+  });
+
+  test('getVisDefault: unknown mode falls back to bowl', () => {
+    const d = getVisDefault('nonexistent');
+    const bowl = getVisDefault('bowl');
+    assert(d.y === bowl.y && d.z === bowl.z, 'unknown mode should fallback to bowl');
+  });
+
+  test('getStyleDefault: all styles have finite defaults', () => {
+    for (const name of STYLE_LIST) {
+      const d = getStyleDefault(name);
+      assert(d !== null, `${name} should have a default`);
+      assert(isFinite(d.x) && isFinite(d.y) && isFinite(d.z) && isFinite(d.lookY),
+        `${name} default has non-finite value`);
+    }
+  });
+
+  test('getStyleDefault: returns null for unknown style', () => {
+    assert(getStyleDefault('nonexistent') === null, 'unknown style should return null');
+  });
+
+  test('STYLE_LIST matches STYLE_DEFAULTS keys', () => {
+    const keys = Object.keys(STYLE_DEFAULTS).sort();
+    const list = [...STYLE_LIST].sort();
+    assert(JSON.stringify(keys) === JSON.stringify(list),
+      `STYLE_LIST [${list}] does not match STYLE_DEFAULTS keys [${keys}]`);
+  });
+
+  test('drag does not auto-lock: modulation resumes after endDrag', () => {
+    resetAll();
+    startDrag();
+    assert(shouldModulate() === false, 'suppressed during drag');
+    endDrag();
+    assert(shouldModulate() === true, 'resumes after drag ends');
+    assert(camState.locked === false, 'locked not set by drag');
+  });
+
+  test('slider drag does not affect lock or modulation', () => {
+    resetAll();
+    startSliderDrag();
+    assert(shouldModulate() === true, 'slider drag does not suppress modulation');
+    assert(shouldControlsBeEnabled() === false, 'controls disabled during slider');
+    endSliderDrag();
   });
 
   /* ════════════════════════════════════════════════════════════

@@ -3,6 +3,7 @@
  */
 import { NUM_BINS, camera, material, _colA, _colB, _colScratch, CAM_BASE } from './engine.js';
 import { P, updateTrackDisplay } from './params.js';
+import { shouldModulate } from './cam.js';
 
 /* ── Slew-limited follower ─────────────────────────────────── */
 export function slew(current, target, attack, release) {
@@ -111,7 +112,7 @@ export function getLfo2Val() { return _calcLfo(lfoPhase2, P.lfo2Waveform, P.lfo2
 export function applyModulation() {
   const lfo = getLfoVal();
   
-  if (!window.isUserInteractingWithCamera) {
+  if (shouldModulate()) {
     camera.position.y    = CAM_BASE.y + env.mid * P.modMid;
     camera.position.z    = CAM_BASE.z - (env.rms * P.modRms + lfo * P.lfoToZoom) + env.kick * P.modKick;
     camera.lookAt(0, -0.5, 0);
@@ -176,10 +177,12 @@ let _bpmUserEdited = false;
 let _bpmClockSec   = 0;
 
 const pBpmEl = document.getElementById('pBpm');
-pBpmEl.addEventListener('focus', () => { _bpmUserEdited = true; });
-pBpmEl.addEventListener('input', () => {
-  if (!pBpmEl.value.trim()) { _bpmUserEdited = false; _bpmSmoothed = 0; _bpmIntervals = []; }
-});
+if (pBpmEl) {
+  pBpmEl.addEventListener('focus', () => { _bpmUserEdited = true; });
+  pBpmEl.addEventListener('input', () => {
+    if (!pBpmEl.value.trim()) { _bpmUserEdited = false; _bpmSmoothed = 0; _bpmIntervals = []; }
+  });
+}
 
 export function resetBpmAuto() {
   _bpmUserEdited = false;
