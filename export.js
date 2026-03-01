@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { FFT_SIZE, NUM_BINS, LINE_COLOR, CAM_BASE,
          renderer, scene, camera, material, _colA, _colB, _colScratch,
          beginExportResize, endExportResize, setColors } from './engine.js';
+import { sphericalToCart } from './cam.js';
 import { P, getCols, setTimeDisplay, getTrackMeta } from './params.js';
 import { computeFFTBinsInto, buildBinMap, bowlFactor } from './dsp.js';
 import { computeEnvelopesExport } from './envelopes.js';
@@ -137,8 +138,7 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
   let morphAlpha = 1.0; 
   const MORPH_SPEED = 0.04;
   
-  // Camera Styles: Normal, Distant, Birds-eye, Worms-eye, Side-Profile, Oblique
-  const camStyles = ['normal', 'distant', 'birds', 'worms', 'side', 'oblique'];
+  // Camera presets from P.camStyles (spherical array)
   let camStyleIdx = 0;
 
   // Initialise morph state if we ARE cycling vis types
@@ -153,16 +153,16 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
     if (triggerFrames.includes(currentSample)) {
       // cinematic / types / random: cut to next camera position
       if (P.cycleMode === 'cinematic' || P.cycleMode === 'types' || P.cycleMode === 'random') {
-        camStyleIdx = (camStyleIdx + 1) % camStyles.length;
+        camStyleIdx = (camStyleIdx + 1) % P.camStyles.length;
       }
 
       if (P.cycleMode === 'types' || P.cycleMode === 'random') {
         // Cycle vis mode morph
         morphTargetIdx = (currentModeIdx + 1) % cycleList.length;
         morphAlpha = 0.0;
-        logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${camStyles[camStyleIdx]} view)`);
+        logStatus(`Peak hit! Morphing to ${cycleList[morphTargetIdx]} (${P.camStyles[camStyleIdx]?.name ?? camStyleIdx} view)`);
       } else if (P.cycleMode === 'cinematic') {
-        logStatus(`Peak hit! Camera cut to ${camStyles[camStyleIdx]} view`);
+        logStatus(`Peak hit! Camera cut to ${P.camStyles[camStyleIdx]?.name ?? camStyleIdx} view`);
       }
 
       // random: also randomise visual parameters on each peak
@@ -243,15 +243,15 @@ async function runExport(venc, audioBuffer, fps, duration, visMode, onProgress) 
     let lookY = (camMode === 'sphere' ? 0 : -0.5);
     let lookZ = 0;
 
-    // Apply Camera Style (read from P.camStyles for director mode support)
-    const style = camStyles[camStyleIdx];
-    const cs = P.camStyles && P.camStyles[style];
-    if (cs && style !== 'normal') {
-      baseX = cs.x;
-      baseY = cs.y;
-      baseZ = cs.z;
+    // Apply Camera Style (read from P.camStyles spherical array)
+    const cs = P.camStyles[camStyleIdx];
+    if (cs) {
+      const pos = sphericalToCart(cs.az, cs.el, cs.dist);
+      baseX = pos.x;
+      baseY = pos.y;
+      baseZ = pos.z;
       lookY = cs.lookY;
-      if (style === 'side') lookX = 0;
+      lookX = 0;
     }
 
     camera.position.set(baseX + driftX, baseY + driftY, baseZ + dollyZ);

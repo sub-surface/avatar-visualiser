@@ -228,7 +228,8 @@
       cursor: default;
       transition: opacity 0.4s;
     }
-    #overlay.ready { cursor: pointer; }
+    #overlay { pointer-events: none; }
+    #overlay.ready { cursor: pointer; pointer-events: auto; }
     #overlay.hidden { opacity: 0; pointer-events: none; }
     #overlay span {
       font-family: var(--serif);
@@ -658,11 +659,153 @@
     .mode-btn.active { color: var(--m-hi); }
     .mode-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     
-    .cam-sel-btn.active { 
-      background: var(--s-mid) !important; 
-      color: var(--btn-active-fg) !important; 
+    .cam-sel-btn.active {
+      background: var(--s-mid) !important;
+      color: var(--btn-active-fg) !important;
     }
-    
+
+    /* ── Director Panel (floating, bottom-centre) ─────────────── */
+    #directorPanel {
+      position: fixed;
+      bottom: 56px;          /* sit above the visStrip (~34px) + gap */
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+    }
+    #directorPanel.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    /* Preset pill row */
+    #dirPresetList {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: center;
+      max-width: 560px;
+    }
+    .dir-preset-item {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      border: 1px solid var(--s-lo);
+      border-radius: 2px;
+      cursor: pointer;
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dir-preset-item:hover { border-color: var(--s-mid); }
+    .dir-preset-item.active {
+      border-color: var(--s-hi);
+      background: rgba(var(--ui-accent-rgb), 0.12);
+    }
+    .dir-preset-name {
+      color: var(--s-hi);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      min-width: 0;
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .dir-preset-del {
+      background: none;
+      border: none;
+      color: var(--s-mid);
+      font-size: 0.65rem;
+      cursor: pointer;
+      opacity: 0.3;
+      padding: 0;
+      line-height: 1;
+    }
+    .dir-preset-del:hover { opacity: 1; }
+    /* Controls row: two slider columns + action buttons */
+    #dirControls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px var(--panel-shd);
+      border: 1px solid var(--s-lo);
+      border-radius: 2px;
+    }
+    .dir-col {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .dir-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dir-row label {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      color: var(--s-mid);
+      min-width: 28px;
+      text-align: right;
+    }
+    .dir-row input[type="range"] {
+      width: 100px;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 2px;
+      background: var(--s-lo);
+      outline: none;
+      border-radius: 1px;
+    }
+    .dir-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--s-hi);
+      cursor: pointer;
+    }
+    .dir-val {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      color: var(--s-mid);
+      min-width: 30px;
+    }
+    .dir-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-left: 1px solid var(--s-lo);
+      padding-left: 10px;
+    }
+    .dir-act-btn {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border: 1px solid var(--s-lo);
+      color: var(--s-mid);
+      background: none;
+      cursor: pointer;
+    }
+    .dir-act-btn:hover { color: var(--s-hi); border-color: var(--s-mid); }
+    .dir-act-btn.active { color: var(--s-hi); border-color: var(--s-hi); }
+
     .btn-active-highlight {
       border: 1px solid var(--btn-active-bg) !important;
       padding: 0px 4px !important;
@@ -1288,6 +1431,8 @@
     <button class="mode-btn" id="btnExport" data-mode="export">studio</button>
     <span id="modeSep">·</span>
     <button class="mode-btn" id="btnLive" data-mode="live">live</button>
+    <span class="mode-sep">·</span>
+    <button class="mode-btn" id="btnDirector">director</button>
   </div>
   <div id="exportActions">
     <button class="mode-btn btn-active-highlight" id="topLoadBtn">load file</button>
@@ -1297,6 +1442,42 @@
     <button class="mode-btn" id="topRenderBtn" disabled>render video</button>
   </div>
   <div id="liveActions" style="display:none">
+  </div>
+</div>
+
+<!-- ── Director Panel (floating, bottom-centre above visStrip) ── -->
+<div id="directorPanel">
+  <div id="dirPresetList"></div>
+  <div id="dirControls">
+    <div class="dir-col">
+      <div class="dir-row">
+        <label>az</label>
+        <input type="range" id="dAz" min="0" max="360" step="1" value="0">
+        <span class="dir-val" id="vDAz">0°</span>
+      </div>
+      <div class="dir-row">
+        <label>el</label>
+        <input type="range" id="dEl" min="-45" max="88" step="1" value="37">
+        <span class="dir-val" id="vDEl">37°</span>
+      </div>
+    </div>
+    <div class="dir-col">
+      <div class="dir-row">
+        <label>dist</label>
+        <input type="range" id="dDist" min="1" max="30" step="0.1" value="10.7">
+        <span class="dir-val" id="vDDist">10.7</span>
+      </div>
+      <div class="dir-row">
+        <label>look y</label>
+        <input type="range" id="dLookY" min="-3" max="6" step="0.1" value="-0.5">
+        <span class="dir-val" id="vDLookY">-0.5</span>
+      </div>
+    </div>
+    <div class="dir-btns">
+      <button class="chrome dir-act-btn" id="btnDirAddPreset">+</button>
+      <button class="chrome dir-act-btn" id="btnDirLock">free</button>
+      <button class="chrome dir-act-btn" id="btnDirResetPreset">↺</button>
+    </div>
   </div>
 </div>
 
@@ -1564,45 +1745,11 @@
         </select>
         <span class="pval" id="vCycleMode">off</span></div>
 
-      <div class="psection">cameras</div>
-      <div id="camSelectorGrid" class="prow" style="flex-wrap:wrap; justify-content:center; gap:4px; padding:6px 0;">
-        <button class="chrome cam-sel-btn" data-style="normal" title="Switch to Normal Camera Style">1</button>
-        <button class="chrome cam-sel-btn" data-style="distant" title="Switch to Distant Camera Style">2</button>
-        <button class="chrome cam-sel-btn" data-style="birds" title="Switch to Birds-eye Camera Style">3</button>
-        <button class="chrome cam-sel-btn" data-style="worms" title="Switch to Worms-eye Camera Style">4</button>
-        <button class="chrome cam-sel-btn" data-style="side" title="Switch to Side Camera Style">5</button>
-        <button class="chrome cam-sel-btn" data-style="oblique" title="Switch to Oblique Camera Style">6</button>
-        <div style="width:1px; height:12px; background:var(--s-rule); margin:0 4px;"></div>
-        <button class="chrome" id="btnCamLock" title="Locked: fix camera to your manual position (overrides reactivity). Unlocked: allow audio-reactive movement." style="border:1px solid var(--s-lo); padding:2px 6px;">unlocked</button>
-      </div>
-      <div class="prow" style="justify-content:center; padding-bottom:4px;">
-        <button class="chrome" id="btnCamPreview" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Cycle through all 6 camera styles automatically">preview cameras</button>
-      </div>
-
-      <div class="prow"><label title="Selected camera style to edit in Director Mode">camera</label>
-        <select class="psel" id="pDirStyle">
-          <option value="normal">normal</option>
-          <option value="distant">distant</option>
-          <option value="birds">birds-eye</option>
-          <option value="worms">worms-eye</option>
-          <option value="side">side</option>
-          <option value="oblique">oblique</option>
-        </select></div>
-      <div class="prow"><label title="X position of the camera style">x</label>
-        <input type="range" id="pDirX" min="-15" max="15" step="0.5" value="0">
-        <span class="pval" id="vDirX">0</span></div>
-      <div class="prow"><label title="Y position of the camera style">y</label>
-        <input type="range" id="pDirY" min="-2" max="20" step="0.5" value="5.5">
-        <span class="pval" id="vDirY">5.5</span></div>
-      <div class="prow"><label title="Z position of the camera style">z</label>
-        <input type="range" id="pDirZ" min="-2" max="20" step="0.5" value="9">
-        <span class="pval" id="vDirZ">9</span></div>
-      <div class="prow"><label title="Target vertical look-at position for the camera style">look y</label>
-        <input type="range" id="pDirLookY" min="-2" max="5" step="0.5" value="-0.5">
-        <span class="pval" id="vDirLookY">-0.5</span></div>
-      <div class="prow" style="justify-content:center; gap:8px; padding-top:4px;">
-        <button class="chrome" id="btnDirPreview" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Preview the selected camera style immediately">preview</button>
-        <button class="chrome" id="btnDirReset" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Reset the selected camera style to its factory default coordinates">reset</button>
+      <div class="psection">camera</div>
+      <div class="prow"><label title="Camera preset used during export">preset</label>
+        <select class="psel" id="pExportCamPreset"></select></div>
+      <div class="prow" style="justify-content:center;">
+        <button class="chrome" id="btnCamLock" title="Locked: fix camera to your manual position (overrides reactivity). Unlocked: allow audio-reactive movement." style="border:1px solid var(--s-lo); padding:2px 8px;">unlocked</button>
       </div>
 
       <div class="psection">boot</div>
@@ -1650,6 +1797,16 @@
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.PAN
   };
+  // Elevation clamp: allow looking up from below (el -45° to +88°)
+  // OrbitControls polar angle from +Y zenith: 0=top, 90=horizon, 135=below looking up
+  //   elevation +88° → polarAngle   2° (near top-down)
+  //   elevation   0° → polarAngle  90° (at horizon)
+  //   elevation -45° → polarAngle 135° (below, looking upward)
+  controls.minPolarAngle = THREE.MathUtils.degToRad(2);
+  controls.maxPolarAngle = THREE.MathUtils.degToRad(135);
+  // Azimuth is unrestricted — wraps freely
+  controls.minAzimuthAngle = -Infinity;
+  controls.maxAzimuthAngle =  Infinity;
   // Default target will be set after P is imported
   controls.target.set(0, -0.5, 0); // Temporary default
   controls.update();
@@ -1695,16 +1852,17 @@
   import { rebuildWave, applyWave, ensureTimeDomainData, tearDownWave } from './vis/wave.js';
   import { startExport, isExporting } from './export.js';
   import {
-    camState, shouldWriteBack, shouldControlsBeEnabled,
+    camState, shouldWriteBack,
     startDrag, endDrag, toggleLock, setLocked,
     startSliderDrag, endSliderDrag,
     beginProgrammatic, endProgrammatic, resetAll,
-    getVisDefault, getStyleDefault, STYLE_LIST
+    setDirectorOpen, cartToSpherical, sphericalToCart,
+    PRESET_DEFAULTS,
   } from './cam.js';
 
-  // Now that P is imported, update the camera target to use the proper look-at position
-  if (P && P.camStyles && P.camStyles.normal) {
-    controls.target.set(0, P.camStyles.normal.lookY, 0);
+  // Now that P is imported, set initial camera target from first preset
+  if (P && Array.isArray(P.camStyles) && P.camStyles.length > 0) {
+    controls.target.set(0, P.camStyles[0].lookY, 0);
     controls.update();
   }
 
@@ -1750,10 +1908,18 @@
     tearDownWave();
   }
 
+  // Default camera positions per vis mode (Cartesian)
+  const VIS_CAM_DEFAULTS = {
+    bowl:   { x: 0, y: 5.5, z: 9.0,  lookY: -0.5 },
+    polar:  { x: 0, y: 9,   z: 0,    lookY: 0    },
+    sphere: { x: 0, y: 0,   z: 12,   lookY: 0    },
+    wave:   { x: 0, y: 1,   z: 10,   lookY: 0    },
+  };
+
   function buildVis(mode) {
     tearDownVis();
     beginProgrammatic();
-    const d = getVisDefault(mode);
+    const d = VIS_CAM_DEFAULTS[mode] || VIS_CAM_DEFAULTS.bowl;
     if (mode === 'bowl') {
       rebuildGrid();
     } else if (mode === 'polar') {
@@ -2605,210 +2771,257 @@
     logStatus('Visual parameters randomised');
   });
 
-  // Camera selector grid logic
-  const camSelBtns = document.querySelectorAll('.cam-sel-btn');
-  const btnCamLock = document.getElementById('btnCamLock');
+  // ── Director Panel ────────────────────────────────────────────
+  const directorPanel  = document.getElementById('directorPanel');
+  const btnDirector    = document.getElementById('btnDirector');
+  const dAz    = document.getElementById('dAz');
+  const dEl    = document.getElementById('dEl');
+  const dDist  = document.getElementById('dDist');
+  const dLookY = document.getElementById('dLookY');
+  const vDAz   = document.getElementById('vDAz');
+  const vDEl   = document.getElementById('vDEl');
+  const vDDist = document.getElementById('vDDist');
+  const vDLookY= document.getElementById('vDLookY');
+  const btnDirLock        = document.getElementById('btnDirLock');
+  const btnDirResetPreset = document.getElementById('btnDirResetPreset');
+  const btnDirAddPreset   = document.getElementById('btnDirAddPreset');
+  const btnCamLock        = document.getElementById('btnCamLock');
 
-  function updateCamSelUI() {
-    camSelBtns.forEach(b => {
-      b.classList.toggle('active', b.dataset.style === dirStyle.value);
-    });
-    btnCamLock.classList.toggle('btn-active-highlight', camState.locked);
-    btnCamLock.textContent = camState.locked ? 'locked' : 'unlocked';
+  function updateExportCamDropdown() {
+    const sel = document.getElementById('pExportCamPreset');
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = P.camStyles.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
   }
 
-  camSelBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const styleName = btn.dataset.style;
-      dirStyle.value = styleName;
-      loadDirSliders();
-      applyCamStyle(styleName);
-      updateCamSelUI();
+  function renderDirPresets() {
+    const list = document.getElementById('dirPresetList');
+    list.innerHTML = '';
+    P.camStyles.forEach((preset, idx) => {
+      const item = document.createElement('div');
+      item.className = 'dir-preset-item' + (idx === camState.activePresetIdx ? ' active' : '');
+
+      // Name: read-only span for single-click, replaced by input on dblclick
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = preset.name;
+      nameSpan.className = 'dir-preset-name';
+
+      function enterEditMode() {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.value = preset.name;
+        inp.className = 'dir-preset-name dir-preset-name--editing';
+        inp.style.cssText = 'background:none;border:none;border-bottom:1px solid var(--s-rule);outline:none;cursor:text;';
+        nameSpan.replaceWith(inp);
+        inp.focus();
+        inp.select();
+        const commit = () => {
+          preset.name = inp.value.trim() || preset.name;
+          inp.replaceWith(nameSpan);
+          nameSpan.textContent = preset.name;
+          saveParams();
+          updateExportCamDropdown();
+        };
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { inp.blur(); }
+          if (e.key === 'Escape') { inp.value = preset.name; inp.blur(); }
+          e.stopPropagation();
+        });
+        inp.addEventListener('click', e => e.stopPropagation());
+      }
+
+      item.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        // Activate first if not already
+        if (camState.activePresetIdx !== idx) {
+          camState.activePresetIdx = idx;
+          applyDirPreset(idx);
+          loadDirSliders();
+          renderDirPresets();
+          return; // let user dblclick again to rename
+        }
+        enterEditMode();
+      });
+
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.className = 'dir-preset-del';
+      del.title = 'Delete preset';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        if (P.camStyles.length <= 1) return;
+        P.camStyles.splice(idx, 1);
+        camState.activePresetIdx = Math.min(camState.activePresetIdx, P.camStyles.length - 1);
+        saveParams();
+        renderDirPresets();
+        updateExportCamDropdown();
+      });
+
+      item.addEventListener('click', e => {
+        if (e.target === del) return;
+        camState.activePresetIdx = idx;
+        applyDirPreset(idx);
+        loadDirSliders();
+        renderDirPresets();
+      });
+
+      item.append(nameSpan, del);
+      list.append(item);
     });
+  }
+
+  function applyDirPreset(idx) {
+    const preset = P.camStyles[idx];
+    if (!preset) return;
+    beginProgrammatic();
+    const pos = sphericalToCart(preset.az, preset.el, preset.dist);
+    camera.position.set(pos.x, pos.y, pos.z);
+    controls.target.set(0, preset.lookY, 0);
+    controls.update();
+    endProgrammatic();
+    logStatus(`Camera: ${preset.name}`, { open: false });
+  }
+
+  function loadDirSliders() {
+    const preset = P.camStyles[camState.activePresetIdx];
+    if (!preset) return;
+    dAz.value    = preset.az;    vDAz.textContent    = preset.az + '°';
+    dEl.value    = preset.el;    vDEl.textContent    = preset.el + '°';
+    dDist.value  = preset.dist;  vDDist.textContent  = preset.dist;
+    dLookY.value = preset.lookY; vDLookY.textContent = preset.lookY;
+  }
+
+  function updateDirSliders(az, el, dist, lookY) {
+    dAz.value    = az.toFixed(1);   vDAz.textContent    = Math.round(az) + '°';
+    dEl.value    = el.toFixed(1);   vDEl.textContent    = Math.round(el) + '°';
+    dDist.value  = dist.toFixed(1); vDDist.textContent  = dist.toFixed(1);
+    dLookY.value = lookY.toFixed(1);vDLookY.textContent = lookY.toFixed(1);
+  }
+
+  function openDirector() {
+    directorPanel.classList.add('open');
+    setDirectorOpen(true);
+    renderDirPresets();
+    loadDirSliders();
+    // Sync sliders to actual camera position
+    const sph = cartToSpherical(camera.position.x, camera.position.y, camera.position.z);
+    updateDirSliders(sph.az, sph.el, sph.dist, controls.target.y);
+    btnDirector.classList.add('btn-active-highlight');
+  }
+
+  function closeDirector() {
+    directorPanel.classList.remove('open');
+    setDirectorOpen(false);
+    btnDirector.classList.remove('btn-active-highlight');
+  }
+
+  btnDirector.addEventListener('click', () => {
+    if (directorPanel.classList.contains('open')) closeDirector();
+    else openDirector();
+  });
+
+  btnDirAddPreset.addEventListener('click', () => {
+    const sph = cartToSpherical(camera.position.x, camera.position.y, camera.position.z);
+    P.camStyles.push({
+      id: 'custom_' + Date.now(),
+      name: 'Preset ' + (P.camStyles.length + 1),
+      az: sph.az, el: sph.el, dist: sph.dist,
+      lookY: +controls.target.y.toFixed(2),
+    });
+    camState.activePresetIdx = P.camStyles.length - 1;
+    saveParams();
+    renderDirPresets();
+    updateExportCamDropdown();
+  });
+
+  function updateLockUI() {
+    const locked = camState.locked;
+    btnDirLock.textContent = locked ? 'locked' : 'unlocked';
+    btnDirLock.classList.toggle('btn-active-highlight', locked);
+    btnCamLock.textContent = locked ? 'locked' : 'unlocked';
+    btnCamLock.classList.toggle('btn-active-highlight', locked);
+  }
+
+  btnDirLock.addEventListener('click', () => {
+    toggleLock();
+    updateLockUI();
+    logStatus(`Camera ${camState.locked ? 'locked' : 'reactive'}`, { open: false });
   });
 
   btnCamLock.addEventListener('click', () => {
-    const nowLocked = toggleLock();
-    if (!nowLocked) {
-      // Snap back to base if unlocking
-      beginProgrammatic();
-      camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
-      controls.target.set(0, -0.5, 0);
-      controls.update();
-      endProgrammatic();
-    }
-    updateCamSelUI();
-    logStatus(`Camera ${nowLocked ? 'locked' : 'reactive'}`, { open: false });
+    toggleLock();
+    updateLockUI();
+    logStatus(`Camera ${camState.locked ? 'locked' : 'reactive'}`, { open: false });
   });
 
-  function applyCamStyle(name) {
-    beginProgrammatic();
-    const cs = P.camStyles[name];
-    camera.position.set(cs.x, cs.y, cs.z);
-    controls.target.set(0, cs.lookY, 0);
-    controls.update();
-    camState.activeStyle = name;
-    endProgrammatic();
-    logStatus(`Camera: ${name}`, { open: false });
-  }
-
-  // Restore Camera Preview cycling
-  const CAM_STYLES_LIST = STYLE_LIST;
-  let camPreviewActive = false;
-  let camPreviewIdx = 0;
-  let camPreviewTimer = null;
-
-  function stopCamPreview() {
-    if (camPreviewTimer) clearInterval(camPreviewTimer);
-    camPreviewActive = false;
-    const btn = document.getElementById('btnCamPreview');
-    if (btn) btn.textContent = 'preview cameras';
-  }
-
-  document.getElementById('btnCamPreview').addEventListener('click', () => {
-    if (camPreviewActive) { stopCamPreview(); return; }
-    camPreviewActive = true;
-    camPreviewIdx = 0;
-    document.getElementById('btnCamPreview').textContent = 'stop preview';
-    
-    const cycle = () => {
-      const styleName = CAM_STYLES_LIST[camPreviewIdx];
-      dirStyle.value = styleName;
-      loadDirSliders();
-      applyCamStyle(styleName);
-      updateCamSelUI();
-      camPreviewIdx = (camPreviewIdx + 1) % CAM_STYLES_LIST.length;
-    };
-    
-    cycle();
-    camPreviewTimer = setInterval(cycle, 2000);
-  });
-
-  // Director mode — edit camera style positions
-  const dirStyle = document.getElementById('pDirStyle');
-  const dirX = document.getElementById('pDirX');
-  const dirY = document.getElementById('pDirY');
-  const dirZ = document.getElementById('pDirZ');
-  const dirLookY = document.getElementById('pDirLookY');
-  const vDirX = document.getElementById('vDirX');
-  const vDirY = document.getElementById('vDirY');
-  const vDirZ = document.getElementById('vDirZ');
-  const vDirLookY = document.getElementById('vDirLookY');
-
-  function loadDirSliders() {
-    const cs = P.camStyles[dirStyle.value];
-    dirX.value = cs.x;      vDirX.textContent = cs.x;
-    dirY.value = cs.y;      vDirY.textContent = cs.y;
-    dirZ.value = cs.z;      vDirZ.textContent = cs.z;
-    dirLookY.value = cs.lookY; vDirLookY.textContent = cs.lookY;
-  }
-
-  function saveDirSliders() {
-    const cs = P.camStyles[dirStyle.value];
-    cs.x = Number(parseFloat(dirX.value).toFixed(2));     vDirX.textContent = dirX.value;
-    cs.y = Number(parseFloat(dirY.value).toFixed(2));     vDirY.textContent = dirY.value;
-    cs.z = Number(parseFloat(dirZ.value).toFixed(2));     vDirZ.textContent = dirZ.value;
-    cs.lookY = Number(parseFloat(dirLookY.value).toFixed(2)); vDirLookY.textContent = dirLookY.value;
-    saveParams();
-    applyCamStyle(dirStyle.value); // Realtime update
-  }
-
-  dirStyle.addEventListener('change', () => {
+  btnDirResetPreset.addEventListener('click', () => {
+    const preset = P.camStyles[camState.activePresetIdx];
+    if (!preset) return;
+    const def = PRESET_DEFAULTS.find(d => d.id === preset.id) || PRESET_DEFAULTS[0];
+    preset.az = def.az; preset.el = def.el; preset.dist = def.dist; preset.lookY = def.lookY;
     loadDirSliders();
-    applyCamStyle(dirStyle.value);
-    updateCamSelUI();
+    applyDirPreset(camState.activePresetIdx);
+    saveParams();
+    logStatus(`Camera '${preset.name}' reset`, { open: false });
   });
-  dirX.addEventListener('input', saveDirSliders);
-  dirY.addEventListener('input', saveDirSliders);
-  dirZ.addEventListener('input', saveDirSliders);
-  dirLookY.addEventListener('input', saveDirSliders);
 
-  // Prevent camera controls from interfering when dragging slider handles
-  const sliderElements = [dirX, dirY, dirZ, dirLookY];
+  // Director slider input → update preset + camera live
+  [dAz, dEl, dDist, dLookY].forEach(slider => {
+    slider.addEventListener('pointerdown', e => { e.stopPropagation(); startSliderDrag(); controls.enabled = false; });
+    slider.addEventListener('pointerup',   e => { e.stopPropagation(); endSliderDrag();   controls.enabled = true; });
+    slider.addEventListener('pointermove', e => { if (e.buttons === 1) e.stopPropagation(); });
+  });
 
-  function syncControlsEnabled() {
-    controls.enabled = shouldControlsBeEnabled();
+  function onDirSliderInput() {
+    const preset = P.camStyles[camState.activePresetIdx];
+    if (!preset) return;
+    preset.az    = +parseFloat(dAz.value).toFixed(1);
+    preset.el    = +parseFloat(dEl.value).toFixed(1);
+    preset.dist  = +parseFloat(dDist.value).toFixed(2);
+    preset.lookY = +parseFloat(dLookY.value).toFixed(2);
+    vDAz.textContent    = Math.round(preset.az) + '°';
+    vDEl.textContent    = Math.round(preset.el) + '°';
+    vDDist.textContent  = preset.dist;
+    vDLookY.textContent = preset.lookY;
+    applyDirPreset(camState.activePresetIdx);
+    saveParams();
   }
+  dAz.addEventListener('input',    onDirSliderInput);
+  dEl.addEventListener('input',    onDirSliderInput);
+  dDist.addEventListener('input',  onDirSliderInput);
+  dLookY.addEventListener('input', onDirSliderInput);
 
-  sliderElements.forEach(slider => {
-    slider.addEventListener('pointerdown', e => {
-      e.stopPropagation();
-      startSliderDrag();
-      syncControlsEnabled();
-    });
-    slider.addEventListener('pointerup', e => {
-      e.stopPropagation();
-      endSliderDrag();
-      syncControlsEnabled();
-    });
-    slider.addEventListener('pointermove', e => {
-      if (e.buttons === 1) e.stopPropagation();
-    });
-    // Also handle mouse events for older browsers
-    slider.addEventListener('mousedown', e => {
-      e.stopPropagation();
-      startSliderDrag();
-      syncControlsEnabled();
-    });
-    slider.addEventListener('mouseup', e => {
-      e.stopPropagation();
-      endSliderDrag();
-      syncControlsEnabled();
-    });
-  });
-
-  // Global document handlers to catch mouseup/pointerup even if mouse moves away from slider
-  document.addEventListener('pointerup', () => {
-    if (camState.sliderDragging) { endSliderDrag(); syncControlsEnabled(); }
-  });
-  document.addEventListener('mouseup', () => {
-    if (camState.sliderDragging) { endSliderDrag(); syncControlsEnabled(); }
-  });
-
-  loadDirSliders();
-  updateCamSelUI();
-
-  controls.addEventListener('start', () => {
-    startDrag();
-    stopCamPreview();
-    updateCamSelUI();
-  });
-
-  controls.addEventListener('end', () => {
-    endDrag();
-  });
+  // OrbitControls events
+  controls.addEventListener('start', () => { startDrag(); });
+  controls.addEventListener('end',   () => { endDrag(); });
 
   controls.addEventListener('change', () => {
+    // Always sync drawer sliders to real camera position
+    const sph = cartToSpherical(camera.position.x, camera.position.y, camera.position.z);
+    updateDirSliders(sph.az, sph.el, sph.dist, controls.target.y);
+
+    // Auto-save to active preset while dragging
     if (shouldWriteBack() && !isExporting) {
-      const cs = P.camStyles[camState.activeStyle];
-      cs.x = Number(camera.position.x.toFixed(2));
-      cs.y = Number(camera.position.y.toFixed(2));
-      cs.z = Number(camera.position.z.toFixed(2));
-      cs.lookY = Number(controls.target.y.toFixed(2));
-      
-      // Update sliders without triggering their 'input' listeners to avoid recursion
-      dirX.value = cs.x;      vDirX.textContent = cs.x;
-      dirY.value = cs.y;      vDirY.textContent = cs.y;
-      dirZ.value = cs.z;      vDirZ.textContent = cs.z;
-      dirLookY.value = cs.lookY; vDirLookY.textContent = cs.lookY;
-      
-      saveParams();
+      const preset = P.camStyles[camState.activePresetIdx];
+      if (preset) {
+        preset.az    = sph.az;
+        preset.el    = sph.el;
+        preset.dist  = sph.dist;
+        preset.lookY = +controls.target.y.toFixed(2);
+        saveParams();
+      }
     }
   });
 
-  document.getElementById('btnDirPreview').addEventListener('click', () => {
-    stopCamPreview();
-    applyCamStyle(dirStyle.value);
+  // Global pointerup — end slider drag if mouse left slider
+  document.addEventListener('pointerup', () => {
+    if (camState.sliderDragging) { endSliderDrag(); controls.enabled = true; }
   });
 
-  document.getElementById('btnDirReset').addEventListener('click', () => {
-    const name = dirStyle.value;
-    Object.assign(P.camStyles[name], getStyleDefault(name));
-    loadDirSliders();
-    applyCamStyle(name);
-    saveParams();
-    logStatus(`Camera '${name}' reset to default`, { open: false });
-  });
+  updateExportCamDropdown();
+  updateLockUI();
 
   // Color randomiser specific to palette
   document.getElementById('btnRandomColors').addEventListener('click', () => {
@@ -2840,13 +3053,12 @@
 
     // Snap camera to default position for the current vis mode
     beginProgrammatic();
-    const d = getVisDefault(visMode);
+    const d = VIS_CAM_DEFAULTS[visMode] || VIS_CAM_DEFAULTS.bowl;
     camera.position.set(d.x, d.y, d.z);
     controls.target.set(0, d.lookY, 0);
     controls.update();
     endProgrammatic();
-
-    updateCamSelUI();
+    updateLockUI();
 
     console.group('%c[CAM RESET]', 'color:#a2c0b0;font-weight:bold');
     console.log('before:', before);

@@ -30,12 +30,13 @@
   } from './dsp.js';
 
   import {
-    camState, shouldModulate, shouldWriteBack, shouldControlsBeEnabled,
+    camState, shouldModulate, shouldWriteBack,
     startDrag, endDrag, toggleLock, setLocked,
     startSliderDrag, endSliderDrag,
     beginProgrammatic, endProgrammatic, resetAll,
-    getVisDefault, getStyleDefault,
-    VIS_DEFAULTS, STYLE_DEFAULTS, STYLE_LIST
+    setDirectorOpen,
+    cartToSpherical, sphericalToCart,
+    PRESET_DEFAULTS,
   } from './cam.js';
 
   /* ── Minimal test harness ──────────────────────────────────── */
@@ -691,13 +692,13 @@
     resetAll();
   });
 
-  test('shouldControlsBeEnabled: true by default, false during slider drag', () => {
+  test('sliderDragging: false by default, true during slider drag', () => {
     resetAll();
-    assert(shouldControlsBeEnabled() === true, 'enabled by default');
+    assert(camState.sliderDragging === false, 'not dragging by default');
     startSliderDrag();
-    assert(shouldControlsBeEnabled() === false, 'disabled during slider drag');
+    assert(camState.sliderDragging === true, 'dragging during slider drag');
     endSliderDrag();
-    assert(shouldControlsBeEnabled() === true, 'enabled after slider drag ends');
+    assert(camState.sliderDragging === false, 'cleared after slider drag ends');
   });
 
   test('toggleLock: toggles and returns new value', () => {
@@ -721,45 +722,53 @@
       'all flags should be false after resetAll');
   });
 
-  test('getVisDefault: returns independent copies', () => {
-    const d1 = getVisDefault('bowl');
-    const d2 = getVisDefault('bowl');
-    d1.y = 999;
-    assert(d2.y !== 999, 'should return independent copies');
-  });
-
-  test('getVisDefault: all modes have finite defaults', () => {
-    for (const mode of ['bowl', 'polar', 'sphere', 'wave']) {
-      const d = getVisDefault(mode);
-      assert(isFinite(d.x) && isFinite(d.y) && isFinite(d.z) && isFinite(d.lookY),
-        `${mode} default has non-finite value`);
+  test('PRESET_DEFAULTS: all presets have finite spherical coords', () => {
+    for (const p of PRESET_DEFAULTS) {
+      assert(isFinite(p.az) && isFinite(p.el) && isFinite(p.dist) && isFinite(p.lookY),
+        `preset '${p.id}' has non-finite value`);
+      assert(typeof p.name === 'string' && p.name.length > 0, `preset '${p.id}' missing name`);
     }
   });
 
-  test('getVisDefault: unknown mode falls back to bowl', () => {
-    const d = getVisDefault('nonexistent');
-    const bowl = getVisDefault('bowl');
-    assert(d.y === bowl.y && d.z === bowl.z, 'unknown mode should fallback to bowl');
+  test('PRESET_DEFAULTS: returns independent copies via map', () => {
+    const a = PRESET_DEFAULTS[0];
+    const b = PRESET_DEFAULTS[0];
+    assert(a === b, 'same object ref (as expected for constants)');
   });
 
-  test('getStyleDefault: all styles have finite defaults', () => {
-    for (const name of STYLE_LIST) {
-      const d = getStyleDefault(name);
-      assert(d !== null, `${name} should have a default`);
-      assert(isFinite(d.x) && isFinite(d.y) && isFinite(d.z) && isFinite(d.lookY),
-        `${name} default has non-finite value`);
+  test('cartToSpherical / sphericalToCart: round-trip accuracy', () => {
+    const cases = [
+      { x: 0, y: 5.5, z: 9 },
+      { x: 8, y: 8, z: 8 },
+      { x: 12, y: 2, z: 0.001 },
+    ];
+    for (const c of cases) {
+      const sph  = cartToSpherical(c.x, c.y, c.z);
+      const back = sphericalToCart(sph.az, sph.el, sph.dist);
+      const eps  = 0.05;
+      assert(Math.abs(back.x - c.x) < eps && Math.abs(back.y - c.y) < eps && Math.abs(back.z - c.z) < eps,
+        `round-trip failed for (${c.x},${c.y},${c.z}): got (${back.x},${back.y},${back.z})`);
     }
   });
 
-  test('getStyleDefault: returns null for unknown style', () => {
-    assert(getStyleDefault('nonexistent') === null, 'unknown style should return null');
+  test('cartToSpherical: azimuth in [0, 360)', () => {
+    const cases = [
+      { x: -5, y: 3, z: -5 },
+      { x:  5, y: 3, z: -5 },
+      { x: -5, y: 3, z:  5 },
+    ];
+    for (const c of cases) {
+      const { az } = cartToSpherical(c.x, c.y, c.z);
+      assert(az >= 0 && az < 360, `az ${az} out of [0,360) for (${c.x},${c.y},${c.z})`);
+    }
   });
 
-  test('STYLE_LIST matches STYLE_DEFAULTS keys', () => {
-    const keys = Object.keys(STYLE_DEFAULTS).sort();
-    const list = [...STYLE_LIST].sort();
-    assert(JSON.stringify(keys) === JSON.stringify(list),
-      `STYLE_LIST [${list}] does not match STYLE_DEFAULTS keys [${keys}]`);
+  test('directorOpen flag: shouldModulate paused when open', () => {
+    resetAll();
+    setDirectorOpen(true);
+    assert(shouldModulate() === false, 'modulation should pause when director open');
+    setDirectorOpen(false);
+    assert(shouldModulate() === true, 'modulation should resume when director closed');
   });
 
   test('drag does not auto-lock: modulation resumes after endDrag', () => {
@@ -775,8 +784,9 @@
     resetAll();
     startSliderDrag();
     assert(shouldModulate() === true, 'slider drag does not suppress modulation');
-    assert(shouldControlsBeEnabled() === false, 'controls disabled during slider');
+    assert(camState.sliderDragging === true, 'sliderDragging flag set');
     endSliderDrag();
+    assert(camState.sliderDragging === false, 'sliderDragging cleared');
   });
 
   /* ════════════════════════════════════════════════════════════

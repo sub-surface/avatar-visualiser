@@ -1,6 +1,7 @@
 /**
  * params.js — P object, localStorage persistence, DOM bindings, track display.
  */
+import { cartToSpherical, PRESET_DEFAULTS } from './cam.js';
 
 /* ── Parameters ────────────────────────────────────────────── */
 export const P = {
@@ -43,14 +44,7 @@ export const P = {
   exportAspect: '16:9',
   uiPalette: 'default',
   fastBoot: false,
-  camStyles: {
-    normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
-    distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
-    birds:   { x: 0,    y: 15.0, z: 1.0,  lookY: 0 },
-    worms:   { x: 0,    y: 0.5,  z: 6.0,  lookY: 2.0 },
-    side:    { x: 12.0, y: 2.0,  z: 0,    lookY: 0 },
-    oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
-  },
+  camStyles: PRESET_DEFAULTS.map(p => ({ ...p })),
 };
 
 /** Columns derived from complexity — use this everywhere instead of P.complexity * 32 inline. */
@@ -174,9 +168,22 @@ export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
     const fbEl = document.getElementById('pFastBoot');
     if (fbEl) fbEl.checked = !!P.fastBoot;
 
-    if (saved.camStyles && typeof saved.camStyles === 'object') {
-      for (const k of Object.keys(P.camStyles)) {
-        if (saved.camStyles[k]) Object.assign(P.camStyles[k], saved.camStyles[k]);
+    if (saved.camStyles) {
+      if (Array.isArray(saved.camStyles) && saved.camStyles.length > 0) {
+        // New spherical format — load directly
+        P.camStyles = saved.camStyles;
+      } else if (saved.camStyles && typeof saved.camStyles === 'object' && !Array.isArray(saved.camStyles)) {
+        // Migrate old Cartesian format { normal: {x,y,z,lookY}, ... } to spherical array
+        P.camStyles = Object.entries(saved.camStyles).map(([id, cs]) => {
+          const sph = cartToSpherical(cs.x ?? 0, cs.y ?? 5.5, cs.z ?? 9);
+          const def = PRESET_DEFAULTS.find(d => d.id === id);
+          return {
+            id,
+            name: def ? def.name : id.charAt(0).toUpperCase() + id.slice(1),
+            az: sph.az, el: sph.el, dist: sph.dist,
+            lookY: cs.lookY ?? -0.5,
+          };
+        });
       }
     }
 

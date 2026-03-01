@@ -3,7 +3,7 @@
  * Separates three concerns that were previously collapsed into one boolean:
  *   1. Is the user orbit-dragging?        → camState.dragging
  *   2. Is the camera locked from audio?   → camState.locked
- *   3. Are orbit controls enabled?        → derived from camState.sliderDragging
+ *   3. Is the Director drawer open?       → camState.directorOpen
  */
 
 /* ── State ────────────────────────────────────────────────────── */
@@ -12,36 +12,64 @@ export const camState = {
   dragging:       false,    // user is currently orbit-dragging
   sliderDragging: false,    // a director slider is being dragged
   programmatic:   false,    // programmatic update in progress (suppress change handler)
-  activeStyle:    'normal', // which P.camStyles key is active
+  directorOpen:   false,    // Director drawer is open (pause audio-reactive modulation)
+  activePresetIdx: 0,       // index into P.camStyles array
 };
 
-/* ── Default positions ────────────────────────────────────────── */
-export const VIS_DEFAULTS = {
-  bowl:   { x: 0, y: 5.5, z: 9.0, lookY: -0.5 },
-  polar:  { x: 0, y: 9,   z: 0,   lookY: 0    },
-  sphere: { x: 0, y: 0,   z: 12,  lookY: 0    },
-  wave:   { x: 0, y: 1,   z: 10,  lookY: 0    },
-};
+/* ── Spherical ↔ Cartesian helpers ────────────────────────────── */
 
-export const STYLE_DEFAULTS = {
-  normal:  { x: 0,    y: 5.5,  z: 9.0,  lookY: -0.5 },
-  distant: { x: 0,    y: 11.0, z: 18.0, lookY: -0.5 },
-  birds:   { x: 0,    y: 15.0, z: 1.0,  lookY: 0    },
-  worms:   { x: 0,    y: 0.5,  z: 6.0,  lookY: 2.0  },
-  side:    { x: 12.0, y: 2.0,  z: 0,    lookY: 0    },
-  oblique: { x: 8.0,  y: 8.0,  z: 8.0,  lookY: -0.5 },
-};
+/**
+ * Convert Cartesian camera position to spherical coordinates.
+ * @returns {{ az: number, el: number, dist: number }}
+ *   az  = azimuth in degrees [0, 360)
+ *   el  = elevation in degrees (angle above XZ plane)
+ *   dist = distance from origin
+ */
+export function cartToSpherical(x, y, z) {
+  const dist = Math.sqrt(x * x + y * y + z * z);
+  if (dist < 1e-6) return { az: 0, el: 0, dist: 0 };
+  const el = Math.asin(Math.max(-1, Math.min(1, y / dist))) * (180 / Math.PI);
+  let az = Math.atan2(x, z) * (180 / Math.PI);
+  if (az < 0) az += 360;
+  return { az: +az.toFixed(1), el: +el.toFixed(1), dist: +dist.toFixed(2) };
+}
 
-export const STYLE_LIST = ['normal', 'distant', 'birds', 'worms', 'side', 'oblique'];
+/**
+ * Convert spherical camera coordinates to Cartesian position.
+ * @param {number} az  Azimuth in degrees
+ * @param {number} el  Elevation in degrees
+ * @param {number} dist Distance from origin
+ * @returns {{ x: number, y: number, z: number }}
+ */
+export function sphericalToCart(az, el, dist) {
+  const azR = az * (Math.PI / 180);
+  const elR = el * (Math.PI / 180);
+  const cosEl = Math.cos(elR);
+  return {
+    x: +(dist * cosEl * Math.sin(azR)).toFixed(3),
+    y: +(dist * Math.sin(elR)).toFixed(3),
+    z: +(dist * cosEl * Math.cos(azR)).toFixed(3),
+  };
+}
+
+/* ── Default preset positions (spherical) ─────────────────────── */
+export const PRESET_DEFAULTS = [
+  { id: 'normal',  name: 'Normal',   az: 0,  el: 37, dist: 10.7, lookY: -0.5 },
+  { id: 'distant', name: 'Distant',  az: 0,  el: 32, dist: 21.0, lookY: -0.5 },
+  { id: 'birds',   name: 'Birds-eye',az: 0,  el: 82, dist: 15.1, lookY: 0    },
+  { id: 'worms',   name: 'Worms-eye',az: 0,  el: 5,  dist: 6.0,  lookY: 2.0  },
+  { id: 'side',    name: 'Side',     az: 90, el: 9,  dist: 12.2, lookY: 0    },
+  { id: 'oblique', name: 'Oblique',  az: 45, el: 35, dist: 13.9, lookY: -0.5 },
+];
 
 /* ── Queries ──────────────────────────────────────────────────── */
 
 /** Should applyModulation() drive the camera this frame? */
 export function shouldModulate() {
-  return !camState.locked && !camState.dragging;
+  return !camState.locked && !camState.dragging && !camState.directorOpen;
 }
 
-/** Should the controls.change handler write back to P.camStyles? */
+/** Should the controls.change handler write back to the active preset? */
 export function shouldWriteBack() {
   return camState.dragging && !camState.programmatic;
 }
@@ -70,6 +98,10 @@ export function setLocked(val) {
   camState.locked = !!val;
 }
 
+export function setDirectorOpen(val) {
+  camState.directorOpen = !!val;
+}
+
 export function startSliderDrag() {
   camState.sliderDragging = true;
 }
@@ -92,18 +124,5 @@ export function resetAll() {
   camState.dragging       = false;
   camState.sliderDragging = false;
   camState.programmatic   = false;
-}
-
-/* ── Data helpers ─────────────────────────────────────────────── */
-
-/** Default camera for a vis mode. Returns a copy. */
-export function getVisDefault(mode) {
-  const d = VIS_DEFAULTS[mode] || VIS_DEFAULTS.bowl;
-  return { ...d };
-}
-
-/** Default style preset. Returns a copy, or null for unknown. */
-export function getStyleDefault(name) {
-  const d = STYLE_DEFAULTS[name];
-  return d ? { ...d } : null;
+  camState.directorOpen   = false;
 }
