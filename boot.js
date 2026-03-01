@@ -425,7 +425,7 @@ async function animSignal(container, skipped) {
       // "Locking" text
       if (t > 0.7) {
         ctx.fillStyle = `rgba(${r},${g},${b},${(t-0.7)*3})`;
-        ctx.font = '12px Courier';
+        ctx.font = '8px Courier';
         ctx.fillText('SIGNAL_LOCKED', cx + 170, cy);
         ctx.fillRect(cx - 200, cy, 400 * (t), 1);
       }
@@ -451,7 +451,7 @@ class BootAudio {
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.lpf = this.ctx.createBiquadFilter();
     this.lpf.type = 'lowpass';
-    this.lpf.frequency.value = 1200; // Muffled 90s chassis sound
+    this.lpf.frequency.value = 800; // Muffled 90s chassis sound
     this.lpf.connect(this.ctx.destination);
   }
 
@@ -479,7 +479,7 @@ class BootAudio {
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     
-    osc.type = 'sine';
+    osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(150, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + duration);
     
@@ -746,7 +746,7 @@ export class BootScreen {
     this.audio.beep(1320, 0.06, 'sine');
 
     const FAST_LINES = [
-      { text: 'SUB-SURFACE AVATAR  v0.9  (C) 2024  sub-surface', cls: 'boot-tertiary' },
+      { text: 'SUB-SURFACE AVATAR  v0.9  (C) 2026  sub-surface', cls: 'boot-tertiary' },
       { text: 'WaveCore DSP-X @ 44.1kHz  ·  FFT 1024-bin stereo  ·  WebGL 2.0 .... <span class="boot-ok">OK</span>' },
       { text: 'Memory Test: 131072K  ·  Terrain 60×128  ·  A-weight IEC 61672 .... <span class="boot-ok">OK</span>' },
       { text: '<span class="boot-dim">Pro tip: your subwoofer is legally required to participate in this experience.</span>' },
