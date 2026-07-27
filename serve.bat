@@ -1,2 +1,2 @@
 @echo off
-node serve.js
+npm run dev
