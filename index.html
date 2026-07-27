@@ -664,189 +664,65 @@
       color: var(--btn-active-fg) !important;
     }
 
-    /* ── Director wrapper + panel (floating, bottom-centre) ──── */
-    #directorWrap {
+    /* ── Camera intelligence panel ──────────────────────────── */
+    #cameraPanel {
       position: fixed;
-      bottom: 56px;          /* sit above the visStrip (~34px) + gap */
-      left: 50%;
-      transform: translateX(-50%);
+      right: 24px;
+      bottom: 58px;
       z-index: 150;
-      display: flex;
-      flex-direction: row;
-      align-items: flex-end;
-      gap: 8px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.18s ease;
-    }
-    #directorWrap.open {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    #directorPanel {
-      display: flex;
+      width: 310px;
+      padding: 12px 14px;
+      display: none;
       flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-    /* Side action buttons (▶ ↺) pinned to right of panel */
-    #dirSideActions {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: center;
-      padding-bottom: 2px;
-    }
-    /* Preset pill row */
-    #dirPresetList {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      justify-content: center;
-      max-width: 560px;
-    }
-    .dir-preset-item {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      padding: 2px 7px;
+      gap: 7px;
+      background: var(--panel-bg);
       border: 1px solid var(--s-lo);
-      border-radius: 2px;
-      cursor: pointer;
-      background: var(--panel-bg);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .dir-preset-item:hover { border-color: var(--s-mid); }
-    .dir-preset-item.active {
-      border-color: var(--s-hi);
-      background: rgba(var(--ui-accent-rgb), 0.12);
-    }
-    .dir-preset-name {
-      color: var(--s-hi);
-      font-family: var(--mono);
-      font-size: 0.6rem;
-      letter-spacing: 0.1em;
-      cursor: pointer;
-      min-width: 0;
-      max-width: 90px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      user-select: none;
-    }
-    .dir-preset-del {
-      background: none;
-      border: none;
-      color: var(--s-mid);
-      font-size: 0.65rem;
-      cursor: pointer;
-      opacity: 0.3;
-      padding: 0;
-      line-height: 1;
-    }
-    .dir-preset-del:hover { opacity: 1; }
-    /* Group bar */
-    #dirGroupBar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--panel-bg);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid var(--s-lo);
-      border-radius: 2px;
-      padding: 3px 8px;
-    }
-    .dir-group-label {
-      font-family: var(--mono);
-      font-size: 0.55rem;
-      color: var(--s-mid);
-      letter-spacing: 0.08em;
-    }
-    .dir-group-sel {
-      background: none;
-      border: none;
-      color: var(--s-hi);
-      font-family: var(--mono);
-      font-size: 0.55rem;
-      outline: none;
-      cursor: pointer;
-      max-width: 120px;
-    }
-    /* Controls row: two slider columns + action buttons */
-    #dirControls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 8px 14px;
-      background: var(--panel-bg);
+      box-shadow: 0 4px 24px var(--panel-shd);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      box-shadow: 0 4px 20px var(--panel-shd);
-      border: 1px solid var(--s-lo);
-      border-radius: 2px;
     }
-    .dir-col {
+    #cameraPanel.open { display: flex; }
+    .camera-title {
       display: flex;
-      flex-direction: column;
+      justify-content: space-between;
+      color: var(--s-lo);
+      font: 300 0.52rem/1 var(--mono);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    #cameraReadout { color: var(--s-mid); letter-spacing: 0.06em; }
+    #cameraShots {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3px;
+    }
+    .camera-shot {
+      padding: 4px 2px;
+      color: var(--s-mid);
+      background: transparent;
+      border: 1px solid var(--s-rule);
+      font: 300 0.52rem/1 var(--mono);
+      cursor: pointer;
+    }
+    .camera-shot:hover, .camera-shot.active {
+      color: var(--s-hi);
+      border-color: var(--s-mid);
+      background: rgba(var(--ui-accent-rgb), 0.08);
+    }
+    .camera-actions {
+      display: flex;
       gap: 5px;
+      padding-top: 4px;
+      border-top: 1px solid var(--s-rule);
     }
-    .dir-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .dir-row label {
-      font-family: var(--mono);
-      font-size: 0.58rem;
-      letter-spacing: 0.08em;
+    .camera-actions button {
+      flex: 1;
+      padding: 4px;
       color: var(--s-mid);
-      min-width: 28px;
-      text-align: right;
-    }
-    .dir-row input[type="range"] {
-      width: 100px;
-      -webkit-appearance: none;
-      appearance: none;
-      height: 2px;
-      background: var(--s-lo);
-      outline: none;
-      border-radius: 1px;
-    }
-    .dir-row input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--s-hi);
+      border: 1px solid var(--s-rule);
+      background: transparent;
+      font: 300 0.52rem/1 var(--mono);
       cursor: pointer;
     }
-    .dir-val {
-      font-family: var(--mono);
-      font-size: 0.58rem;
-      color: var(--s-mid);
-      min-width: 30px;
-    }
-    .dir-btns {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      border-left: 1px solid var(--s-lo);
-      padding-left: 10px;
-    }
-    .dir-act-btn {
-      font-family: var(--mono);
-      font-size: 0.58rem;
-      letter-spacing: 0.08em;
-      padding: 2px 6px;
-      border: 1px solid var(--s-lo);
-      color: var(--s-mid);
-      background: none;
-      cursor: pointer;
-    }
-    .dir-act-btn:hover { color: var(--s-hi); border-color: var(--s-mid); }
-    .dir-act-btn.active { color: var(--s-hi); border-color: var(--s-hi); }
 
     .btn-active-highlight {
       border: 1px solid var(--btn-active-bg) !important;
@@ -911,7 +787,7 @@
     body.obs-active #visStrip,
     body.obs-active #trackInfo,
     body.obs-active #overlay,
-    body.obs-active #directorWrap {
+    body.obs-active #cameraPanel {
       display: none !important;
     }
     body.obs-active #controls {
@@ -1156,6 +1032,32 @@
       padding-bottom: 2px;
     }
 
+    details.padvanced {
+      margin-top: 5px;
+      border-top: 1px solid var(--s-rule);
+    }
+    details.padvanced > summary {
+      padding: 7px 0 3px;
+      color: var(--s-lo);
+      font: 300 0.52rem/1 var(--mono);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      list-style: none;
+    }
+    details.padvanced > summary::after {
+      content: '+';
+      float: right;
+      color: var(--m-mid);
+    }
+    details.padvanced[open] > summary::after { content: '−'; }
+    .pmicrocopy {
+      color: var(--s-lo);
+      font: 300 0.52rem/1.45 var(--mono);
+      letter-spacing: 0.03em;
+      margin: 2px 0 6px;
+    }
+
     .prow {
       display: flex;
       align-items: center;
@@ -1344,13 +1246,6 @@
     }
   </style>
 
-  <script src="https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
-  <script type="importmap">
-  { "imports": { 
-      "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
-    } }
-  </script>
 </head>
 <body>
 
@@ -1486,56 +1381,48 @@
   </div>
 </div>
 
-<!-- ── Director wrapper (contains panel + side actions) ──────── -->
-<div id="directorWrap">
-<div id="directorPanel">
-  <div id="dirPresetList"></div>
-  <div id="dirGroupBar">
-    <span class="dir-group-label">group:</span>
-    <select id="dirGroupSel" class="dir-group-sel"></select>
-    <button class="chrome dir-act-btn" id="btnDirGroupSave" title="Save current preset selection to a new group">save</button>
-    <button class="chrome dir-act-btn" id="btnDirGroupDel" title="Delete selected group">✕</button>
+<!-- ── Intent-based camera composer ───────────────────────────── -->
+<div id="cameraPanel">
+  <div class="camera-title">
+    <span>camera intelligence</span>
+    <span id="cameraReadout">auto · drift</span>
   </div>
-  <div id="dirControls">
-    <div class="dir-col">
-      <div class="dir-row">
-        <label>az</label>
-        <input type="range" id="dAz" min="0" max="360" step="1" value="0">
-        <span class="dir-val" id="vDAz">0°</span>
-      </div>
-      <div class="dir-row">
-        <label>el</label>
-        <input type="range" id="dEl" min="-45" max="88" step="1" value="37">
-        <span class="dir-val" id="vDEl">37°</span>
-      </div>
-    </div>
-    <div class="dir-col">
-      <div class="dir-row">
-        <label>dist</label>
-        <input type="range" id="dDist" min="1" max="30" step="0.1" value="10.7">
-        <span class="dir-val" id="vDDist">10.7</span>
-      </div>
-      <div class="dir-row">
-        <label>look y</label>
-        <input type="range" id="dLookY" min="-3" max="6" step="0.1" value="-0.5">
-        <span class="dir-val" id="vDLookY">-0.5</span>
-      </div>
-    </div>
-    <div class="dir-btns">
-      <button class="chrome dir-act-btn" id="btnDirAddPreset" title="Capture current camera position as a new preset">+</button>
-      <button class="chrome dir-act-btn" id="btnDirRandomCams" title="Randomise camera positions (up to 10). Shift+click to choose how many.">rnd</button>
-      <button class="chrome dir-act-btn" id="btnDirLock" title="Toggle camera lock">unlocked</button>
-      <button class="chrome dir-act-btn" id="btnDirGizmo" title="Toggle XYZ axis gizmo at orbit target">xyz</button>
-    </div>
+  <div id="cameraShots">
+    <button class="camera-shot" data-shot="auto">auto</button>
+    <button class="camera-shot" data-shot="hero">hero</button>
+    <button class="camera-shot" data-shot="overhead">overhead</button>
+    <button class="camera-shot" data-shot="horizon">horizon</button>
+    <button class="camera-shot" data-shot="side">side</button>
+    <button class="camera-shot" data-shot="macro">macro</button>
+    <button class="camera-shot" data-shot="underslung">under</button>
+    <button class="camera-shot" data-shot="manual">manual</button>
+  </div>
+  <div class="prow"><label title="Procedural camera movement layered over the selected shot">movement</label>
+    <select class="psel" id="pCameraMotion">
+      <option value="still">still</option>
+      <option value="drift">drift</option>
+      <option value="orbit">orbit</option>
+      <option value="pendulum">pendulum</option>
+      <option value="rail">rail</option>
+      <option value="handheld">handheld</option>
+    </select></div>
+  <div class="prow"><label title="Scale of the selected movement grammar">amount</label>
+    <input type="range" id="pCameraAmount" min="0" max="2" step="0.05" value="0.35">
+    <span class="pval" id="vCameraAmount">0.35</span></div>
+  <div class="prow"><label title="Speed of procedural camera movement">speed</label>
+    <input type="range" id="pCameraSpeed" min="0" max="3" step="0.05" value="0.35">
+    <span class="pval" id="vCameraSpeed">0.35</span></div>
+  <div class="prow"><label title="How strongly envelopes and transients influence camera position">audio</label>
+    <input type="range" id="pCameraAudio" min="0" max="2" step="0.05" value="0.45">
+    <span class="pval" id="vCameraAudio">0.45</span></div>
+  <div class="prow"><label title="Duration of shot changes">transition</label>
+    <input type="range" id="pCameraTransition" min="0" max="4" step="0.1" value="0.8">
+    <span class="pval" id="vCameraTransition">0.8</span></div>
+  <div class="camera-actions">
+    <button id="btnCameraCapture" title="Make the current manual orbit the reusable anchor">capture orbit</button>
+    <button id="btnCameraReset" title="Return to the mode-aware automatic shot">auto frame</button>
   </div>
 </div>
-
-<!-- ── Director side actions (right of panel) ── -->
-<div id="dirSideActions">
-  <button class="chrome dir-act-btn" id="btnDirPreview" title="Cycle through all camera presets at 2-second intervals">▶</button>
-  <button class="chrome dir-act-btn" id="btnDirResetPreset" title="Reset active preset to factory default">↺</button>
-</div>
-</div><!-- /directorWrap -->
 
 <!-- ── Bottom-centre: visualiser type strip ────────────────────── -->
 <div id="visStrip">
@@ -1546,6 +1433,14 @@
   <button class="vis-btn" data-vis="polar">polar</button>
   <span class="vis-sep">·</span>
   <button class="vis-btn" data-vis="wave">wave</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="topology">fold</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="cathedral">cathedral</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="ribbon">ribbon</button>
+  <span class="vis-sep">·</span>
+  <button class="vis-btn" data-vis="tunnel">tunnel</button>
 </div>
 
 <!-- ── Bottom-left: actions ────────────────────────────────────── -->
@@ -1580,6 +1475,7 @@
       <button class="ptab-btn active" data-tab="tTrack">track</button>
       <button class="ptab-btn" data-tab="tAudio">audio</button>
       <button class="ptab-btn" data-tab="tVisual">visual</button>
+      <button class="ptab-btn" data-tab="tLook">look</button>
       <button class="ptab-btn" data-tab="tMod">mod</button>
       <button class="ptab-btn" data-tab="tExport">export</button>
     </div>
@@ -1659,11 +1555,39 @@
         <input type="range" id="pMorph" min="0" max="1.0" step="0.01" value="0.0">
         <span class="pval" id="vMorph">0.0</span></div>
 
+      <div class="psection">field macros</div>
+      <div class="pmicrocopy">A compact style DNA. These travel cleanly across every view.</div>
+      <div class="prow"><label title="Curated cross-mode starting points; all resulting parameters remain editable">style seed</label>
+        <select class="psel" id="pStylePreset">
+          <option value="">choose…</option>
+          <option value="unknown-planet">unknown planet</option>
+          <option value="ps2-temple">PS2 signal temple</option>
+          <option value="scope-kiss">oscilloscope kiss</option>
+          <option value="milkdrop-memory">milkdrop memory</option>
+          <option value="demoscene-fold">demoscene fold</option>
+          <option value="sonar-bloom">sonar bloom</option>
+          <option value="spectral-canyon">spectral canyon</option>
+          <option value="dub-wire">dub wire memory</option>
+        </select></div>
+      <div class="prow"><label title="Overall spatial scale of the signal field">scale</label>
+        <input type="range" id="pFieldScale" min="0.2" max="3" step="0.05" value="1">
+        <span class="pval" id="vFieldScale">1</span></div>
+      <div class="prow"><label title="Depth of audio displacement without changing the source analysis">energy</label>
+        <input type="range" id="pFieldDepth" min="0" max="3" step="0.05" value="1">
+        <span class="pval" id="vFieldDepth">1</span></div>
+      <div class="prow"><label title="Separates left and right channels in space; negative values invert them">stereo</label>
+        <input type="range" id="pFieldStereo" min="-2" max="2" step="0.05" value="1">
+        <span class="pval" id="vFieldStereo">1</span></div>
+      <div class="prow"><label title="Tempo-independent motion through the visual field">flow</label>
+        <input type="range" id="pFieldFlow" min="-3" max="3" step="0.05" value="0.2">
+        <span class="pval" id="vFieldFlow">0.2</span></div>
+
       <div class="psection">dsp</div>
       <div class="prow"><label title="Frequency axis mapping: log = perceptual/musical, linear = equal Hz per column, dnb = sub/kick/treble emphasis">freq scale</label>
         <select class="psel" id="pFreqScale">
           <option value="log" selected>log</option>
           <option value="linear">linear</option>
+          <option value="dnb">dnb</option>
         </select>
         <span class="pval" id="vFreqScale">log</span></div>
       <div class="prow"><label title="How much of the frequency spectrum is mapped across the grid width — lower values focus on low frequencies">freq range</label>
@@ -1695,6 +1619,83 @@
       <div class="prow"><label title="Mesh detail level (1-10) — higher complexity increases horizontal resolution across all modes">complexity</label>
         <input type="range" id="pComplexity" min="1" max="10" step="1" value="4">
         <span class="pval" id="vComplexity">4</span></div>
+
+      <details class="padvanced">
+        <summary>advanced field</summary>
+        <div class="prow"><label title="Rotational shear through successive history rows">twist</label>
+          <input type="range" id="pFieldTwist" min="-3" max="3" step="0.05" value="0.15">
+          <span class="pval" id="vFieldTwist">0.15</span></div>
+        <div class="prow"><label title="Curls the whole field around its longitudinal axis">curl</label>
+          <input type="range" id="pFieldCurl" min="-2" max="2" step="0.05" value="0">
+          <span class="pval" id="vFieldCurl">0</span></div>
+        <div class="prow"><label title="Repeated ribs, lobes, folds, or arches in structural modes">symmetry</label>
+          <input type="range" id="pFieldSymmetry" min="1" max="12" step="1" value="4">
+          <span class="pval" id="vFieldSymmetry">4</span></div>
+        <div class="prow"><label title="Energy retained or attenuated as spectrum rows recede into history">history</label>
+          <input type="range" id="pFieldHistory" min="0" max="2" step="0.05" value="1">
+          <span class="pval" id="vFieldHistory">1</span></div>
+        <div class="prow"><label title="Ambient rotation rate; negative reverses direction">rotation</label>
+          <input type="range" id="pFieldRotation" min="-2" max="2" step="0.02" value="0.16">
+          <span class="pval" id="vFieldRotation">0.16</span></div>
+        <div class="prow"><label title="Signal-line transparency before the output look is applied">opacity</label>
+          <input type="range" id="pFieldOpacity" min="0.03" max="1" step="0.01" value="0.72">
+          <span class="pval" id="vFieldOpacity">0.72</span></div>
+      </details>
+    </div>
+
+    <!-- Look Lab: the same output pipeline is used by preview and export -->
+    <div id="tLook" class="ptab-content" data-modes="all">
+      <div class="psection">look lab</div>
+      <div class="pmicrocopy">Enable exact output to compose through the export renderer while you play.</div>
+      <div class="prow"><label title="Coherent starting points; every control below remains editable">profile</label>
+        <select class="psel" id="pLookProfile">
+          <option value="clean">clean digital</option>
+          <option value="ps2-480">PS2 480p</option>
+          <option value="ps2-240">PS2 240p</option>
+          <option value="tape">tape memory</option>
+          <option value="ghost">long exposure</option>
+        </select>
+        <span class="pval" id="vLookProfile">clean</span></div>
+      <div class="prow"><label title="Show the exact internal-resolution, cadence, and post-processing output in the live canvas">exact output</label>
+        <input type="checkbox" id="pPreviewOutput"></div>
+      <div class="prow"><label title="Quantise sample positions to the internal pixel grid">pixel snap</label>
+        <input type="range" id="pLookPixelSnap" min="0" max="1" step="0.05" value="0">
+        <span class="pval" id="vLookPixelSnap">0</span></div>
+      <div class="prow"><label title="Bits per RGB channel; low values produce console-era banding">color bits</label>
+        <input type="range" id="pLookColorBits" min="3" max="8" step="1" value="8">
+        <span class="pval" id="vLookColorBits">8</span></div>
+      <div class="prow"><label title="Ordered colour dithering after palette quantisation">dither</label>
+        <input type="range" id="pLookDither" min="0" max="1" step="0.05" value="0">
+        <span class="pval" id="vLookDither">0</span></div>
+      <div class="prow"><label title="Brightness modulation on alternating raster rows">scanlines</label>
+        <input type="range" id="pLookScanlines" min="0" max="1" step="0.05" value="0">
+        <span class="pval" id="vLookScanlines">0</span></div>
+
+      <details class="padvanced">
+        <summary>advanced signal chain</summary>
+        <div class="prow"><label title="Alternate sub-pixel vertical fields to evoke interlaced output">interlace</label>
+          <input type="range" id="pLookInterlace" min="0" max="1" step="0.05" value="0">
+          <span class="pval" id="vLookInterlace">0</span></div>
+        <div class="prow"><label title="Separate red and blue samples horizontally">chroma</label>
+          <input type="range" id="pLookChroma" min="0" max="1" step="0.05" value="0">
+          <span class="pval" id="vLookChroma">0</span></div>
+        <div class="prow"><label title="Deterministic per-frame luminance noise">noise</label>
+          <input type="range" id="pLookNoise" min="0" max="1" step="0.05" value="0">
+          <span class="pval" id="vLookNoise">0</span></div>
+        <div class="prow"><label title="Feed the previous processed frame back into the current image">feedback</label>
+          <input type="range" id="pLookFeedback" min="0" max="0.98" step="0.01" value="0">
+          <span class="pval" id="vLookFeedback">0</span></div>
+        <div class="prow"><label title="Visual refresh cadence; audio analysis continues at display rate">cadence</label>
+          <select class="psel" id="pLookCadence">
+            <option value="display">display</option>
+            <option value="60">60 fps</option>
+            <option value="30">30 fps</option>
+            <option value="24">24 fps</option>
+            <option value="20">20 fps</option>
+            <option value="15">15 fps</option>
+          </select>
+          <span class="pval" id="vLookCadence">display</span></div>
+      </details>
     </div>
 
     <!-- Modulation Tab -->
@@ -1795,20 +1796,16 @@
         <select class="psel" id="pCycleMode">
           <option value="off" selected title="No automatic cycling — static vis, static camera">off</option>
           <option value="static" title="Locks to current vis mode and camera — no cuts, no movement">static</option>
-          <option value="cinematic" title="Cuts to the next camera angle on energy peaks — vis mode unchanged">cinematic</option>
-          <option value="types" title="Morphs through vis types (Bowl ⇄ Polar ⇄ Sphere ⇄ Wave) and cuts camera on peaks">types</option>
-          <option value="random" title="Morphs vis, cuts camera, and randomises visual parameters on every peak">random</option>
+          <option value="ambient" title="Uses the selected camera movement without energy-cued cuts">ambient</option>
+          <option value="cinematic" title="Changes shot intent on energy peaks — view unchanged">cinematic</option>
+          <option value="types" title="Morphs through all visual fields and changes shot intent on peaks">types</option>
+          <option value="generative" title="Changes shots and makes constrained seeded field mutations">generative</option>
+          <option value="random" title="Morphs views, changes shots, and mutates visual parameters on peaks">random</option>
         </select>
         <span class="pval" id="vCycleMode">off</span></div>
       <div class="prow"><label title="Energy peak sensitivity — higher = more frequent camera/vis cuts (min 3s spacing); lower = fewer cuts (min 8s spacing). Only active when cycle mode is not off.">peak sens</label>
         <input type="range" class="pslider" id="pPeakSens" min="0" max="1" step="0.05" value="0.5">
         <span class="pval" id="vPeakSens">0.5</span></div>
-
-      <div class="psection">camera</div>
-      <div class="prow"><label title="Camera group for export — cycles through the group's presets on energy peaks">group</label>
-        <select class="psel" id="pExportCamGroup">
-          <option value="-1">— all presets —</option>
-        </select></div>
 
       <div class="psection">boot</div>
       <div class="prow" style="align-items:center; gap:8px; padding:4px 0;">
@@ -1819,7 +1816,7 @@
       <div class="psection">debug</div>
       <div class="prow" style="justify-content:center; gap:6px; padding-top:4px;">
         <button class="chrome" id="btnCamReset" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Force-reset camera controls: re-enable OrbitControls, clear lock state, snap to default position for current vis mode">reset camera</button>
-        <button class="chrome" id="btnTestCapture" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Perform a batch capture of all 4 visualization modes to local disk">capture tests</button>
+        <button class="chrome" id="btnTestCapture" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Perform a batch capture of all eight visualization modes to local disk">capture tests</button>
       </div>
     </div>
 
@@ -1829,7 +1826,7 @@
     <button class="chrome" id="btnExportConfig" title="Export config" style="border:1px solid var(--s-lo); padding:2px 6px; font-size:0.75rem; line-height:1;">↓</button>
     <button class="chrome" id="btnImportConfig" title="Import config" style="border:1px solid var(--s-lo); padding:2px 6px; font-size:0.75rem; line-height:1;">↑</button>
     <button class="chrome" id="btnRandomAll" style="border:1px solid var(--s-lo); padding:2px 8px;">randomise</button>
-    <button class="chrome" id="btnDirector" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Open camera director panel">director</button>
+    <button class="chrome" id="btnCamera" style="border:1px solid var(--s-lo); padding:2px 8px;" title="Open camera intelligence">camera</button>
     <button class="chrome" id="paramsToggle" style="border:1px solid var(--s-lo); padding:2px 8px;">parameters</button>
   </div>
   <input type="file" id="configInput" accept=".json" style="display:none">
@@ -1893,37 +1890,19 @@
   
   import { P, getCols, loadParams, saveParams, bindRange, bindSelect, bindText,
            updateTrackDisplay } from './params.js';
-  import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioDevices } from './audio.js';
-  import { env, 
-           computeEnvelopes, 
-           applyModulation, 
-           modBowlExp, 
-           bpmTick, 
-           lfoTick, 
-           getLfoVal, 
-           getLfo2Val, 
-           modPolarSpacing, 
-           modWaveSpacing } from './envelopes.js';
-  import { refreshBinMap, rebuildHistory } from './vis/shared.js';
-  import { rebuildGrid, applyDisplacement, tearDownBowl } from './vis/bowl.js';
-  import { rebuildPolar, applyPolar, tearDownPolar } from './vis/polar.js';
-  import { rebuildSphere, applySphere, tearDownSphere } from './vis/sphere.js';
-  import { rebuildWave, applyWave, ensureTimeDomainData, tearDownWave } from './vis/wave.js';
+  import { PARAM_SCHEMA } from './project-schema.js';
+  import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioContext, getAudioDevices } from './audio.js';
+  import { bpmTick, resetBpmAuto } from './tempo.js';
+  import { signalField, FIELD_MODES } from './vis/field.js';
+  import { RenderSession } from './render-session.js';
+  import { lookRenderer } from './look.js';
+  import { applyLookProfile } from './look-profiles.js';
+  import { applyStylePreset } from './style-presets.js';
+  import { compositeFrame, initOverlayCanvas, freeOverlayCanvas } from './overlay.js';
+  const startupAudioUrl = new URL('./Startup.wav', import.meta.url).href;
   import { startExport, isExporting } from './export.js';
-  import {
-    camState, shouldWriteBack,
-    startDrag, endDrag, toggleLock, setLocked,
-    startSliderDrag, endSliderDrag,
-    beginProgrammatic, endProgrammatic, resetAll,
-    setDirectorOpen, cartToSpherical, sphericalToCart,
-    PRESET_DEFAULTS,
-  } from './cam.js';
-
-  // Now that P is imported, set initial camera target from first preset
-  if (P && Array.isArray(P.camStyles) && P.camStyles.length > 0) {
-    controls.target.set(0, P.camStyles[0].lookY, 0);
-    controls.update();
-  }
+  import { CameraRig } from './cam.js';
+  const cameraRig = new CameraRig(camera, controls, P);
 
   /* ── Visualiser mode switching ──────────────────────────── */
   let visMode = 'sphere';
@@ -1960,39 +1939,9 @@
     });
   }
 
-  function tearDownVis() {
-    tearDownBowl();
-    tearDownPolar();
-    tearDownSphere();
-    tearDownWave();
-  }
-
-  // Default camera positions per vis mode (Cartesian)
-  const VIS_CAM_DEFAULTS = {
-    bowl:   { x: 0, y: 5.5, z: 9.0,  lookY: -0.5 },
-    polar:  { x: 0, y: 9,   z: 0,    lookY: 0    },
-    sphere: { x: 0, y: 0,   z: 12,   lookY: 0    },
-    wave:   { x: 0, y: 1,   z: 10,   lookY: 0    },
-  };
-
   function buildVis(mode) {
-    tearDownVis();
-    beginProgrammatic();
-    const d = VIS_CAM_DEFAULTS[mode] || VIS_CAM_DEFAULTS.bowl;
-    if (mode === 'bowl') {
-      rebuildGrid();
-    } else if (mode === 'polar') {
-      rebuildPolar();
-    } else if (mode === 'sphere') {
-      rebuildSphere();
-    } else if (mode === 'wave') {
-      rebuildWave();
-    }
-    camera.position.set(d.x, d.y, d.z);
-    controls.target.set(0, d.lookY, 0);
-    controls.update();
-    endProgrammatic();
-    setLocked(false);
+    signalField.setMode(mode);
+    signalField.rebuild(P.rows, getCols());
     updateParamVisibility(mode);
   }
 
@@ -2005,6 +1954,9 @@
     document.body.classList.add(`vis-${mode}`);
     
     buildVis(mode);
+    if (P.cameraShot === 'auto' || P.cameraShot === 'hero') {
+      cameraRig.selectShot(P.cameraShot, mode);
+    }
     document.querySelectorAll('.vis-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.vis === mode);
     });
@@ -2051,7 +2003,9 @@
   export function logStatus(msg, { open = false } = {}) {
     const div = document.createElement('div');
     div.className = 'stream-msg';
-    div.innerHTML = `<b>[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}]</b> ${msg}`;
+    const stamp = document.createElement('b');
+    stamp.textContent = `[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}]`;
+    div.append(stamp, document.createTextNode(` ${String(msg)}`));
     statusStream.prepend(div);
     // Keep more messages for the soft falloff effect
     while (statusStream.children.length > 12) {
@@ -2135,7 +2089,7 @@
 
   themeBtn.addEventListener('click', () => {
     const isLight = document.body.classList.toggle('light-mode');
-    import('./engine.js').then(m => m.setTheme(isLight));
+    setTheme(isLight);
     updateThemeUI(isLight);
     saveParams();
     logStatus(`Theme switched to ${isLight ? 'Light' : 'Dark'}`, { open: false });
@@ -2291,15 +2245,10 @@
     previewSource.buffer = previewBuffer;
     previewSource.loop = true;
     
-    setupAnalyser(previewCtx);
+    setupAnalyser(previewCtx, { monitor: true });
     
     // Chain: Source -> LPF -> Gain -> Splitter -> Analysers -> Destination
     previewSource.connect(getLPF());
-    
-    const aL = getAnalyserL();
-    const aR = getAnalyserR();
-    aL.connect(previewCtx.destination);
-    aR.connect(previewCtx.destination);
     
     previewSource.start(0, startTime);
     previewStartedAt = previewCtx.currentTime - startTime;
@@ -2314,6 +2263,7 @@
     }
     isPreviewPlaying = false;
     topPreviewBtn.textContent = 'preview';
+    stopAudio();
   }
 
   topRenderBtn.addEventListener('click', () => {
@@ -2464,6 +2414,28 @@
   let _avgFrameTime = 16.67;
   let _lastFrameTs = 0;
   const _maxDPR = Math.min(window.devicePixelRatio || 1, 2);
+  const previewSession = new RenderSession(P, {
+    field: signalField,
+    mode: visMode,
+    columns: getCols,
+  });
+  let signalFrame = null;
+  let visualFrameIndex = 0;
+
+  function drawModMonitor(ctx, dims, history, cursor, value, depth, offset = 0) {
+    history[cursor] = value;
+    ctx.clearRect(0, 0, dims.w, dims.h);
+    ctx.beginPath();
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--m-hi');
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < dims.w; i++) {
+      const hIdx = (cursor + Math.floor(i * (history.length / dims.w))) % history.length;
+      const y = dims.h * 0.5 - ((history[hIdx] - offset) / (depth || 1)) * (dims.h * 0.4);
+      if (i === 0) ctx.moveTo(i, y);
+      else ctx.lineTo(i, y);
+    }
+    ctx.stroke();
+  }
 
   function animate(timestamp) {
     requestAnimationFrame(animate);
@@ -2481,91 +2453,46 @@
     }
     _lastFrameTs = timestamp;
 
-    const dt = clock.getDelta();
-    lfoTick(dt);
+    const dt = Math.min(clock.getDelta(), 0.25);
+    cameraRig.beginFrame();
     controls.update();
 
-    // Update modulation monitor (Visualising raw LFO 1)
-    if (document.getElementById('paramsPanel').classList.contains('open') && 
-        document.getElementById('tMod').classList.contains('active')) {
-      
-      modHistory[modIdx] = getLfoVal();
-      modIdx = (modIdx + 1) % modHistory.length;
-      
-      modCtx.clearRect(0, 0, modDims.w, modDims.h);
-      modCtx.beginPath();
-      modCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--m-hi');
-      modCtx.lineWidth = 1.5;
-      
-      for (let i = 0; i < modDims.w; i++) {
-        const hIdx = (modIdx + Math.floor(i * (modHistory.length / modDims.w))) % modHistory.length;
-        const val = modHistory[hIdx];
-        const y = modDims.h * 0.5 - (val / (P.lfoDepth||1)) * (modDims.h * 0.4);
-        if (i === 0) modCtx.moveTo(i, y);
-        else modCtx.lineTo(i, y);
-      }
-      modCtx.stroke();
-    }
-
-    // Update filter monitor (Visualising LFO 2)
-    if (document.getElementById('paramsPanel').classList.contains('open') && 
-        document.getElementById('tAudio').classList.contains('active')) {
-      
-      modHistory2[modIdx2] = getLfo2Val();
-      modIdx2 = (modIdx2 + 1) % modHistory2.length;
-      
-      modCtx2.clearRect(0, 0, modDims2.w, modDims2.h);
-      modCtx2.beginPath();
-      modCtx2.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--m-hi');
-      modCtx2.lineWidth = 1.5;
-      
-      for (let i = 0; i < modDims2.w; i++) {
-        const hIdx = (modIdx2 + Math.floor(i * (modHistory2.length / modDims2.w))) % modHistory2.length;
-        const val = modHistory2[hIdx];
-        // Normalise LFO 2 (-1 to 1 range basically) to canvas height
-        const y = modDims2.h * 0.5 - ((val - P.lfo2Offset) / (P.lfo2Depth||1)) * (modDims2.h * 0.4);
-        if (i === 0) modCtx2.moveTo(i, y);
-        else modCtx2.lineTo(i, y);
-      }
-      modCtx2.stroke();
-    }
-
+    let signalTime = timestamp / 1000;
+    let signalAdvanced = false;
     if (isPreviewPlaying && previewBuffer) {
       const cur = (previewCtx.currentTime - previewStartedAt) % previewBuffer.duration;
       previewScrub.value = cur / previewBuffer.duration;
-    }
-
-    if (isAudioReady()) {
+      signalTime = cur;
+      const left = previewBuffer.getChannelData(0);
+      const right = previewBuffer.numberOfChannels > 1 ? previewBuffer.getChannelData(1) : left;
+      signalFrame = previewSession.stepPcm(left, right, cur * previewBuffer.sampleRate, {
+        dt,
+        time: cur,
+        sampleRate: previewBuffer.sampleRate,
+      });
+      signalAdvanced = true;
+    } else if (isAudioReady()) {
       const aL = getAnalyserL();
       const aR = getAnalyserR();
       const fdL = getFreqDataL();
       const fdR = getFreqDataR();
       aL.getByteFrequencyData(fdL);
       aR.getByteFrequencyData(fdR);
+      signalFrame = previewSession.stepBins(fdL, fdR, {
+        dt,
+        time: signalTime,
+        sampleRate: getAudioContext()?.sampleRate ?? 44100,
+      });
+      signalAdvanced = true;
+    }
 
-      // Compute envelopes using stereo average
-      computeEnvelopes(fdL, fdR);
-      bpmTick(dt);
-      applyModulation();
-
-      // Audio LFO (LPF modulation)
-      const lfo2 = getLfo2Val(); // -1 to 1 based on depth
+    if (signalFrame) {
+      if (signalAdvanced) bpmTick(dt, signalFrame.env.kick);
       const lpf = getLPF();
-      if (lpf) {
-        // Modulate current P.lpfCutoff. 
-        // We'll treat lfo2 as a bipolar shift. 
-        // Since frequency is log, we add/sub semitones or just use linear offset?
-        // Let's use linear offset for simplicity but keep it bounded.
-        const modFreq = Math.max(200, Math.min(20000, P.lpfCutoff + lfo2 * 5000));
-        lpf.frequency.setTargetAtTime(modFreq, previewCtx ? previewCtx.currentTime : 0, 0.03);
-      }
+      if (lpf) lpf.frequency.setTargetAtTime(signalFrame.effectiveCutoff, lpf.context.currentTime, 0.03);
 
-      const lfo = getLfoVal(); // -1 to 1
-
-      // Color Cycle: Oscillation between colorA and colorB driven by LFO
       if (P.colorCycle > 0) {
-        // Shift base/peak colours based on LFO and cycle amount
-        const shift = (lfo + 1) * 0.5 * P.colorCycle; // 0 to colorCycle
+        const shift = (signalFrame.lfo1 + 1) * 0.5 * P.colorCycle;
         const colA = new THREE.Color(P.colorA).lerp(new THREE.Color(P.colorB), shift);
         const colB = new THREE.Color(P.colorB).lerp(new THREE.Color(P.colorA), shift);
         setColors(colA, colB);
@@ -2574,33 +2501,33 @@
         setColors(P.colorA, P.colorB);
       }
 
-      // UI Reactivity
       if (P.uiReactivity > 0) {
-        const energy = env.rms * P.uiReactivity;
+        const energy = signalFrame.env.rms * P.uiReactivity;
         const col = new THREE.Color(P.colorA).lerp(new THREE.Color(P.colorB), Math.min(energy * 2.5, 1));
-        const css = col.getStyle();
-        document.documentElement.style.setProperty('--m-hi', css);
+        document.documentElement.style.setProperty('--m-hi', col.getStyle());
         const col2 = col.clone().offsetHSL(0, 0, 0.1);
         document.documentElement.style.setProperty('--s-hi', col2.getStyle());
       } else {
-        // Reset to user base colors if reactivity is off
         document.documentElement.style.setProperty('--m-hi', P.colorB);
         document.documentElement.style.setProperty('--s-hi', P.colorA);
       }
-
-      if (visMode === 'bowl') {
-        applyDisplacement(fdL, fdR, modBowlExp());
-      } else if (visMode === 'polar') {
-        applyPolar(fdL, fdR, modBowlExp(), undefined, modPolarSpacing());
-      } else if (visMode === 'sphere') {
-        applySphere(fdL, fdR);
-      } else if (visMode === 'wave') {
-        const td = ensureTimeDomainData(aL); // Just use L for simplicity or mix?
-        aL.getByteTimeDomainData(td);
-        applyWave(td, undefined, modWaveSpacing());
-      }
     }
-    renderer.render(scene, camera);
+    if (!signalAdvanced) signalField.advanceTransition(dt);
+    cameraRig.update(dt, signalTime, signalFrame, visMode);
+
+    const panelOpen = document.getElementById('paramsPanel').classList.contains('open');
+    if (panelOpen && document.getElementById('tMod').classList.contains('active')) {
+      drawModMonitor(modCtx, modDims, modHistory, modIdx, signalFrame?.lfo1 ?? 0, P.lfoDepth);
+      modIdx = (modIdx + 1) % modHistory.length;
+    }
+    if (panelOpen && document.getElementById('tAudio').classList.contains('active')) {
+      drawModMonitor(modCtx2, modDims2, modHistory2, modIdx2, signalFrame?.lfo2 ?? 0, P.lfo2Depth, P.lfo2Offset);
+      modIdx2 = (modIdx2 + 1) % modHistory2.length;
+    }
+
+    if (!P.previewOutput || lookRenderer.shouldRender(P, signalTime)) {
+      lookRenderer.render(scene, camera, P, { frameIndex: visualFrameIndex++ });
+    }
   }
 
   /* ── Parameters panel ──────────────────────────────────── */
@@ -2643,8 +2570,8 @@
     }
   });
 
-  bindSelect('pFreqScale', 'vFreqScale', 'freqScale', () => refreshBinMap());
-  bindRange ('pFreqRange', 'vFreqRange', 'freqRange', () => refreshBinMap());
+  bindSelect('pFreqScale', 'vFreqScale', 'freqScale');
+  bindRange ('pFreqRange', 'vFreqRange', 'freqRange');
 
   // Palette bindings
   const pColorA = document.getElementById('pColorA');
@@ -2671,11 +2598,11 @@
         const freq = Math.round(200 * Math.pow(100, v));
         P.lpfCutoff = freq; // Ensure real frequency is stored in P
         const lpf = getLPF(); 
-        if (lpf) lpf.frequency.setTargetAtTime(freq, previewCtx ? previewCtx.currentTime : 0, 0.03); 
+        if (lpf) lpf.frequency.setTargetAtTime(freq, lpf.context.currentTime, 0.03);
         document.getElementById('vLpfCutoff').textContent = freq >= 1000 ? (freq/1000).toFixed(freq >= 10000 ? 0 : 1)+'k' : freq;
       });
       bindRange('pGain', 'vGain', 'gain', v => { 
-        const g = getGainNode(); if (g) g.gain.setTargetAtTime(v, previewCtx ? previewCtx.currentTime : 0, 0.03); 
+        const g = getGainNode(); if (g) g.gain.setTargetAtTime(v, g.context.currentTime, 0.03);
       });
   bindRange('pMaxDisp',  'vMaxDisp',  'maxDisp');
   bindRange('pBowlExp',  'vBowlExp',  'bowlExp');
@@ -2704,15 +2631,88 @@
   bindRange('pModRms',   'vModRms',   'modRms');
   bindRange('pModTrans', 'vModTrans', 'modTrans');
   bindRange('pRows', 'vRows', 'rows', () => {
-    rebuildHistory(); refreshBinMap(); buildVis(visMode);
+    buildVis(visMode);
   });
   bindRange('pComplexity', 'vComplexity', 'complexity', () => {
-    refreshBinMap(); rebuildHistory(); buildVis(visMode);
+    buildVis(visMode);
   });
   bindRange('pSphereSize', 'vSphereSize', 'sphereSize', () => buildVis(visMode));
   bindRange('pWaveSpacing', 'vWaveSpacing', 'waveSpacing', () => buildVis(visMode));
   bindRange('pPolarSpacing', 'vPolarSpacing', 'polarSpacing', () => buildVis(visMode));
   bindRange('pMorph', 'vMorph', 'morph');
+  bindRange('pFieldScale', 'vFieldScale', 'fieldScale');
+  bindRange('pFieldDepth', 'vFieldDepth', 'fieldDepth');
+  bindRange('pFieldTwist', 'vFieldTwist', 'fieldTwist');
+  bindRange('pFieldCurl', 'vFieldCurl', 'fieldCurl');
+  bindRange('pFieldStereo', 'vFieldStereo', 'fieldStereo');
+  bindRange('pFieldFlow', 'vFieldFlow', 'fieldFlow');
+  bindRange('pFieldSymmetry', 'vFieldSymmetry', 'fieldSymmetry');
+  bindRange('pFieldHistory', 'vFieldHistory', 'fieldHistory');
+  bindRange('pFieldRotation', 'vFieldRotation', 'fieldRotation');
+  bindRange('pFieldOpacity', 'vFieldOpacity', 'fieldOpacity');
+
+  const lookKeys = [
+    ['LookPixelSnap', 'lookPixelSnap'],
+    ['LookColorBits', 'lookColorBits'],
+    ['LookDither', 'lookDither'],
+    ['LookScanlines', 'lookScanlines'],
+    ['LookInterlace', 'lookInterlace'],
+    ['LookChroma', 'lookChroma'],
+    ['LookNoise', 'lookNoise'],
+    ['LookFeedback', 'lookFeedback'],
+  ];
+  function syncLookLab() {
+    for (const [suffix, key] of lookKeys) {
+      const input = document.getElementById(`p${suffix}`);
+      const value = document.getElementById(`v${suffix}`);
+      if (input) input.value = P[key];
+      if (value) value.textContent = P[key];
+    }
+    document.getElementById('pLookCadence').value = P.lookCadence;
+    document.getElementById('vLookCadence').textContent = P.lookCadence;
+    document.getElementById('pPreviewOutput').checked = P.previewOutput;
+  }
+  const fieldKeys = [
+    'fieldScale', 'fieldDepth', 'fieldTwist', 'fieldCurl', 'fieldStereo',
+    'fieldFlow', 'fieldSymmetry', 'fieldHistory', 'fieldRotation', 'fieldOpacity',
+    'morph', 'bowlExp',
+  ];
+  function syncFieldLab() {
+    for (const key of fieldKeys) {
+      const suffix = key.charAt(0).toUpperCase() + key.slice(1);
+      const input = document.getElementById(`p${suffix}`);
+      const value = document.getElementById(`v${suffix}`);
+      if (input) input.value = P[key];
+      if (value) value.textContent = P[key];
+    }
+  }
+  bindSelect('pLookProfile', 'vLookProfile', 'lookProfile', (profile) => {
+    applyLookProfile(P, profile);
+    P.previewOutput = true;
+    lookRenderer.clearFeedback();
+    syncLookLab();
+  });
+  lookKeys.forEach(([suffix, key]) => bindRange(`p${suffix}`, `v${suffix}`, key));
+  bindSelect('pLookCadence', 'vLookCadence', 'lookCadence');
+  document.getElementById('pPreviewOutput').addEventListener('change', (event) => {
+    P.previewOutput = event.target.checked;
+    lookRenderer.clearFeedback();
+    saveParams();
+  });
+  document.getElementById('pStylePreset').addEventListener('change', async (event) => {
+    if (!event.target.value) return;
+    const nextMode = applyStylePreset(P, event.target.value);
+    syncFieldLab();
+    syncLookLab();
+    document.getElementById('pLookProfile').value = P.lookProfile;
+    document.getElementById('vLookProfile').textContent = P.lookProfile;
+    lookRenderer.clearFeedback();
+    saveParams();
+    await setVisMode(nextMode);
+    cameraRig.selectShot(P.cameraShot, nextMode);
+    updateCameraUI();
+    logStatus(`Style seed: ${event.target.selectedOptions[0].textContent}`);
+  });
 
   bindSelect('pExportPreset', 'vExportPreset', 'exportPreset');
   bindSelect('pExportAspect', 'vExportAspect', 'exportAspect');
@@ -2728,102 +2728,42 @@
   });
 
   document.getElementById('btnBpmAuto').addEventListener('click', () => {
-    import('./envelopes.js').then(m => m.resetBpmAuto());
+    resetBpmAuto();
     logStatus('BPM Auto-detect enabled');
   });
 
-  loadParams(() => buildVis(visMode), rebuildHistory, refreshBinMap);
+  loadParams(() => buildVis(visMode));
   setColors(P.colorA, P.colorB);
   if (document.body.classList.contains('light-mode')) {
-    import('./engine.js').then(m => m.setTheme(true));
+    setTheme(true);
   }
-  refreshBinMap();
 
   window.randomiseParams = () => {
-    // Randomise core visual settings with explicit bounds
-    const paramBounds = {
-      rows: { min: 20, max: 120 },
-      complexity: { min: 1, max: 10 },
-      maxDisp: { min: 0.1, max: 4.0 },
-      bowlExp: { min: 0.5, max: 4.0 },
-      smoothing: { min: 0.1, max: 0.95 },
-      freqRange: { min: 0.1, max: 1.0 },
-      morph: { min: 0, max: 2.0 },
-      modSub: { min: 0, max: 1.0 },
-      modKick: { min: 0, max: 1.0 },
-      modMid: { min: 0, max: 1.0 },
-      modHigh: { min: 0, max: 1.0 },
-      modRms: { min: 0, max: 1.0 },
-      modTrans: { min: 0, max: 1.0 },
-      sphereSize: { min: 0.5, max: 6.0 },
-      waveSpacing: { min: 0.1, max: 1.5 },
-      polarSpacing: { min: -5.0, max: 5.0 },
-      colorCycle: { min: 0, max: 1.0 }
-    };
-    
-    let needsRebuildHistory = false;
-    let needsRefreshBinMap = false;
-    
-    for (const [k, bounds] of Object.entries(paramBounds)) {
-      // Try to get bounds from HTML element first, fall back to explicit bounds
-      const id = 'p' + k.charAt(0).toUpperCase() + k.slice(1);
-      const el = document.getElementById(id);
-      const min = el ? (parseFloat(el.min) || bounds.min) : bounds.min;
-      const max = el ? (parseFloat(el.max) || bounds.max) : bounds.max;
-      
-      // Ensure min < max before randomizing
-      if (min >= max) continue;
-      
-      let value = min + Math.random() * (max - min);
-      
-      // Round integers
-      if (k === 'rows' || k === 'complexity') {
-        value = Math.round(value);
-      }
-      
-      P[k] = value;
-      
-      // Track if we need to rebuild history/binmap
-      if (k === 'rows') needsRebuildHistory = true;
-      if (k === 'complexity') needsRefreshBinMap = true;
-      
-      // Update DOM if element exists
-      if (el) {
-        el.value = P[k];
-        const lbl = document.getElementById('v' + k.charAt(0).toUpperCase() + k.slice(1));
-        if (lbl) lbl.textContent = (k === 'rows' || k === 'complexity') ? P[k] : P[k].toFixed(2);
-      }
+    for (const [key, rule] of Object.entries(PARAM_SCHEMA)) {
+      if (!rule.random) continue;
+      let value = rule.random[0] + Math.random() * (rule.random[1] - rule.random[0]);
+      if (rule.integer) value = Math.round(value);
+      P[key] = value;
+      const suffix = key.charAt(0).toUpperCase() + key.slice(1);
+      const input = document.getElementById(`p${suffix}`);
+      const label = document.getElementById(`v${suffix}`);
+      if (input) input.value = value;
+      if (label) label.textContent = rule.integer ? value : value.toFixed(2);
     }
-    
-    // Randomise palette (hex colors)
-    const randHex = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
-    P.colorA = randHex();
-    P.colorB = randHex();
+
+    const hue = Math.random();
+    P.colorA = `#${new THREE.Color().setHSL(hue, 0.3, 0.74).getHexString()}`;
+    P.colorB = `#${new THREE.Color().setHSL((hue + 0.18 + Math.random() * 0.45) % 1, 0.45, 0.62).getHexString()}`;
     document.getElementById('pColorA').value = P.colorA;
     document.getElementById('pColorB').value = P.colorB;
-    
-    // Critical: rebuild history and binmap before rebuilding geometry
-    if (needsRebuildHistory) {
-      console.log('[randomiser] Rebuilding history buffer for new row count:', P.rows);
-      rebuildHistory();
-    }
-    if (needsRefreshBinMap) {
-      console.log('[randomiser] Refreshing binmap for new complexity:', P.complexity);
-      refreshBinMap();
-    }
-    
-    // If either changed, need full rebuild
-    if (needsRebuildHistory || needsRefreshBinMap) {
-      console.log('[randomiser] Full geometry rebuild due to rows/complexity change');
-      buildVis(visMode);
-    } else {
-      console.log('[randomiser] Partial rebuild (geometry only)');
-      buildVis(visMode);
-    }
-    
+
+    const nextMode = FIELD_MODES[Math.floor(Math.random() * FIELD_MODES.length)].id;
+    if (nextMode !== visMode) setVisMode(nextMode);
+    else buildVis(visMode);
+    syncFieldLab();
+    updateCameraUI();
     saveParams();
     setColors(P.colorA, P.colorB);
-    console.log('[randomiser] Complete. P:', {rows: P.rows, complexity: P.complexity, morph: P.morph});
   };
 
   document.getElementById('btnRandomAll').addEventListener('click', () => {
@@ -2831,393 +2771,64 @@
     logStatus('Visual parameters randomised');
   });
 
-  // ── Director Panel ────────────────────────────────────────────
-  const directorWrap   = document.getElementById('directorWrap');
-  const btnDirector    = document.getElementById('btnDirector');
-  const dAz    = document.getElementById('dAz');
-  const dEl    = document.getElementById('dEl');
-  const dDist  = document.getElementById('dDist');
-  const dLookY = document.getElementById('dLookY');
-  const vDAz   = document.getElementById('vDAz');
-  const vDEl   = document.getElementById('vDEl');
-  const vDDist = document.getElementById('vDDist');
-  const vDLookY= document.getElementById('vDLookY');
-  const btnDirLock        = document.getElementById('btnDirLock');
-  const btnDirResetPreset = document.getElementById('btnDirResetPreset');
-  const btnDirAddPreset   = document.getElementById('btnDirAddPreset');
-  // ── Camera Groups ─────────────────────────────────────────────
-  const dirGroupSel       = document.getElementById('dirGroupSel');
-  const btnDirGroupSave   = document.getElementById('btnDirGroupSave');
-  const btnDirGroupDel    = document.getElementById('btnDirGroupDel');
+  // ── Camera intelligence ───────────────────────────────────────
+  const cameraPanel = document.getElementById('cameraPanel');
+  const cameraButton = document.getElementById('btnCamera');
+  const cameraReadout = document.getElementById('cameraReadout');
 
-  function renderGroupDropdowns() {
-    // Director group selector
-    const curDir = dirGroupSel.value;
-    dirGroupSel.innerHTML = '<option value="-1">— none —</option>' +
-      P.camGroups.map((g, i) => `<option value="${i}">${g.name}</option>`).join('');
-    if ([...dirGroupSel.options].some(o => o.value === curDir)) dirGroupSel.value = curDir;
-
-    // Export group selector
-    const expSel = document.getElementById('pExportCamGroup');
-    if (!expSel) return;
-    expSel.innerHTML = '<option value="-1">— all presets —</option>' +
-      P.camGroups.map((g, i) => `<option value="${i}">${g.name} (${g.presets.length})</option>`).join('');
-    // Restore saved group selection from P
-    const savedIdx = String(P.exportCamGroupIdx ?? -1);
-    if ([...expSel.options].some(o => o.value === savedIdx)) expSel.value = savedIdx;
-  }
-
-  // Save group: collect all selected (highlighted) presets, prompt for name
-  btnDirGroupSave.addEventListener('click', () => {
-    if (P.camGroups.length >= 10) { logStatus('Max 10 groups', { open: false }); return; }
-    const name = prompt('Group name:', 'Group ' + (P.camGroups.length + 1));
-    if (!name) return;
-    // Use all presets if none specifically selected, otherwise use current
-    const indices = P.camStyles.map((_, i) => i);
-    P.camGroups.push({ name: name.trim(), presets: indices });
-    saveParams();
-    renderGroupDropdowns();
-    dirGroupSel.value = String(P.camGroups.length - 1);
-    logStatus(`Group "${name}" saved (${indices.length} presets)`, { open: false });
-  });
-
-  btnDirGroupDel.addEventListener('click', () => {
-    const idx = parseInt(dirGroupSel.value);
-    if (idx < 0 || !P.camGroups[idx]) return;
-    const name = P.camGroups[idx].name;
-    P.camGroups.splice(idx, 1);
-    saveParams();
-    renderGroupDropdowns();
-    logStatus(`Group "${name}" deleted`, { open: false });
-  });
-
-  // Export group dropdown → update P
-  document.getElementById('pExportCamGroup').addEventListener('change', function() {
-    P.exportCamGroupIdx = parseInt(this.value);
-    saveParams();
-  });
-
-  // When a group is selected in director, load its first preset
-  dirGroupSel.addEventListener('change', () => {
-    const idx = parseInt(dirGroupSel.value);
-    if (idx < 0 || !P.camGroups[idx]) return;
-    const group = P.camGroups[idx];
-    if (group.presets.length > 0) {
-      const firstPresetIdx = group.presets[0];
-      if (P.camStyles[firstPresetIdx]) {
-        camState.activePresetIdx = firstPresetIdx;
-        applyDirPreset(firstPresetIdx);
-        loadDirSliders();
-        renderDirPresets();
-      }
-    }
-  });
-
-  function renderDirPresets() {
-    const list = document.getElementById('dirPresetList');
-    list.innerHTML = '';
-    P.camStyles.forEach((preset, idx) => {
-      const item = document.createElement('div');
-      item.className = 'dir-preset-item' + (idx === camState.activePresetIdx ? ' active' : '');
-
-      // Name: read-only span for single-click, replaced by input on dblclick
-      const nameSpan = document.createElement('span');
-      nameSpan.textContent = preset.name;
-      nameSpan.className = 'dir-preset-name';
-
-      function enterEditMode() {
-        const inp = document.createElement('input');
-        inp.type = 'text';
-        inp.value = preset.name;
-        inp.className = 'dir-preset-name dir-preset-name--editing';
-        inp.style.cssText = 'background:none;border:none;border-bottom:1px solid var(--s-rule);outline:none;cursor:text;';
-        nameSpan.replaceWith(inp);
-        inp.focus();
-        inp.select();
-        const commit = () => {
-          preset.name = inp.value.trim() || preset.name;
-          inp.replaceWith(nameSpan);
-          nameSpan.textContent = preset.name;
-          saveParams();
-          renderGroupDropdowns();
-        };
-        inp.addEventListener('blur', commit);
-        inp.addEventListener('keydown', e => {
-          if (e.key === 'Enter') { inp.blur(); }
-          if (e.key === 'Escape') { inp.value = preset.name; inp.blur(); }
-          e.stopPropagation();
-        });
-        inp.addEventListener('click', e => e.stopPropagation());
-      }
-
-      item.addEventListener('dblclick', e => {
-        e.stopPropagation();
-        // Activate first if not already
-        if (camState.activePresetIdx !== idx) {
-          camState.activePresetIdx = idx;
-          applyDirPreset(idx);
-          loadDirSliders();
-          renderDirPresets();
-          return; // let user dblclick again to rename
-        }
-        enterEditMode();
-      });
-
-      const del = document.createElement('button');
-      del.textContent = '×';
-      del.className = 'dir-preset-del';
-      del.title = 'Delete preset';
-      del.addEventListener('click', e => {
-        e.stopPropagation();
-        if (P.camStyles.length <= 1) return;
-        P.camStyles.splice(idx, 1);
-        camState.activePresetIdx = Math.min(camState.activePresetIdx, P.camStyles.length - 1);
-        saveParams();
-        renderDirPresets();
-        renderGroupDropdowns();
-      });
-
-      item.addEventListener('click', e => {
-        if (e.target === del) return;
-        camState.activePresetIdx = idx;
-        applyDirPreset(idx);
-        loadDirSliders();
-        renderDirPresets();
-      });
-
-      item.append(nameSpan, del);
-      list.append(item);
+  function updateCameraUI() {
+    document.querySelectorAll('.camera-shot').forEach((button) => {
+      button.classList.toggle('active', button.dataset.shot === P.cameraShot);
     });
+    document.getElementById('pCameraMotion').value = P.cameraMotion;
+    for (const key of ['cameraAmount', 'cameraSpeed', 'cameraAudio', 'cameraTransition']) {
+      const suffix = key.charAt(0).toUpperCase() + key.slice(1);
+      document.getElementById(`p${suffix}`).value = P[key];
+      document.getElementById(`v${suffix}`).textContent = P[key];
+    }
+    cameraReadout.textContent = `${P.cameraShot} · ${P.cameraMotion}`;
   }
 
-  function applyDirPreset(idx) {
-    const preset = P.camStyles[idx];
-    if (!preset) return;
-    beginProgrammatic();
-    const pos = sphericalToCart(preset.az, preset.el, preset.dist);
-    camera.position.set(pos.x, pos.y, pos.z);
-    controls.target.set(0, preset.lookY, 0);
-    controls.update();
-    endProgrammatic();
-    logStatus(`Camera: ${preset.name}`, { open: false });
-  }
-
-  function loadDirSliders() {
-    const preset = P.camStyles[camState.activePresetIdx];
-    if (!preset) return;
-    dAz.value    = preset.az;    vDAz.textContent    = preset.az + '°';
-    dEl.value    = preset.el;    vDEl.textContent    = preset.el + '°';
-    dDist.value  = preset.dist;  vDDist.textContent  = preset.dist;
-    dLookY.value = preset.lookY; vDLookY.textContent = preset.lookY;
-  }
-
-  function updateDirSliders(az, el, dist, lookY) {
-    dAz.value    = az.toFixed(1);   vDAz.textContent    = Math.round(az) + '°';
-    dEl.value    = el.toFixed(1);   vDEl.textContent    = Math.round(el) + '°';
-    dDist.value  = dist.toFixed(1); vDDist.textContent  = dist.toFixed(1);
-    dLookY.value = lookY.toFixed(1);vDLookY.textContent = lookY.toFixed(1);
-  }
-
-  function openDirector() {
-    directorWrap.classList.add('open');
-    setDirectorOpen(true);
-    renderDirPresets();
-    loadDirSliders();
-    // Sync sliders to actual camera position
-    const sph = cartToSpherical(camera.position.x, camera.position.y, camera.position.z);
-    updateDirSliders(sph.az, sph.el, sph.dist, controls.target.y);
-    btnDirector.classList.add('btn-active-highlight');
-  }
-
-  function closeDirector() {
-    directorWrap.classList.remove('open');
-    setDirectorOpen(false);
-    btnDirector.classList.remove('btn-active-highlight');
-  }
-
-  btnDirector.addEventListener('click', () => {
-    if (directorWrap.classList.contains('open')) closeDirector();
-    else openDirector();
+  cameraButton.addEventListener('click', () => {
+    cameraPanel.classList.toggle('open');
+    cameraButton.classList.toggle('btn-active-highlight', cameraPanel.classList.contains('open'));
   });
-
-  btnDirAddPreset.addEventListener('click', () => {
-    const sph = cartToSpherical(camera.position.x, camera.position.y, camera.position.z);
-    P.camStyles.push({
-      id: 'custom_' + Date.now(),
-      name: 'Preset ' + (P.camStyles.length + 1),
-      az: sph.az, el: sph.el, dist: sph.dist,
-      lookY: +controls.target.y.toFixed(2),
+  document.querySelectorAll('.camera-shot').forEach((button) => {
+    button.addEventListener('click', () => {
+      cameraRig.selectShot(button.dataset.shot, visMode);
+      saveParams();
+      updateCameraUI();
     });
-    camState.activePresetIdx = P.camStyles.length - 1;
+  });
+  bindSelect('pCameraMotion', null, 'cameraMotion', updateCameraUI);
+  bindRange('pCameraAmount', 'vCameraAmount', 'cameraAmount');
+  bindRange('pCameraSpeed', 'vCameraSpeed', 'cameraSpeed');
+  bindRange('pCameraAudio', 'vCameraAudio', 'cameraAudio');
+  bindRange('pCameraTransition', 'vCameraTransition', 'cameraTransition');
+
+  document.getElementById('btnCameraCapture').addEventListener('click', () => {
+    cameraRig.captureManual();
     saveParams();
-    renderDirPresets();
-    renderGroupDropdowns();
+    updateCameraUI();
+    logStatus('Manual orbit captured');
   });
-
-  function updateLockUI() {
-    const locked = camState.locked;
-    btnDirLock.textContent = locked ? 'locked' : 'unlocked';
-    btnDirLock.classList.toggle('btn-active-highlight', locked);
-  }
-
-  btnDirLock.addEventListener('click', () => {
-    toggleLock();
-    updateLockUI();
-    logStatus(`Camera ${camState.locked ? 'locked' : 'reactive'}`, { open: false });
-  });
-
-  btnDirResetPreset.addEventListener('click', () => {
-    const preset = P.camStyles[camState.activePresetIdx];
-    if (!preset) return;
-    const def = PRESET_DEFAULTS.find(d => d.id === preset.id) || PRESET_DEFAULTS[0];
-    preset.az = def.az; preset.el = def.el; preset.dist = def.dist; preset.lookY = def.lookY;
-    loadDirSliders();
-    applyDirPreset(camState.activePresetIdx);
+  document.getElementById('btnCameraReset').addEventListener('click', () => {
+    cameraRig.selectShot('auto', visMode);
     saveParams();
-    logStatus(`Camera '${preset.name}' reset`, { open: false });
+    updateCameraUI();
+    logStatus(`Auto-framed ${visMode}`);
   });
-
-  // ── Random cameras ────────────────────────────────────────────
-  const btnDirRandomCams = document.getElementById('btnDirRandomCams');
-  btnDirRandomCams.addEventListener('click', e => {
-    const MAX = 10;
-    let count;
-    if (e.shiftKey) {
-      const ans = prompt(`How many random cameras? (1–${MAX})`, '3');
-      if (ans === null) return;
-      count = Math.max(1, Math.min(MAX, parseInt(ans) || 3));
-    } else {
-      count = 3;
-    }
-    const randEl  = () => +(Math.random() * 80 - 10).toFixed(0);   // -10° to 70°
-    const randAz  = () => +(Math.random() * 360).toFixed(0);
-    const randDist= () => +(6 + Math.random() * 20).toFixed(1);    // 6–26
-    const randLookY = () => +((Math.random() * 4) - 1).toFixed(1); // -1 to 3
-    for (let i = 0; i < count; i++) {
-      if (P.camStyles.length >= MAX) break;
-      P.camStyles.push({
-        id: 'rand_' + Date.now() + '_' + i,
-        name: 'Rand ' + (P.camStyles.length + 1),
-        az: randAz(), el: randEl(), dist: randDist(), lookY: randLookY(),
-      });
-    }
-    camState.activePresetIdx = P.camStyles.length - 1;
+  controls.addEventListener('start', () => {
+    cameraRig.beginFrame();
+    cameraRig.dragging = true;
+  });
+  controls.addEventListener('end', () => {
+    cameraRig.dragging = false;
+    cameraRig.captureManual();
     saveParams();
-    renderDirPresets();
-    renderGroupDropdowns();
-    logStatus(`Added ${count} random camera(s)`, { open: false });
+    updateCameraUI();
   });
-
-  // ── Preview cameras ───────────────────────────────────────────
-  const btnDirPreview = document.getElementById('btnDirPreview');
-  let dirPreviewTimer = null;
-
-  function stopDirPreview() {
-    if (dirPreviewTimer) { clearInterval(dirPreviewTimer); dirPreviewTimer = null; }
-    btnDirPreview.textContent = '▶';
-    btnDirPreview.classList.remove('btn-active-highlight');
-  }
-
-  btnDirPreview.addEventListener('click', () => {
-    if (dirPreviewTimer) { stopDirPreview(); return; }
-    if (P.camStyles.length < 2) { logStatus('Need ≥2 presets to preview', { open: false }); return; }
-    btnDirPreview.textContent = '■';
-    btnDirPreview.classList.add('btn-active-highlight');
-    let previewIdx = camState.activePresetIdx;
-    const interval = 2000; // 2 seconds per preset
-    dirPreviewTimer = setInterval(() => {
-      previewIdx = (previewIdx + 1) % P.camStyles.length;
-      camState.activePresetIdx = previewIdx;
-      applyDirPreset(previewIdx);
-      loadDirSliders();
-      renderDirPresets();
-    }, interval);
-  });
-
-  // Stop preview on manual orbit drag
-  controls.addEventListener('start', () => { if (dirPreviewTimer) stopDirPreview(); });
-
-  // ── XYZ Gizmo ────────────────────────────────────────────────
-  const btnDirGizmo = document.getElementById('btnDirGizmo');
-  let _axesHelper = null;
-
-  btnDirGizmo.addEventListener('click', () => {
-    if (_axesHelper) {
-      scene.remove(_axesHelper);
-      _axesHelper.dispose();
-      _axesHelper = null;
-      btnDirGizmo.classList.remove('btn-active-highlight');
-      logStatus('Gizmo hidden', { open: false });
-    } else {
-      _axesHelper = new THREE.AxesHelper(2);
-      // Position at orbit target so it marks what the camera revolves around
-      _axesHelper.position.copy(controls.target);
-      scene.add(_axesHelper);
-      btnDirGizmo.classList.add('btn-active-highlight');
-      logStatus('Gizmo: red=X  green=Y  blue=Z', { open: false });
-    }
-  });
-
-  // Keep gizmo at orbit target if target changes (e.g. pan)
-  controls.addEventListener('change', () => {
-    if (_axesHelper) _axesHelper.position.copy(controls.target);
-  });
-
-  // Director slider input → update preset + camera live
-  [dAz, dEl, dDist, dLookY].forEach(slider => {
-    slider.addEventListener('pointerdown', e => { e.stopPropagation(); startSliderDrag(); controls.enabled = false; });
-    slider.addEventListener('pointerup',   e => { e.stopPropagation(); endSliderDrag();   controls.enabled = true; });
-    slider.addEventListener('pointermove', e => { if (e.buttons === 1) e.stopPropagation(); });
-  });
-
-  function onDirSliderInput() {
-    const preset = P.camStyles[camState.activePresetIdx];
-    if (!preset) return;
-    preset.az    = +parseFloat(dAz.value).toFixed(1);
-    preset.el    = +parseFloat(dEl.value).toFixed(1);
-    preset.dist  = +parseFloat(dDist.value).toFixed(2);
-    preset.lookY = +parseFloat(dLookY.value).toFixed(2);
-    vDAz.textContent    = Math.round(preset.az) + '°';
-    vDEl.textContent    = Math.round(preset.el) + '°';
-    vDDist.textContent  = preset.dist;
-    vDLookY.textContent = preset.lookY;
-    applyDirPreset(camState.activePresetIdx);
-    saveParams();
-  }
-  dAz.addEventListener('input',    onDirSliderInput);
-  dEl.addEventListener('input',    onDirSliderInput);
-  dDist.addEventListener('input',  onDirSliderInput);
-  dLookY.addEventListener('input', onDirSliderInput);
-
-  // OrbitControls events
-  controls.addEventListener('start', () => { startDrag(); });
-  controls.addEventListener('end',   () => { endDrag(); });
-
-  controls.addEventListener('change', () => {
-    // Always sync drawer sliders to real camera position
-    const sph = cartToSpherical(camera.position.x, camera.position.y, camera.position.z);
-    updateDirSliders(sph.az, sph.el, sph.dist, controls.target.y);
-
-    // Auto-save to active preset while dragging
-    if (shouldWriteBack() && !isExporting) {
-      const preset = P.camStyles[camState.activePresetIdx];
-      if (preset) {
-        preset.az    = sph.az;
-        preset.el    = sph.el;
-        preset.dist  = sph.dist;
-        preset.lookY = +controls.target.y.toFixed(2);
-        saveParams();
-      }
-    }
-  });
-
-  // Global pointerup — end slider drag if mouse left slider
-  document.addEventListener('pointerup', () => {
-    if (camState.sliderDragging) { endSliderDrag(); controls.enabled = true; }
-  });
-
-  renderGroupDropdowns();
-  updateLockUI();
+  updateCameraUI();
 
   // Color randomiser specific to palette
   document.getElementById('btnRandomColors').addEventListener('click', () => {
@@ -3233,44 +2844,19 @@
 
   // Debug: Camera reset
   document.getElementById('btnCamReset').addEventListener('click', () => {
-    // Snapshot state before reset for console diagnostics
-    const before = {
-      enabled: controls.enabled,
-      locked: camState.locked,
-      sliderDragging: camState.sliderDragging,
-      dragging: camState.dragging,
-      pos: { x: +camera.position.x.toFixed(3), y: +camera.position.y.toFixed(3), z: +camera.position.z.toFixed(3) },
-      target: { x: +controls.target.x.toFixed(3), y: +controls.target.y.toFixed(3), z: +controls.target.z.toFixed(3) },
-    };
-
-    // Force-clear all blocking state
-    resetAll();
     controls.enabled = true;
-
-    // Snap camera to default position for the current vis mode
-    beginProgrammatic();
-    const d = VIS_CAM_DEFAULTS[visMode] || VIS_CAM_DEFAULTS.bowl;
-    camera.position.set(d.x, d.y, d.z);
-    controls.target.set(0, d.lookY, 0);
-    controls.update();
-    endProgrammatic();
-    updateLockUI();
-
-    console.group('%c[CAM RESET]', 'color:#a2c0b0;font-weight:bold');
-    console.log('before:', before);
-    console.log('after — pos:', camera.position, '  target:', controls.target, '  enabled:', controls.enabled);
-    console.groupEnd();
-
-    logStatus(`Camera reset (${visMode})`, { open: false });
+    cameraRig.selectShot('auto', visMode);
+    saveParams();
+    updateCameraUI();
+    logStatus(`Camera auto-framed (${visMode})`, { open: false });
   });
 
   // Debug: Capture tests
   document.getElementById('btnTestCapture').addEventListener('click', async () => {
     const originalMode = visMode;
-    const modes = ['bowl', 'polar', 'sphere', 'wave'];
+    const modes = FIELD_MODES.map((mode) => mode.id);
     const meta = { title: 'TEST PATTERN', artist: 'VISUALISER DEBUG', bpm: '120', genre: 'ELECTRONIC' };
     
-    const { compositeFrame, initOverlayCanvas, freeOverlayCanvas } = await import('./overlay.js');
     initOverlayCanvas(renderer.domElement.width, renderer.domElement.height);
     
     logStatus('Starting test captures...');
@@ -3281,7 +2867,7 @@
       
       // Wait for transitions and potential geometry rebuilds
       await new Promise(r => setTimeout(r, 800));
-      renderer.render(scene, camera);
+      lookRenderer.render(scene, camera, P, { frameIndex: visualFrameIndex++, force: true });
       
       const canvas = compositeFrame(renderer.domElement, meta, 125, 300, m);
       const link = document.createElement('a');
@@ -3324,17 +2910,9 @@
         break;
       case ' ':
         e.preventDefault();
-        // Spacebar = full preview toggle: audio/vis preview + camera preset cycling
         if (appMode === 'export') {
           togglePreview();
-          // Sync camera preview: start if audio starting, stop if pausing
-          if (isPreviewPlaying) {
-            if (!dirPreviewTimer && P.camStyles.length >= 2) btnDirPreview.click();
-          } else {
-            if (dirPreviewTimer) stopDirPreview();
-          }
         } else {
-          // In live mode, spacebar still switches back to export/studio
           setAppMode('export');
         }
         break;
@@ -3342,7 +2920,15 @@
       case '2':  setVisMode('polar');  break;
       case '3':  setVisMode('sphere'); break;
       case '4':  setVisMode('wave');   break;
+      case '5':  setVisMode('topology'); break;
+      case '6':  setVisMode('cathedral'); break;
+      case '7':  setVisMode('ribbon'); break;
+      case '8':  setVisMode('tunnel'); break;
       case 'p': case 'P': document.getElementById('paramsPanel').classList.toggle('open'); break;
+      case 'd': case 'D':
+        cameraPanel.classList.toggle('open');
+        updateCameraUI();
+        break;
       case 'f': case 'F': document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); break;
     }
   });
@@ -3357,7 +2943,7 @@
   // Startup chord — lowpass filtered at 165 Hz
   async function playStartupSound() {
     try {
-      const res = await fetch('./Startup.wav');
+      const res = await fetch(startupAudioUrl);
       if (!res.ok) return;
       const ab = await res.arrayBuffer();
       // Create a fresh AudioContext and route through the shared analyser chain
@@ -3366,7 +2952,7 @@
       const buf = await ctx.decodeAudioData(ab);
 
       // Initialise the analyser chain (sets audioReady = true, fills analyserL/R)
-      setupAnalyser(ctx);
+      setupAnalyser(ctx, { monitor: true, owned: true });
       // LPF starts at 165 Hz and sweeps up during the startup chord
       const chainLpf = getLPF();
       const prevCutoff = chainLpf.frequency.value;
@@ -3391,7 +2977,10 @@
       }
       src.onended = () => {
         // Restore LPF cutoff; leave analysers alive for the main app to reuse/replace
-        chainLpf.frequency.value = prevCutoff;
+        if (getAudioContext() === ctx) {
+          chainLpf.frequency.value = prevCutoff;
+          stopAudio();
+        }
       };
     } catch (e) { /* silently fail */ }
   }
@@ -3405,16 +2994,8 @@
     animate();
     overlayReady();
     playStartupSound();
-    // Create default camera group on first load (when no groups saved yet)
-    if (P.camGroups.length === 0) {
-      P.camGroups.push({
-        name: 'default',
-        presets: P.camStyles.map((_, i) => i),
-      });
-      P.exportCamGroupIdx = 0;
-      saveParams();
-      renderGroupDropdowns();
-    }
+    cameraRig.selectShot(P.cameraShot, visMode, 0.01);
+    updateCameraUI();
     // Set default metadata if not already loaded from localStorage
     const titleEl = document.getElementById('pTitle');
     const artistEl = document.getElementById('pArtist');

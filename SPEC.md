@@ -1,7 +1,9 @@
 # AVATAR 2 — Product and Rendering Specification
 
-Status: implementation authority  
-Supersedes: architectural claims in `README.md` when the two disagree  
+Status: implementation authority
+
+Supersedes: architectural claims in `README.md` when the two disagree
+
 Primary constraint: preserve the existing low-resolution wireframe character while making preview and export the same deterministic visual system
 
 ## 1. Product statement
