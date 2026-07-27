@@ -1,283 +1,251 @@
 /**
- * params.js — P object, localStorage persistence, DOM bindings, track display.
+ * params.js — validated project state, persistence, DOM bindings, track display.
  */
-import { cartToSpherical, PRESET_DEFAULTS } from './cam.js';
+import { createDefaultProject, sanitizeProject, SCHEMA_VERSION } from './project-schema.js';
 
-/* ── Parameters ────────────────────────────────────────────── */
-export const P = {
-  rows: 60, complexity: 4,
-  maxDisp: 2.2, bowlExp: 2.0,
-  smoothing: 0.55, freqScale: 'log', freqRange: 0.55,
-  modSub:   0.5,
-  modKick:  0.8,
-  modMid:   0.6,
-  modHigh:  0.8,
-  modRms:   0.5,
-  modTrans: 0.4,
-  sphereSize: 3.0,
-  waveSpacing: 0.4,
-  polarSpacing: -3.0,
-  lpfCutoff: 20000,
-  gain: 1.0,
-  lfoWaveform: 'sine',
-  lfoRate: 0.25, // cycles per beat (0.25 = 1 cycle per 4 beats)
-  lfoDepth: 1.0,
-  lfoOffset: 0.0,
-  lfo2Waveform: 'sine',
-  lfo2Rate: 0.5,
-  lfo2Depth: 0.0,
-  lfo2Offset: 0.0,
-  lfoToDisp: 0.0,
-  lfoToBowl: 0.5,
-  lfoToZoom: 0.0,
-  lfoToOpacity: 0.0,
-  lfoToPolar: 0.0,
-  lfoToWave: 0.0,
-  colorA: '#e8d5b0', // Default gold/slate
-  colorB: '#b090c8', // Default mauve
-  colorCycle: 0.0,
-  uiReactivity: 0.5,
-  morph: 0.0,
-  cycleMode: 'off',
-  exportPreset: 'standard',
-  exportOrientation: 'horizontal',
-  exportAspect: '16:9',
-  uiPalette: 'default',
-  fastBoot: false,
-  camStyles: PRESET_DEFAULTS.map(p => ({ ...p })),
-  camGroups: [],          // [{ name, presets: [idx, ...] }] — up to 10 groups
-  exportCamGroupIdx: -1,  // -1 = all presets; ≥0 = index into camGroups
-  peakSens: 0.5,          // Peak detection sensitivity 0–1 (maps to minSpacing 8s→3s)
-};
+export const P = createDefaultProject();
 
-/** Columns derived from complexity — use this everywhere instead of P.complexity * 32 inline. */
-export function getCols() { return Math.max(2, P.complexity * 32); }
-
-/** Validate and constrain parameters to valid ranges */
-function validateParams() {
-  P.rows = Math.max(2, Math.round(P.rows));
-  P.complexity = Math.max(1, Math.round(P.complexity));
-  P.maxDisp = Math.max(0, isFinite(P.maxDisp) ? P.maxDisp : 2.2);
-  P.bowlExp = isFinite(P.bowlExp) ? P.bowlExp : 2.0;
-  P.smoothing = Math.max(0, Math.min(1, isFinite(P.smoothing) ? P.smoothing : 0.55));
-  P.freqRange = Math.max(0.01, Math.min(1, isFinite(P.freqRange) ? P.freqRange : 0.55));
-  P.sphereSize = Math.max(0.1, isFinite(P.sphereSize) ? P.sphereSize : 3.0);
-  P.lpfCutoff = Math.max(20, Math.min(20000, isFinite(P.lpfCutoff) ? P.lpfCutoff : 20000));
-  P.gain = Math.max(0, isFinite(P.gain) ? P.gain : 1.0);
-}
-
-/* ── localStorage persistence ─────────────────────────────── */
 const STORAGE_KEY = 'psychograph_params';
 
+/** Columns derived from complexity — the shared lattice width for every visual mode. */
+export function getCols() {
+  return Math.max(2, Math.min(384, Math.round(P.complexity) * 32));
+}
+
+function element(id) {
+  return document.getElementById(id);
+}
+
+function setInput(id, value) {
+  const target = element(id);
+  if (target) target.value = value;
+}
+
+function setLabel(id, value) {
+  const target = element(id);
+  if (target) target.textContent = value;
+}
+
+function syncControls() {
+  const bindings = {
+    FreqScale: 'freqScale',
+    FreqRange: 'freqRange',
+    Smoothing: 'smoothing',
+    MaxDisp: 'maxDisp',
+    BowlExp: 'bowlExp',
+    Morph: 'morph',
+    LfoWaveform: 'lfoWaveform',
+    LfoRate: 'lfoRate',
+    LfoDepth: 'lfoDepth',
+    LfoOffset: 'lfoOffset',
+    Lfo2Waveform: 'lfo2Waveform',
+    Lfo2Rate: 'lfo2Rate',
+    Lfo2Depth: 'lfo2Depth',
+    Lfo2Offset: 'lfo2Offset',
+    LfoToDisp: 'lfoToDisp',
+    LfoToBowl: 'lfoToBowl',
+    LfoToZoom: 'lfoToZoom',
+    LfoToOpacity: 'lfoToOpacity',
+    LfoToPolar: 'lfoToPolar',
+    LfoToWave: 'lfoToWave',
+    Rows: 'rows',
+    Complexity: 'complexity',
+    ModSub: 'modSub',
+    ModKick: 'modKick',
+    ModMid: 'modMid',
+    ModHigh: 'modHigh',
+    ModRms: 'modRms',
+    ModTrans: 'modTrans',
+    SphereSize: 'sphereSize',
+    WaveSpacing: 'waveSpacing',
+    PolarSpacing: 'polarSpacing',
+    FieldScale: 'fieldScale',
+    FieldDepth: 'fieldDepth',
+    FieldTwist: 'fieldTwist',
+    FieldCurl: 'fieldCurl',
+    FieldStereo: 'fieldStereo',
+    FieldFlow: 'fieldFlow',
+    FieldSymmetry: 'fieldSymmetry',
+    FieldHistory: 'fieldHistory',
+    FieldRotation: 'fieldRotation',
+    FieldOpacity: 'fieldOpacity',
+    Gain: 'gain',
+    ColorCycle: 'colorCycle',
+    UiReactivity: 'uiReactivity',
+    CycleMode: 'cycleMode',
+    PeakSens: 'peakSens',
+    CameraMotion: 'cameraMotion',
+    CameraAmount: 'cameraAmount',
+    CameraSpeed: 'cameraSpeed',
+    CameraAudio: 'cameraAudio',
+    CameraTransition: 'cameraTransition',
+    ExportPreset: 'exportPreset',
+    ExportOrient: 'exportOrientation',
+    ExportAspect: 'exportAspect',
+    LookProfile: 'lookProfile',
+    LookPixelSnap: 'lookPixelSnap',
+    LookColorBits: 'lookColorBits',
+    LookDither: 'lookDither',
+    LookScanlines: 'lookScanlines',
+    LookInterlace: 'lookInterlace',
+    LookChroma: 'lookChroma',
+    LookNoise: 'lookNoise',
+    LookFeedback: 'lookFeedback',
+    LookCadence: 'lookCadence',
+  };
+
+  for (const [suffix, key] of Object.entries(bindings)) {
+    setInput(`p${suffix}`, P[key]);
+    setLabel(`v${suffix}`, P[key]);
+  }
+
+  const lpfPosition = Math.log10(P.lpfCutoff / 200) / Math.log10(20000 / 200);
+  setInput('pLpfCutoff', Math.max(0, Math.min(1, lpfPosition)));
+  setLabel(
+    'vLpfCutoff',
+    P.lpfCutoff >= 1000
+      ? `${(P.lpfCutoff / 1000).toFixed(P.lpfCutoff >= 10000 ? 0 : 1)}k`
+      : P.lpfCutoff,
+  );
+
+  setInput('pColorA', P.colorA);
+  setInput('pColorB', P.colorB);
+  setInput('pTitle', P.title);
+  setInput('pArtist', P.artist);
+  setInput('pBpm', P.bpm);
+  setInput('pGenre', P.genre);
+
+  const fastBoot = element('pFastBoot');
+  if (fastBoot) fastBoot.checked = P.fastBoot;
+  const previewOutput = element('pPreviewOutput');
+  if (previewOutput) previewOutput.checked = P.previewOutput;
+  const overlayInSignal = element('pLookOverlayInSignal');
+  if (overlayInSignal) overlayInSignal.checked = P.lookOverlayInSignal;
+}
+
 export function saveParams() {
-  const meta = {
-    title:  document.getElementById('pTitle').value,
-    artist: document.getElementById('pArtist').value,
-    bpm:    document.getElementById('pBpm').value,
-    genre:  document.getElementById('pGenre').value,
-    isLight: document.body.classList.contains('light-mode')
+  const bpmValue = Number(element('pBpm')?.value);
+  if (Number.isFinite(bpmValue)) P.bpm = Math.max(20, Math.min(400, bpmValue));
+
+  const persisted = {
+    ...P,
+    schemaVersion: SCHEMA_VERSION,
+    title: element('pTitle')?.value ?? '',
+    artist: element('pArtist')?.value ?? '',
+    genre: element('pGenre')?.value ?? '',
+    isLight: document.body.classList.contains('light-mode'),
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...P, ...meta }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
 
-export function loadParams(rebuildGrid, rebuildHistory, refreshBinMap) {
+export function loadParams(rebuildVisual) {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    const numKeys = ['rows','complexity','maxDisp','bowlExp','smoothing','freqRange',
-                     'modSub','modKick','modMid','modHigh','modRms','modTrans',
-                     'sphereSize', 'waveSpacing', 'polarSpacing', 'lpfCutoff', 'gain',
-                     'lfoRate', 'lfoDepth', 'lfoOffset', 'lfo2Rate', 'lfo2Depth', 'lfo2Offset',
-                     'lfoToDisp', 'lfoToBowl', 'lfoToZoom', 'lfoToOpacity', 'lfoToPolar', 'lfoToWave', 
-                     'uiReactivity', 'colorCycle', 'morph', 'peakSens'];
-    for (const k of numKeys) if (saved[k] !== undefined) P[k] = +saved[k];
-    if (saved.colorA) P.colorA = saved.colorA;
-    if (saved.colorB) P.colorB = saved.colorB;
-    if (saved.freqScale) P.freqScale = saved.freqScale;
-    if (saved.exportPreset) P.exportPreset = saved.exportPreset;
-    if (saved.exportOrientation) P.exportOrientation = saved.exportOrientation;
-    if (saved.exportAspect) P.exportAspect = saved.exportAspect;
-    if (saved.cycleMode) P.cycleMode = saved.cycleMode;
-    if (saved.fastBoot !== undefined) P.fastBoot = !!saved.fastBoot;
-    if (Array.isArray(saved.camGroups)) P.camGroups = saved.camGroups;
-    if (saved.exportCamGroupIdx !== undefined) P.exportCamGroupIdx = +saved.exportCamGroupIdx;
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const { project, warnings } = sanitizeProject(raw);
+    Object.assign(P, project);
 
-    // Validate parameters to prevent NaN errors
-    validateParams();
-    if (saved.uiPalette) {
-      P.uiPalette = saved.uiPalette;
-      document.body.setAttribute('data-palette', P.uiPalette);
-    }
-
-    if (saved.isLight) document.body.classList.add('light-mode');
-
-    const si = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
-    const ss = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    si('pFreqScale', P.freqScale); ss('vFreqScale', P.freqScale);
-    si('pFreqRange', P.freqRange); ss('vFreqRange', P.freqRange);
-    si('pSmoothing', P.smoothing); ss('vSmoothing', P.smoothing);
-    si('pMaxDisp',   P.maxDisp);   ss('vMaxDisp',   P.maxDisp);
-    si('pBowlExp',   P.bowlExp);   ss('vBowlExp',   P.bowlExp);
-    si('pMorph',     P.morph);     ss('vMorph',     P.morph);
-    
-    si('pLfoWaveform', P.lfoWaveform);
-    si('pLfoRate',   P.lfoRate);   ss('vLfoRate',   P.lfoRate);
-    si('pLfoDepth',  P.lfoDepth);  ss('vLfoDepth',  P.lfoDepth);
-    si('pLfoOffset', P.lfoOffset); ss('vLfoOffset', P.lfoOffset);
-
-    si('pLfo2Waveform', P.lfo2Waveform);
-    si('pLfo2Rate',   P.lfo2Rate);   ss('vLfo2Rate',   P.lfo2Rate);
-    si('pLfo2Depth',  P.lfo2Depth);  ss('vLfo2Depth',  P.lfo2Depth);
-    si('pLfo2Offset', P.lfo2Offset); ss('vLfo2Offset', P.lfo2Offset);
-
-    si('pLfoToDisp', P.lfoToDisp); ss('vLfoToDisp', P.lfoToDisp);
-    si('pLfoToBowl', P.lfoToBowl); ss('vLfoToBowl', P.lfoToBowl);
-    si('pLfoToZoom', P.lfoToZoom); ss('vLfoToZoom', P.lfoToZoom);
-    si('pLfoToOpacity', P.lfoToOpacity); ss('vLfoToOpacity', P.lfoToOpacity);
-    si('pLfoToPolar', P.lfoToPolar); ss('vLfoToPolar', P.lfoToPolar);
-    si('pLfoToWave', P.lfoToWave); ss('vLfoToWave', P.lfoToWave);
-
-    si('pLfo2Waveform', P.lfo2Waveform);
-    si('pLfo2Rate',   P.lfo2Rate);   ss('vLfo2Rate',   P.lfo2Rate);
-    si('pLfo2Depth',  P.lfo2Depth);  ss('vLfo2Depth',  P.lfo2Depth);
-
-    si('pRows',      P.rows);      ss('vRows',      P.rows);
-    si('pComplexity',P.complexity); ss('vComplexity',P.complexity);
-    si('pModSub',    P.modSub);    ss('vModSub',    P.modSub);
-    si('pModKick',   P.modKick);   ss('vModKick',   P.modKick);
-    si('pModMid',    P.modMid);    ss('vModMid',    P.modMid);
-    si('pModHigh',   P.modHigh);   ss('vModHigh',   P.modHigh);
-    si('pModRms',    P.modRms);    ss('vModRms',    P.modRms);
-    si('pModTrans',  P.modTrans);  ss('vModTrans',  P.modTrans);
-    
-    si('pSphereSize', P.sphereSize);   ss('vSphereSize', P.sphereSize);
-    si('pWaveSpacing', P.waveSpacing); ss('vWaveSpacing', P.waveSpacing);
-    si('pPolarSpacing', P.polarSpacing); ss('vPolarSpacing', P.polarSpacing);
-
-    // Map frequency back to 0.0-1.0 for the slider
-    const lpfPos = Math.log10(P.lpfCutoff / 200) / Math.log10(20000 / 200);
-    si('pLpfCutoff', lpfPos); 
-    ss('vLpfCutoff', P.lpfCutoff >= 1000 ? (P.lpfCutoff/1000).toFixed(P.lpfCutoff >= 10000 ? 0 : 1)+'k' : P.lpfCutoff);
-    
-    si('pGain', P.gain); ss('vGain', P.gain);
-    si('pColorA', P.colorA);
-    si('pColorB', P.colorB);
-    si('pColorCycle', P.colorCycle); ss('vColorCycle', P.colorCycle);
-    si('pUiReactivity', P.uiReactivity); ss('vUiReactivity', P.uiReactivity);
-
-    si('pCycleMode', P.cycleMode); ss('vCycleMode', P.cycleMode);
-    si('pPeakSens', P.peakSens); ss('vPeakSens', P.peakSens);
-
-    si('pExportPreset', P.exportPreset); ss('vExportPreset', P.exportPreset);
-    si('pExportOrient', P.exportOrientation); ss('vExportOrient', P.exportOrientation);
-    si('pExportAspect', P.exportAspect); ss('vExportAspect', P.exportAspect);
-
-    const fbEl = document.getElementById('pFastBoot');
-    if (fbEl) fbEl.checked = !!P.fastBoot;
-
-    if (saved.camStyles) {
-      if (Array.isArray(saved.camStyles) && saved.camStyles.length > 0) {
-        // New spherical format — load directly
-        P.camStyles = saved.camStyles;
-      } else if (saved.camStyles && typeof saved.camStyles === 'object' && !Array.isArray(saved.camStyles)) {
-        // Migrate old Cartesian format { normal: {x,y,z,lookY}, ... } to spherical array
-        P.camStyles = Object.entries(saved.camStyles).map(([id, cs]) => {
-          const sph = cartToSpherical(cs.x ?? 0, cs.y ?? 5.5, cs.z ?? 9);
-          const def = PRESET_DEFAULTS.find(d => d.id === id);
-          return {
-            id,
-            name: def ? def.name : id.charAt(0).toUpperCase() + id.slice(1),
-            az: sph.az, el: sph.el, dist: sph.dist,
-            lookY: cs.lookY ?? -0.5,
-          };
-        });
-      }
-    }
-
-    if (saved.title)  si('pTitle',  saved.title);
-    if (saved.artist) si('pArtist', saved.artist);
-    
-    if (saved.bpm)    si('pBpm',    saved.bpm);
-    if (saved.genre)  si('pGenre',  saved.genre);
+    document.body.setAttribute('data-palette', P.uiPalette);
+    document.body.classList.toggle('light-mode', P.isLight);
+    syncControls();
     updateTrackDisplay();
-    rebuildGrid();
-    rebuildHistory();
-  } catch (_) {}
-}
+    rebuildVisual?.();
 
-/* ── DOM binding helpers ──────────────────────────────────── */
-export function bindRange(id, valId, key, onChange) {
-  const el = document.getElementById(id), lbl = document.getElementById(valId);
-  el.addEventListener('input', () => {
-    P[key] = parseFloat(el.value);
-    lbl.textContent = el.value;
-    // Validate critical parameters to prevent NaN
-    if (key === 'rows' || key === 'complexity') {
-      validateParams();
-      el.value = P[key]; // Update input to reflect validated value
-      lbl.textContent = P[key];
+    if (warnings.length) {
+      console.warn('[AVATAR config]', ...warnings);
+      setTimeout(() => window.dispatchEvent(new CustomEvent('avatar-status', {
+        detail: `Config repaired: ${warnings.length} invalid value${warnings.length === 1 ? '' : 's'}`,
+      })), 0);
     }
-    if (onChange) onChange(P[key]);
+  } catch (error) {
+    console.error('[AVATAR config] Unable to load saved project', error);
+    syncControls();
+    setTimeout(() => window.dispatchEvent(new CustomEvent('avatar-status', {
+      detail: 'Saved config could not be loaded; defaults restored',
+    })), 0);
+  }
+}
+
+export function bindRange(id, valueId, key, onChange) {
+  const input = element(id);
+  const label = element(valueId);
+  if (!input) return;
+  input.addEventListener('input', () => {
+    let value = Number(input.value);
+    if (!Number.isFinite(value)) return;
+    if (key === 'rows') value = Math.max(2, Math.min(160, Math.round(value)));
+    if (key === 'complexity') value = Math.max(1, Math.min(12, Math.round(value)));
+    P[key] = value;
+    input.value = value;
+    if (label) label.textContent = value;
+    onChange?.(value);
     saveParams();
   });
 }
 
-export function bindSelect(id, valId, key, onChange) {
-  const el = document.getElementById(id), lbl = document.getElementById(valId);
-  el.addEventListener('change', () => {
-    P[key] = el.value;
-    lbl.textContent = el.value;
-    if (onChange) onChange(P[key]);
+export function bindSelect(id, valueId, key, onChange) {
+  const input = element(id);
+  const label = element(valueId);
+  if (!input) return;
+  input.addEventListener('change', () => {
+    P[key] = input.value;
+    if (label) label.textContent = input.value;
+    onChange?.(input.value);
     saveParams();
   });
 }
 
-export function bindText(id, cb) {
-  document.getElementById(id).addEventListener('input', () => { if (cb) cb(); saveParams(); });
+export function bindText(id, callback) {
+  const input = element(id);
+  if (!input) return;
+  input.addEventListener('input', () => {
+    if (id === 'pBpm') {
+      const value = Number(input.value);
+      if (Number.isFinite(value)) P.bpm = Math.max(20, Math.min(400, value));
+    }
+    callback?.();
+    saveParams();
+  });
 }
 
-/* ── Track display ────────────────────────────────────────── */
 export function updateTrackDisplay() {
-  const title  = document.getElementById('pTitle').value.trim();
-  const artist = document.getElementById('pArtist').value.trim();
-  const bpm    = document.getElementById('pBpm').value.trim();
-  const genre  = document.getElementById('pGenre').value.trim();
-  const time   = document.getElementById('dispCurrent').textContent.trim();
+  const title = element('pTitle')?.value.trim() ?? '';
+  const artist = element('pArtist')?.value.trim() ?? '';
+  const bpm = element('pBpm')?.value.trim() ?? '';
+  const genre = element('pGenre')?.value.trim() ?? '';
+  const time = element('dispCurrent')?.textContent.trim() ?? '';
 
-  document.getElementById('dispTitle').textContent  = title;
-  document.getElementById('dispArtist').textContent = artist;
-  document.getElementById('dispBpm').textContent    = bpm;
-  document.getElementById('dispGenre').textContent  = genre;
+  element('dispTitle').textContent = title;
+  element('dispArtist').textContent = artist;
+  element('dispBpm').textContent = bpm;
+  element('dispGenre').textContent = genre;
+  element('dispRule').style.display = title ? 'block' : 'none';
 
-  document.getElementById('dispRule').style.display = title ? 'block' : 'none';
-
-  const showPill = (pillId, divId, hasVal) => {
-    document.getElementById(pillId).style.display = hasVal ? 'flex' : 'none';
-    if (divId) document.getElementById(divId).style.display = hasVal ? 'block' : 'none';
+  const showPill = (pillId, dividerId, visible) => {
+    element(pillId).style.display = visible ? 'flex' : 'none';
+    if (dividerId) element(dividerId).style.display = visible ? 'block' : 'none';
   };
-  showPill('pillTime',  'divTime',  !!time);
-  showPill('pillBpm',   'divBpm',   !!bpm);
-  showPill('pillGenre', null,       !!genre);
+  showPill('pillTime', 'divTime', Boolean(time));
+  showPill('pillBpm', 'divBpm', Boolean(bpm));
+  showPill('pillGenre', null, Boolean(genre));
 
-  document.getElementById('divTime').style.display = (!!time && (!!bpm || !!genre)) ? 'block' : 'none';
-  document.getElementById('divBpm').style.display  = (!!bpm && !!genre) ? 'block' : 'none';
+  element('divTime').style.display = time && (bpm || genre) ? 'block' : 'none';
+  element('divBpm').style.display = bpm && genre ? 'block' : 'none';
 }
 
-export function fmtTime(s) {
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+export function fmtTime(seconds) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }
 
-export function setTimeDisplay(cur, total) {
-  document.getElementById('dispCurrent').textContent =
-    total ? `${fmtTime(cur)} / ${fmtTime(total)}` : '';
+export function setTimeDisplay(current, total) {
+  element('dispCurrent').textContent = total ? `${fmtTime(current)} / ${fmtTime(total)}` : '';
   updateTrackDisplay();
 }
 
-/** Read current track metadata from DOM inputs */
 export function getTrackMeta() {
   return {
-    title:  document.getElementById('pTitle').value.trim(),
-    artist: document.getElementById('pArtist').value.trim(),
-    bpm:    document.getElementById('pBpm').value.trim(),
-    genre:  document.getElementById('pGenre').value.trim(),
+    title: element('pTitle')?.value.trim() ?? '',
+    artist: element('pArtist')?.value.trim() ?? '',
+    bpm: element('pBpm')?.value.trim() ?? '',
+    genre: element('pGenre')?.value.trim() ?? '',
   };
 }

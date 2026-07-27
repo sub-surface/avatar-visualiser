@@ -1,5 +1,5 @@
 /**
- * audio.js — live microphone audio input.
+ * audio.js — one owned audio graph for live, preview, and startup sources.
  */
 import { FFT_SIZE } from './engine.js';
 import { P } from './params.js';
@@ -9,54 +9,74 @@ let analyserR = null;
 let freqDataL = null;
 let freqDataR = null;
 let audioReady = false;
-let _audioStream = null;
+let audioStream = null;
+let audioContext = null;
+let ownsContext = false;
 let lowPassFilter = null;
 let gainNode = null;
+let splitter = null;
+let merger = null;
+let monitorGain = null;
 
 export function getAnalyserL() { return analyserL; }
 export function getAnalyserR() { return analyserR; }
 export function getFreqDataL() { return freqDataL; }
 export function getFreqDataR() { return freqDataR; }
 export function isAudioReady() { return audioReady; }
-export function getLPF()       { return lowPassFilter; }
-export function getGainNode()  { return gainNode; }
+export function getLPF() { return lowPassFilter; }
+export function getGainNode() { return gainNode; }
+export function getAudioContext() { return audioContext; }
 
 export async function getAudioDevices() {
   const devices = await navigator.mediaDevices.enumerateDevices();
-  return devices.filter(d => d.kind === 'audioinput');
+  return devices.filter((device) => device.kind === 'audioinput');
 }
 
-export function setupAnalyser(ctx) {
-  if (analyserL && analyserL.context === ctx) return analyserL;
-  
-  // If context changed or not initialized, rebuild everything
-  analyserL = null;
-  analyserR = null;
-  lowPassFilter = null;
-  gainNode = null;
-  
-  gainNode = ctx.createGain();
+function disconnect(node) {
+  try { node?.disconnect(); } catch (_) {}
+}
+
+export function setMonitoring(enabled) {
+  if (!monitorGain || !audioContext) return;
+  monitorGain.gain.setTargetAtTime(enabled ? 1 : 0, audioContext.currentTime, 0.01);
+}
+
+export function setupAnalyser(context, { monitor = true, owned = false } = {}) {
+  if (analyserL && audioContext === context) {
+    setMonitoring(monitor);
+    return analyserL;
+  }
+
+  teardownGraph();
+  audioContext = context;
+  ownsContext = owned;
+
+  gainNode = context.createGain();
   gainNode.gain.value = P.gain;
 
-  lowPassFilter = ctx.createBiquadFilter();
+  lowPassFilter = context.createBiquadFilter();
   lowPassFilter.type = 'lowpass';
   lowPassFilter.frequency.value = P.lpfCutoff;
 
-  const splitter = ctx.createChannelSplitter(2);
+  splitter = context.createChannelSplitter(2);
+  merger = context.createChannelMerger(2);
+  monitorGain = context.createGain();
+  monitorGain.gain.value = monitor ? 1 : 0;
 
-  analyserL = ctx.createAnalyser();
-  analyserR = ctx.createAnalyser();
+  analyserL = context.createAnalyser();
+  analyserR = context.createAnalyser();
   analyserL.fftSize = analyserR.fftSize = FFT_SIZE;
-  analyserL.smoothingTimeConstant = analyserR.smoothingTimeConstant = P.smoothing;
-  
-  // Chain: Source -> LPF -> Gain -> Splitter -> Analysers -> Destination
+  // AVATAR applies deterministic smoothing after FFT data is read.
+  analyserL.smoothingTimeConstant = analyserR.smoothingTimeConstant = 0;
+
   lowPassFilter.connect(gainNode);
   gainNode.connect(splitter);
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
-
-  analyserL.connect(ctx.destination);
-  analyserR.connect(ctx.destination);
+  analyserL.connect(merger, 0, 0);
+  analyserR.connect(merger, 0, 1);
+  merger.connect(monitorGain);
+  monitorGain.connect(context.destination);
 
   freqDataL = new Uint8Array(analyserL.frequencyBinCount);
   freqDataR = new Uint8Array(analyserR.frequencyBinCount);
@@ -64,23 +84,52 @@ export function setupAnalyser(ctx) {
   return analyserL;
 }
 
-export async function initAudio(deviceId = null) {
-  stopAudio(); // Ensure previous stream is closed
-  const constraints = { 
-    audio: deviceId ? { deviceId: { exact: deviceId } } : true, 
-    video: false 
+export async function initAudio(deviceId = null, { monitor = false } = {}) {
+  await stopAudio();
+  const constraints = {
+    audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+    video: false,
   };
-  _audioStream = await navigator.mediaDevices.getUserMedia(constraints);
-  const ctx    = new (window.AudioContext || window.webkitAudioContext)();
-  setupAnalyser(ctx);
-  const src    = ctx.createMediaStreamSource(_audioStream);
-  src.connect(lowPassFilter);
+  audioStream = await navigator.mediaDevices.getUserMedia(constraints);
+  const context = new (window.AudioContext || window.webkitAudioContext)();
+  setupAnalyser(context, { monitor, owned: true });
+  const source = context.createMediaStreamSource(audioStream);
+  source.connect(lowPassFilter);
 }
 
-export function stopAudio() {
-  if (_audioStream) { _audioStream.getTracks().forEach(t => t.stop()); _audioStream = null; }
-  audioReady = false; 
-  analyserL = analyserR = null; 
-  freqDataL = freqDataR = null;
-  lowPassFilter = null; gainNode = null;
+function teardownGraph() {
+  disconnect(lowPassFilter);
+  disconnect(gainNode);
+  disconnect(splitter);
+  disconnect(analyserL);
+  disconnect(analyserR);
+  disconnect(merger);
+  disconnect(monitorGain);
+  analyserL = null;
+  analyserR = null;
+  freqDataL = null;
+  freqDataR = null;
+  lowPassFilter = null;
+  gainNode = null;
+  splitter = null;
+  merger = null;
+  monitorGain = null;
+  audioReady = false;
+}
+
+export async function stopAudio({ closeExternal = false } = {}) {
+  if (audioStream) {
+    audioStream.getTracks().forEach((track) => track.stop());
+    audioStream = null;
+  }
+
+  const context = audioContext;
+  const shouldClose = context && (ownsContext || closeExternal);
+  teardownGraph();
+  audioContext = null;
+  ownsContext = false;
+
+  if (shouldClose && context.state !== 'closed') {
+    try { await context.close(); } catch (_) {}
+  }
 }
