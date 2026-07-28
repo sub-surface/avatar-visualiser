@@ -162,4 +162,4 @@ SPEC.md                architecture and product authority
 
 Imported project JSON is clamped, enum-checked, text-limited, camera-limited, and migrated before use. Status messages and option labels are inserted as text rather than HTML. Audio nodes, streams, contexts, render targets, and geometries have explicit teardown paths.
 
-The app can build without CDN module dependencies. Google Fonts remain an optional network enhancement; the CSS stack has local fallbacks.
+Vite bundles application dependencies for production builds. The unbuilt static entry also remains deployable on GitHub Pages through a pinned import map. Google Fonts are an optional network enhancement; the CSS stack has local fallbacks.

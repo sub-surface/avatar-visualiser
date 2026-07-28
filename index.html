@@ -22,6 +22,20 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
   <link id="favicon" rel="icon" type="image/png">
 
+  <!--
+    Keep the unbuilt static entry deployable (including GitHub Pages).
+    Vite replaces these bare imports with bundled dependencies in production.
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/",
+      "mp4-muxer": "https://unpkg.com/mp4-muxer@5.1.3/build/mp4-muxer.mjs"
+    }
+  }
+  </script>
+
   <!-- Animated favicon: expanding wireframe sphere, 32×32, ~12fps -->
   <script>
   (function() {
