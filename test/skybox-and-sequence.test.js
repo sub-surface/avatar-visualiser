@@ -40,6 +40,25 @@ describe('skybox presets & atmospheric lighting', () => {
     expect(clamped.skyboxPreset).toBe('void');
     expect(clamped.skyboxLightTone).toBe(3.0);
   });
+
+  it('adapts void skybox background and atmospheric lighting in light mode', () => {
+    const manager = new SkyboxManager();
+    const mockScene = { background: null };
+    const mockLights = {
+      ambientLight: { color: { setHex: () => {} }, intensity: 1 },
+      dirLight: { color: { setHex: () => {} }, intensity: 1 },
+      fillLight: { color: { setHex: () => {} }, intensity: 1 },
+    };
+    manager.setTarget(mockScene, mockLights);
+    manager.applyPreset('void', 1.0);
+    expect(mockScene.background.getHex()).toBe(0x0d0d0d);
+
+    manager.setTheme(true);
+    expect(mockScene.background.getHex()).toBe(0xf4f5f7);
+
+    manager.setTheme(false);
+    expect(mockScene.background.getHex()).toBe(0x0d0d0d);
+  });
 });
 
 describe('3D asset orientation & upright vertical alignment', () => {

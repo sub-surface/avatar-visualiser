@@ -24,18 +24,18 @@ export class ItemSceneManager {
     this.lightRig.name = 'ItemLightingRig';
     
     // Key light (warm high front-left)
-    const keyLight = new THREE.DirectionalLight(0xfff5ea, 2.2);
-    keyLight.position.set(4, 6, 5);
-    this.lightRig.add(keyLight);
+    this.keyLight = new THREE.DirectionalLight(0xfff5ea, 2.2);
+    this.keyLight.position.set(4, 6, 5);
+    this.lightRig.add(this.keyLight);
 
     // Rim light (cool cyan-tinted rim from behind)
-    const rimLight = new THREE.DirectionalLight(0x88ccff, 2.8);
-    rimLight.position.set(-5, 3, -4);
-    this.lightRig.add(rimLight);
+    this.rimLight = new THREE.DirectionalLight(0x88ccff, 2.8);
+    this.rimLight.position.set(-5, 3, -4);
+    this.lightRig.add(this.rimLight);
 
     // Ambient light
-    const ambLight = new THREE.AmbientLight(0xffffff, 1.6);
-    this.lightRig.add(ambLight);
+    this.ambLight = new THREE.AmbientLight(0xffffff, 1.6);
+    this.lightRig.add(this.ambLight);
 
     this.rootGroup.add(this.lightRig);
 
@@ -76,6 +76,44 @@ export class ItemSceneManager {
 
   setVisible(visible) {
     this.rootGroup.visible = visible;
+  }
+
+  setTheme(isLight) {
+    this.isLight = Boolean(isLight);
+
+    if (this.ambLight) {
+      this.ambLight.color.setHex(0xffffff);
+      this.ambLight.intensity = this.isLight ? 2.2 : 1.6;
+    }
+    if (this.keyLight) {
+      this.keyLight.color.setHex(this.isLight ? 0xffffff : 0xfff5ea);
+      this.keyLight.intensity = this.isLight ? 1.8 : 2.2;
+    }
+    if (this.rimLight) {
+      this.rimLight.color.setHex(this.isLight ? 0xa0b8c8 : 0x88ccff);
+      this.rimLight.intensity = this.isLight ? 1.2 : 2.8;
+    }
+
+    const wireColor = this.isLight ? 0x0f5b8c : 0x00ffff;
+    const blending = this.isLight ? THREE.NormalBlending : THREE.AdditiveBlending;
+
+    for (const item of Object.values(this.items)) {
+      if (item.wireMat) {
+        item.wireMat.color.setHex(wireColor);
+        item.wireMat.blending = blending;
+        item.wireMat.needsUpdate = true;
+      }
+    }
+
+    if (this.modelMeshes) {
+      const fallbackColor = this.isLight ? 0x475569 : 0xd8d8d8;
+      this.modelMeshes.forEach((mesh) => {
+        if (mesh.material && !mesh.material.map && mesh.material.isMeshStandardMaterial) {
+          mesh.material.color.setHex(fallbackColor);
+          mesh.material.needsUpdate = true;
+        }
+      });
+    }
   }
 
   loadCustomImage(imageSrc) {
@@ -179,16 +217,17 @@ export class ItemSceneManager {
           group.add(modelScene);
 
           // Glitch wireframe overlay
+          const isLight = this.isLight ?? (typeof document !== 'undefined' && document.body?.classList.contains('light-mode'));
           const wireMat = new THREE.LineBasicMaterial({
-            color: 0x00ffff,
+            color: isLight ? 0x0f5b8c : 0x00ffff,
             transparent: true,
             opacity: 0,
-            blending: THREE.AdditiveBlending,
+            blending: isLight ? THREE.NormalBlending : THREE.AdditiveBlending,
           });
 
           // Ensure every mesh has solid standard material if missing textures
           const defaultMat = new THREE.MeshStandardMaterial({
-            color: 0xd8d8d8,
+            color: isLight ? 0x475569 : 0xd8d8d8,
             roughness: 0.55,
             metalness: 0.25,
           });

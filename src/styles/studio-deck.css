@@ -22,11 +22,12 @@
 
 .deck-island {
   background: var(--panel-bg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(14px);
-  border-radius: 4px;
-  padding: 6px 12px;
+  border: none;
+  box-shadow: 0 8px 24px var(--panel-shd);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 6px;
+  padding: 6px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -37,6 +38,7 @@
   border: none;
   box-shadow: none;
   backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   padding: 0 4px;
 }
 
@@ -49,23 +51,27 @@
 .track-title {
   font-family: var(--serif);
   font-style: italic;
-  font-size: 1.1rem;
+  font-size: 1.12rem;
   color: var(--s-hi);
   line-height: 1.1;
   max-width: 260px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.06em;
+}
+body:not(.light-mode) .track-title {
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95), 0 0 20px rgba(0, 240, 255, 0.2);
-  letter-spacing: 0.08em;
 }
 .track-sub {
   font-size: 0.58rem;
   letter-spacing: 0.12em;
   color: var(--s-mid);
   text-transform: uppercase;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
   opacity: 0.85;
+}
+body:not(.light-mode) .track-sub {
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
 }
 
 /* Scrubber / Player Controls */
@@ -129,11 +135,14 @@
 
 .category-toggle {
   display: flex;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
   padding: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
   width: fit-content;
+}
+body.light-mode .category-toggle {
+  background: rgba(0, 0, 0, 0.05);
 }
 .cat-btn {
   font-family: var(--mono);
@@ -143,14 +152,17 @@
   background: transparent;
   border: none;
   color: var(--s-lo);
-  padding: 4px 8px;
+  padding: 4px 10px;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 3px;
   transition: all 0.2s;
 }
+.cat-btn:hover {
+  color: var(--s-hi);
+}
 .cat-btn.active {
-  background: var(--m-hi);
-  color: var(--bg);
+  background: var(--btn-active-bg);
+  color: var(--btn-active-fg);
   font-weight: 600;
 }
 
@@ -165,24 +177,29 @@
   font-size: 0.58rem;
   letter-spacing: 0.08em;
   color: var(--s-mid);
-  background: rgba(14, 16, 20, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 4px 8px;
-  border-radius: 2px;
+  background: rgba(14, 16, 20, 0.5);
+  border: none;
+  padding: 4px 9px;
+  border-radius: 4px;
   cursor: pointer;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transition: all 0.15s;
   text-transform: lowercase;
 }
+body.light-mode .mode-chip {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--s-mid);
+}
 .mode-chip:hover {
   color: var(--s-hi);
-  border-color: var(--s-mid);
+  background: var(--m-lo);
 }
 .mode-chip.active {
   color: var(--btn-active-fg);
   background: var(--btn-active-bg);
-  border-color: var(--btn-active-bg);
   font-weight: 500;
+  box-shadow: 0 2px 8px var(--panel-shd);
 }
 
 /* ── Studio Hardware Console (Bottom-Right) ──────────────── */
@@ -206,10 +223,11 @@
   flex-direction: column;
   width: 330px;
   background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  box-shadow: 0 12px 36px var(--panel-shd);
-  backdrop-filter: blur(14px);
-  border-radius: 4px;
+  border: none;
+  box-shadow: 0 16px 40px var(--panel-shd);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 8px;
   overflow: hidden;
   text-align: left;
 }
@@ -220,8 +238,11 @@
 /* Console Tab Bar */
 .console-tabs {
   display: flex;
-  background: rgba(0, 0, 0, 0.35);
-  border-bottom: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--s-rule);
+}
+body.light-mode .console-tabs {
+  background: rgba(0, 0, 0, 0.03);
 }
 .console-tab {
   flex: 1;
@@ -234,21 +255,17 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  border-right: 1px solid var(--panel-border);
   transition: all 0.2s;
   text-align: center;
 }
-.console-tab:last-child {
-  border-right: none;
-}
 .console-tab:hover {
-  color: var(--s-mid);
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--s-hi);
+  background: rgba(128, 128, 128, 0.06);
 }
 .console-tab.active {
   color: var(--m-hi);
-  background: rgba(255, 255, 255, 0.06);
-  font-weight: 500;
+  background: rgba(128, 128, 128, 0.1);
+  font-weight: 600;
 }
 
 .console-body {
@@ -330,62 +347,82 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 select.c-select {
   flex: 1;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.25);
   color: var(--s-hi);
   font-family: var(--mono);
   font-size: 0.58rem;
-  border: 1px solid var(--panel-border);
-  padding: 3px 6px;
-  border-radius: 2px;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 3px;
   outline: none;
   cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+body.light-mode select.c-select {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--s-hi);
+}
+select.c-select:focus {
+  box-shadow: 0 0 0 1px var(--m-hi);
 }
 select.c-select option {
   background: var(--option-bg);
-  color: #fff;
+  color: var(--s-hi);
+}
+body.light-mode select.c-select option {
+  background: #ffffff;
+  color: #0f172a;
 }
 
 input.c-input {
   flex: 1;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.25);
   color: var(--s-hi);
   font-family: var(--mono);
   font-size: 0.58rem;
-  border: 1px solid var(--panel-border);
-  padding: 3px 6px;
-  border-radius: 2px;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 3px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+body.light-mode input.c-input {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--s-hi);
 }
 input.c-input:focus {
-  border-color: var(--vcr-cyan);
+  box-shadow: 0 0 0 1px var(--m-hi);
 }
 
 /* 3D Asset Image Dropzone */
 .image-dropzone {
-  border: 1px dashed var(--panel-border);
-  border-radius: 4px;
+  border: 1px dashed var(--s-lo);
+  border-radius: 6px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.15);
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
   text-align: center;
 }
+body.light-mode .image-dropzone {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.15);
+}
 .image-dropzone:hover {
   border-color: var(--m-hi);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(128, 128, 128, 0.05);
 }
 .image-preview-thumb {
   width: 54px;
   height: 54px;
-  border-radius: 3px;
+  border-radius: 4px;
   object-fit: cover;
-  border: 1px solid var(--panel-border);
+  border: none;
   display: none;
 }
 .dropzone-label {
@@ -396,14 +433,17 @@ input.c-input:focus {
 
 /* Camera Director Controls */
 .cam-telemetry-box {
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid var(--panel-border);
-  border-radius: 3px;
-  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
   gap: 3px;
   font-family: var(--mono);
+}
+body.light-mode .cam-telemetry-box {
+  background: rgba(0, 0, 0, 0.03);
 }
 .cam-telem-line {
   display: flex;
@@ -425,17 +465,21 @@ input.c-input:focus {
   gap: 4px;
 }
 .cam-shot-btn {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
   color: var(--s-mid);
   font-family: var(--mono);
   font-size: 0.58rem;
   letter-spacing: 0.05em;
-  padding: 5px 6px;
-  border-radius: 2px;
+  padding: 6px 8px;
+  border-radius: 3px;
   cursor: pointer;
   text-align: center;
   transition: all 0.15s ease;
+}
+body.light-mode .cam-shot-btn {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--s-mid);
 }
 .cam-shot-btn:hover {
   background: rgba(255, 255, 255, 0.05);
@@ -516,19 +560,23 @@ input.c-input:focus {
   width: 440px;
   max-width: 90vw;
   background: var(--deck-surface);
-  border: 1px solid var(--panel-border);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
-  border-radius: 6px;
+  border: none;
+  box-shadow: 0 16px 48px var(--panel-shd);
+  border-radius: 8px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
+body.light-mode .modal-box {
+  background: #ffffff;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
 .modal-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--s-rule);
   padding-bottom: 8px;
 }
 .modal-title {
@@ -543,26 +591,34 @@ input.c-input:focus {
   gap: 6px;
 }
 .modal-input {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.25);
+  border: none;
   padding: 8px 10px;
-  color: #fff;
+  color: var(--s-hi);
   font-family: var(--mono);
   font-size: 0.7rem;
-  border-radius: 3px;
+  border-radius: 4px;
   outline: none;
+  transition: box-shadow 0.15s;
+}
+body.light-mode .modal-input {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--s-hi);
 }
 .modal-input:focus {
-  border-color: #ff7700;
+  box-shadow: 0 0 0 1px #ff7700;
 }
 .modal-result {
   display: none;
   align-items: center;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.2);
   padding: 10px;
   border-radius: 4px;
-  border: 1px solid var(--panel-border);
+  border: none;
+}
+body.light-mode .modal-result {
+  background: rgba(0, 0, 0, 0.03);
 }
 .modal-result img {
   width: 60px;
@@ -609,17 +665,19 @@ input.c-input:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
   border-radius: 4px;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease;
   user-select: none;
+}
+body.light-mode .seq-item {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .seq-item:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: var(--s-mid);
+  background: rgba(128, 128, 128, 0.08);
 }
 
 .seq-item.active-item {
@@ -696,18 +754,17 @@ input.c-input:focus {
 
 .seq-btn-arrow {
   background: transparent;
-  border: 1px solid var(--border-color);
+  border: none;
   color: var(--s-mid);
   font-size: 0.5rem;
-  padding: 2px 5px;
+  padding: 3px 6px;
   border-radius: 2px;
   cursor: pointer;
 }
 
 .seq-btn-arrow:hover:not(:disabled) {
-  border-color: var(--s-hi);
   color: var(--s-hi);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(128, 128, 128, 0.1);
 }
 
 .seq-btn-arrow:disabled {
@@ -717,7 +774,7 @@ input.c-input:focus {
 
 .seq-item.is-dragging {
   opacity: 0.4;
-  border-style: dashed;
+  border: 1px dashed var(--s-lo);
 }
 
 .seq-item.drag-over {
@@ -740,17 +797,19 @@ input.c-input:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
-  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
+body.light-mode .tex-slot-chip {
+  background: rgba(0, 0, 0, 0.03);
+}
 
 .tex-slot-chip:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(128, 128, 128, 0.08);
 }
 
 .tex-slot-chip.is-assigned {
@@ -760,9 +819,9 @@ input.c-input:focus {
 .tex-slot-thumb {
   width: 26px;
   height: 26px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.08);
+  border: none;
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -851,8 +910,13 @@ input.c-input:focus {
   letter-spacing: 0.12em;
   color: var(--s-lo);
   box-shadow: none !important;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
   transition: color 0.15s ease;
+}
+body:not(.light-mode) #bottomLeft .chrome {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+body.light-mode #bottomLeft .chrome {
+  text-shadow: none;
 }
 #bottomLeft .chrome:hover {
   color: var(--s-hi) !important;
@@ -903,15 +967,20 @@ input.c-input:focus {
   transform: translateX(-50%) scale(0.8);
   display: flex;
   gap: 5px;
-  padding: 5px 8px;
+  padding: 6px 10px;
   background: var(--panel-bg);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   box-shadow: 0 8px 24px var(--panel-shd);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s, transform 0.15s;
+}
+body.light-mode #palettePop {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 #paletteWrap:hover #palettePop,
 #palettePop.open {
@@ -955,4 +1024,7 @@ input.c-input:focus {
 .pal-dot.active {
   border-color: #fff;
   box-shadow: 0 0 6px var(--dot-color);
+}
+body.light-mode .pal-dot.active {
+  border-color: #0f172a;
 }

@@ -93,3 +93,28 @@ describe('seeded random', () => {
     expect([left(), left(), left()]).toEqual([right(), right(), right()]);
   });
 });
+
+describe('SignalField theme adaptivity', () => {
+  it('contextually darkens signal line colors for ink contrast in light mode', async () => {
+    const { SignalField } = await import('../vis/field.js');
+    const mockScene = { add: () => {}, remove: () => {} };
+    const field = new SignalField(mockScene);
+    const project = createDefaultProject();
+    project.colorA = '#e8d5b0'; // Light ivory/gold
+    project.colorB = '#b090c8'; // Light mauve
+    project.colorCycle = 0;
+    project.isLight = false;
+
+    field.update({ time: 0, dt: 1 / 60, sampleRate: 44100, freqL: new Uint8Array(1024), freqR: new Uint8Array(1024), env: {}, lfo1: 0 }, project);
+    const darkHsl = { h: 0, s: 0, l: 0 };
+    field.material.uniforms.uColorA.value.getHSL(darkHsl);
+    expect(darkHsl.l).toBeGreaterThan(0.6);
+
+    project.isLight = true;
+    field.update({ time: 0, dt: 1 / 60, sampleRate: 44100, freqL: new Uint8Array(1024), freqR: new Uint8Array(1024), env: {}, lfo1: 0 }, project);
+    const lightHsl = { h: 0, s: 0, l: 0 };
+    field.material.uniforms.uColorA.value.getHSL(lightHsl);
+    expect(lightHsl.l).toBeLessThan(0.48);
+    expect(lightHsl.l).toBeLessThan(darkHsl.l);
+  });
+});

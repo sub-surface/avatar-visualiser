@@ -323,7 +323,8 @@ export class SkyboxManager {
     // 1. Scene Background
     if (this.scene) {
       if (preset.id === 'void') {
-        this.scene.background = new THREE.Color(0x0d0d0d);
+        const isLight = this.isLight ?? (typeof document !== 'undefined' && document.body?.classList.contains('light-mode'));
+        this.scene.background = new THREE.Color(isLight ? 0xf4f5f7 : 0x0d0d0d);
       } else if (preset.id === 'custom') {
         this.scene.background = this.customTexture || new THREE.Color(0x0d0d0d);
       } else {
@@ -345,18 +346,41 @@ export class SkyboxManager {
 
     // 2. Scene Atmospheric Lighting
     const tone = this.currentLightTone;
+    const isLightVoid = preset.id === 'void' && (this.isLight ?? (typeof document !== 'undefined' && document.body?.classList.contains('light-mode')));
     if (this.ambientLight) {
       const ambColor = (preset.id === 'custom' && this.customAmbientColor) ? this.customAmbientColor : preset.ambientColor;
       this.ambientLight.color.setHex(ambColor);
-      this.ambientLight.intensity = preset.ambientIntensity * tone;
+      this.ambientLight.intensity = (isLightVoid ? 2.0 : preset.ambientIntensity) * tone;
     }
     if (this.dirLight) {
       this.dirLight.color.setHex(preset.dirColor);
       this.dirLight.intensity = preset.dirIntensity * tone;
     }
     if (this.fillLight) {
-      this.fillLight.color.setHex(preset.fillColor);
-      this.fillLight.intensity = preset.fillIntensity * tone;
+      this.fillLight.color.setHex(isLightVoid ? 0xd0e0f0 : preset.fillColor);
+      this.fillLight.intensity = (isLightVoid ? 1.1 : preset.fillIntensity) * tone;
+    }
+  }
+
+  setTheme(isLight) {
+    this.isLight = Boolean(isLight);
+    if (this.currentPresetId === 'void') {
+      const col = this.isLight ? 0xf4f5f7 : 0x0d0d0d;
+      if (this.scene) {
+        this.scene.background = new THREE.Color(col);
+      }
+      if (this.ambientLight) {
+        this.ambientLight.color.setHex(0xffffff);
+        this.ambientLight.intensity = (this.isLight ? 2.0 : 1.5) * this.currentLightTone;
+      }
+      if (this.dirLight) {
+        this.dirLight.color.setHex(this.isLight ? 0xffffff : 0xfff8ee);
+        this.dirLight.intensity = (this.isLight ? 1.8 : 1.8) * this.currentLightTone;
+      }
+      if (this.fillLight) {
+        this.fillLight.color.setHex(this.isLight ? 0xd0e0f0 : 0x88bbff);
+        this.fillLight.intensity = (this.isLight ? 1.1 : 0.9) * this.currentLightTone;
+      }
     }
   }
 

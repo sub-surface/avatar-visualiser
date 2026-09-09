@@ -15,15 +15,24 @@ export const BG_COLOR    = 0x0d0d0d;
 export const CAM_BASE    = { y: 5.5, z: 14.5 };
 
 /* ── Renderer ──────────────────────────────────────────────── */
-export const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(BG_COLOR, 1);
-document.body.appendChild(renderer.domElement);
+export const renderer = typeof document !== 'undefined'
+  ? new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+  : null;
+if (renderer) {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(BG_COLOR, 1);
+  document.body.appendChild(renderer.domElement);
+}
 
 /* ── Scene & Camera ────────────────────────────────────────── */
 export const scene  = new THREE.Scene();
-export const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+export const camera = new THREE.PerspectiveCamera(
+  45,
+  typeof window !== 'undefined' ? window.innerWidth / window.innerHeight : 16 / 9,
+  0.1,
+  100
+);
 camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
 camera.lookAt(0, -0.5, 0);
 
@@ -55,23 +64,26 @@ export function setColors(hexA, hexB) {
 }
 
 export function setTheme(isLight) {
-  const bg = isLight ? 0xf0f0f0 : 0x0d0d0d;
-  renderer.setClearColor(bg, 1);
-  // We keep _colA and _colB as per user setting, but could dim them if needed
+  const bg = isLight ? 0xf4f5f7 : 0x0d0d0d;
+  if (renderer) renderer.setClearColor(bg, 1);
+  if (scene.background && scene.background.isColor) {
+    scene.background.set(bg);
+  }
 }
 
 /* ── Fade veil ─────────────────────────────────────────────── */
-const fadeVeil = document.getElementById('fadeVeil');
+const fadeVeil = typeof document !== 'undefined' ? document.getElementById('fadeVeil') : null;
 
 export function fadeOut() {
   return new Promise(resolve => {
+    if (!fadeVeil) return resolve();
     fadeVeil.classList.add('fading');
     fadeVeil.addEventListener('transitionend', () => resolve(), { once: true });
   });
 }
 
 export function fadeIn() {
-  fadeVeil.classList.remove('fading');
+  if (fadeVeil) fadeVeil.classList.remove('fading');
 }
 
 /* ── Export resize helpers ─────────────────────────────────── */

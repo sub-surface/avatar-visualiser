@@ -20,6 +20,9 @@
   opacity: 0;
   transition: opacity 0.3s ease;
 }
+body.light-mode #vcrOsd {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
 #vcrOsd.visible {
   opacity: 0.92;
 }

@@ -1017,11 +1017,13 @@ export function initApp() {
   const themeIcon = document.getElementById('themeIcon');
   const updateThemeUI = (isLight) => {
     if (themeIcon) themeIcon.textContent = isLight ? '☀' : '☾';
+    setTheme(isLight);
+    skyboxManager?.setTheme(isLight);
+    itemScene?.setTheme(isLight);
   };
 
   themeBtn?.addEventListener('click', () => {
     const isLight = document.body.classList.toggle('light-mode');
-    setTheme(isLight);
     P.isLight = isLight;
     updateThemeUI(isLight);
     saveParams();
@@ -1035,7 +1037,8 @@ export function initApp() {
   const isLight = document.body.classList.contains('light-mode') || Boolean(P.isLight);
   if (isLight) {
     document.body.classList.add('light-mode');
-    setTheme(true);
+  } else {
+    document.body.classList.remove('light-mode');
   }
   updateThemeUI(isLight);
   updatePalActive();

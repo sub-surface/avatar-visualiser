@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RETRO_ITEMS } from '../src/objects/item-scene.js';
+import * as THREE from 'three';
+import { RETRO_ITEMS, ItemSceneManager } from '../src/objects/item-scene.js';
 import { LOOK_PROFILES, applyLookProfile } from '../look-profiles.js';
 import { createDefaultProject, sanitizeProject } from '../project-schema.js';
 
@@ -11,6 +12,23 @@ describe('retro 3D items & expanded hardware features', () => {
     expect(ids).toContain('vinyl');
     expect(ids).toContain('cassette');
     expect(ids).toContain('floppy');
+  });
+
+  it('contextually adapts 3D item lighting and holographic glitch wireframes in light mode', () => {
+    const mockScene = { add: () => {} };
+    const itemScene = new ItemSceneManager(mockScene);
+    expect(itemScene.ambLight.intensity).toBe(1.6);
+    expect(itemScene.items.cartridge.wireMat.blending).toBe(THREE.AdditiveBlending);
+
+    itemScene.setTheme(true);
+    expect(itemScene.ambLight.intensity).toBe(2.2);
+    expect(itemScene.items.cartridge.wireMat.blending).toBe(THREE.NormalBlending);
+    expect(itemScene.items.cartridge.wireMat.color.getHex()).toBe(0x0f5b8c);
+
+    itemScene.setTheme(false);
+    expect(itemScene.ambLight.intensity).toBe(1.6);
+    expect(itemScene.items.cartridge.wireMat.blending).toBe(THREE.AdditiveBlending);
+    expect(itemScene.items.cartridge.wireMat.color.getHex()).toBe(0x00ffff);
   });
 
   it('provides new VHS Master and 90s CRT profiles', () => {

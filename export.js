@@ -135,6 +135,7 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
   // Ensure skybox background & atmospheric lighting matches project configuration
   if (skyboxManager) {
     skyboxManager.setTarget(scene, { ambientLight, dirLight, fillLight });
+    skyboxManager.setTheme(Boolean(project.isLight));
     skyboxManager.applyPreset(project.skyboxPreset || 'void', project.skyboxLightTone || 1.0);
   }
 
@@ -157,6 +158,9 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
   lookRenderer.resetCadence();
 
   const itemScene = getOrCreateItemScene(scene);
+  if (itemScene) {
+    itemScene.setTheme(Boolean(project.isLight));
+  }
   if (isItemMode && itemScene) {
     itemScene.setVisible(true);
     signalField.mesh.visible = false;

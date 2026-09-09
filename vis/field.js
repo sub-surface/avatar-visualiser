@@ -202,6 +202,16 @@ function scaleCode(scale) {
   return 0;
 }
 
+function applyContextualInk(col) {
+  const hsl = { h: 0, s: 0, l: 0 };
+  col.getHSL(hsl);
+  if (hsl.l > 0.35) {
+    hsl.l = Math.max(0.12, 0.92 - hsl.l * 0.75);
+    hsl.s = Math.min(1.0, hsl.s * 1.15 + 0.05);
+    col.setHSL(hsl.h, hsl.s, hsl.l);
+  }
+}
+
 export class SignalField {
   constructor(targetScene = scene) {
     this.scene = targetScene;
@@ -370,7 +380,9 @@ export class SignalField {
     uniforms.uSymmetry.value = project.fieldSymmetry;
     uniforms.uHistory.value = project.fieldHistory;
     uniforms.uRotation.value = project.fieldRotation;
-    uniforms.uOpacity.value = project.fieldOpacity + (frame?.lfo1 ?? 0) * project.lfoToOpacity * 0.15;
+    const isLight = Boolean(project.isLight) || (typeof document !== 'undefined' && document.body?.classList.contains('light-mode'));
+    const baseOpacity = project.fieldOpacity + (frame?.lfo1 ?? 0) * project.lfoToOpacity * 0.15;
+    uniforms.uOpacity.value = isLight ? Math.min(1.0, baseOpacity + 0.18) : baseOpacity;
     this.baseColorA.set(project.colorA);
     this.baseColorB.set(project.colorB);
     this.colorA.copy(this.baseColorA);
@@ -379,6 +391,10 @@ export class SignalField {
       const shift = (frame.lfo1 + 1) * 0.5 * project.colorCycle;
       this.colorA.lerp(this.baseColorB, shift);
       this.colorB.lerp(this.baseColorA, shift);
+    }
+    if (isLight) {
+      applyContextualInk(this.colorA);
+      applyContextualInk(this.colorB);
     }
     uniforms.uColorA.value.copy(this.colorA);
     uniforms.uColorB.value.copy(this.colorB);
