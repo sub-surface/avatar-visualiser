@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { renderer, scene, camera, ambientLight, dirLight, fillLight, fadeOut, fadeIn, setTheme, setColors } from '../engine.js';
-import { P, getCols, loadParams, saveParams, bindRange, bindSelect, bindText, updateTrackDisplay } from '../params.js';
+import { P, getCols, loadParams, saveParams, syncControls, bindRange, bindSelect, bindText, updateTrackDisplay } from '../params.js';
 import { PARAM_SCHEMA } from '../project-schema.js';
 import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioContext, getAudioDevices } from '../audio.js';
 import { bpmTick, resetBpmAuto } from '../tempo.js';
@@ -144,22 +144,33 @@ const wavInput = document.getElementById('wavInput');
 const trackTitleEl = document.getElementById('deckTrackTitle');
 const trackArtistEl = document.getElementById('deckTrackArtist');
 
-export function togglePreview() {
+export async function togglePreview() {
   if (!previewBuffer) {
     if (appMode === 'live') return;
-    wavInput.click();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Please select an audio file (.wav, .mp3, .flac) to begin playback' }));
+    wavInput?.click();
     return;
   }
   if (isPreviewPlaying) {
-    previewPausedAt = previewCtx.currentTime - previewStartedAt;
+    previewPausedAt = previewCtx ? (previewCtx.currentTime - previewStartedAt) : 0;
     stopPreview();
   } else {
-    startPreview(previewPausedAt % previewBuffer.duration);
+    await startPreview(previewPausedAt % previewBuffer.duration);
   }
 }
 
-export function startPreview(startTime = 0) {
+export async function startPreview(startTime = 0) {
   if (isPreviewPlaying || !previewBuffer) return;
+  if (!previewCtx) {
+    previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (previewCtx.state === 'suspended') {
+    try {
+      await previewCtx.resume();
+    } catch (e) {
+      console.warn('AudioContext resume failed:', e);
+    }
+  }
   stopAudio();
 
   previewSource = previewCtx.createBufferSource();
@@ -513,11 +524,17 @@ export function initApp() {
 
   // Scrub bar
   previewScrub?.addEventListener('input', () => {
-    if (!previewBuffer) return;
-    previewPausedAt = previewScrub.value * previewBuffer.duration;
+    if (!previewBuffer) {
+      previewScrub.value = 0;
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Load an audio track first to scrub timeline' }));
+      return;
+    }
+    const targetTime = previewScrub.value * previewBuffer.duration;
+    previewPausedAt = targetTime;
+    vcrOsd.updateTime(targetTime);
     if (isPreviewPlaying) {
       stopPreview();
-      startPreview(previewPausedAt);
+      startPreview(targetTime);
     }
   });
 
@@ -537,7 +554,8 @@ export function initApp() {
   // Console toggle
   const consoleToggle = document.getElementById('btnToggleConsole');
   const consolePanel = document.getElementById('studioConsolePanel');
-  consoleToggle?.addEventListener('click', () => {
+  consoleToggle?.addEventListener('click', (e) => {
+    e.stopPropagation();
     const open = consolePanel.classList.toggle('open');
     consoleToggle.classList.toggle('btn-active-highlight', open);
   });
@@ -645,6 +663,122 @@ export function initApp() {
     window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Asset orientation reset (0°)' }));
   });
 
+  // Model Texture Editor
+  const texSlotSummary = document.getElementById('texSlotSummary');
+  const texDropzone = document.getElementById('texDropzone');
+  const modelTexturesInput = document.getElementById('modelTexturesInput');
+  const texSlotGrid = document.getElementById('texSlotGrid');
+  const btnBrowseTextures = document.getElementById('btnBrowseTextures');
+  const btnClearTextures = document.getElementById('btnClearTextures');
+
+  btnBrowseTextures?.addEventListener('click', () => modelTexturesInput?.click());
+  texDropzone?.addEventListener('click', (e) => {
+    if (e.target !== modelTexturesInput) {
+      modelTexturesInput?.click();
+    }
+  });
+
+  texDropzone?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    texDropzone.classList.add('dragover');
+  });
+  texDropzone?.addEventListener('dragleave', () => {
+    texDropzone.classList.remove('dragover');
+  });
+  texDropzone?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    texDropzone.classList.remove('dragover');
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      itemScene.autoAssignTextures(files);
+    }
+  });
+
+  modelTexturesInput?.addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      itemScene.autoAssignTextures(files);
+      modelTexturesInput.value = '';
+    }
+  });
+
+  btnClearTextures?.addEventListener('click', () => {
+    itemScene.clearTextures();
+  });
+
+  function renderTextureSlots(slots) {
+    if (!texSlotGrid || !texSlotSummary) return;
+    if (!slots || slots.length === 0) {
+      texSlotSummary.textContent = (visCategory === 'item' && P.activeItem === 'custom')
+        ? 'no expected textures in 3D model'
+        : 'no custom 3D model loaded';
+      texSlotGrid.innerHTML = '';
+      return;
+    }
+
+    const assignedCount = slots.filter((s) => s.assigned).length;
+    texSlotSummary.textContent = `${assignedCount} / ${slots.length} textures mapped`;
+    texSlotGrid.innerHTML = '';
+
+    slots.forEach((slot) => {
+      const chip = document.createElement('div');
+      chip.className = `tex-slot-chip${slot.assigned ? ' is-assigned' : ''}`;
+      chip.title = `Click to manually choose texture image for ${slot.name}`;
+
+      if (slot.previewUrl) {
+        const thumb = document.createElement('img');
+        thumb.className = 'tex-slot-thumb';
+        thumb.src = slot.previewUrl;
+        thumb.alt = slot.name;
+        chip.appendChild(thumb);
+      } else {
+        const thumb = document.createElement('div');
+        thumb.className = 'tex-slot-thumb placeholder';
+        thumb.textContent = 'IMG';
+        chip.appendChild(thumb);
+      }
+
+      const info = document.createElement('div');
+      info.className = 'tex-slot-info';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'tex-slot-name';
+      nameEl.textContent = slot.name;
+      info.appendChild(nameEl);
+
+      const fileEl = document.createElement('div');
+      fileEl.className = 'tex-slot-file';
+      fileEl.textContent = slot.assigned ? (slot.assignedFile || slot.expectedFile) : slot.expectedFile;
+      info.appendChild(fileEl);
+
+      chip.appendChild(info);
+
+      const statusEl = document.createElement('div');
+      statusEl.className = `tex-slot-status ${slot.assigned ? 'mapped' : 'missing'}`;
+      statusEl.textContent = slot.assigned ? '✓ mapped' : 'missing';
+      chip.appendChild(statusEl);
+
+      chip.addEventListener('click', () => {
+        const slotInput = document.createElement('input');
+        slotInput.type = 'file';
+        slotInput.accept = 'image/*,.png,.jpg,.jpeg,.tga,.bmp,.webp';
+        slotInput.onchange = (ev) => {
+          const f = ev.target.files?.[0];
+          if (f) itemScene.assignTextureToSlot(slot.id, f);
+        };
+        slotInput.click();
+      });
+
+      texSlotGrid.appendChild(chip);
+    });
+  }
+
+  window.addEventListener('avatar-textures-updated', (e) => {
+    const slots = e.detail?.slots || itemScene.getTextureSlots();
+    renderTextureSlots(slots);
+  });
+  renderTextureSlots(itemScene.getTextureSlots());
+
   // Camera Director Controls & Telemetry
   document.querySelectorAll('.cam-shot-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -713,6 +847,86 @@ export function initApp() {
   bindSelect('pExportAspect', null, 'exportAspect');
   bindSelect('pExportOrient', null, 'exportOrientation');
   bindSelect('pExportPreset', null, 'exportPreset');
+
+  // Scene Presets & Settings
+  document.getElementById('btnSavePreset')?.addEventListener('click', () => {
+    saveParams();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Scene settings saved to storage.' }));
+  });
+
+  document.getElementById('btnExportPresetJson')?.addEventListener('click', () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(P, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute('href', dataStr);
+    dlAnchor.setAttribute('download', `avatar-settings-${P.title ? P.title.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'scene'}.json`);
+    dlAnchor.click();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Exported scene settings to JSON.' }));
+  });
+
+  const btnImportPresetJson = document.getElementById('btnImportPresetJson');
+  const importJsonInput = document.getElementById('importJsonInput');
+  btnImportPresetJson?.addEventListener('click', () => importJsonInput?.click());
+  importJsonInput?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('Invalid JSON format');
+      }
+      Object.assign(P, parsed);
+      syncControls();
+      applyLookProfile(P, P.lookProfile || 'vhs-master');
+      skyboxManager.applyPreset(P.skyboxPreset || 'void', P.skyboxLightTone || 1.0);
+      vcrOsd.setVisible(!!P.vhsOsd);
+      setColors(P.colorA, P.colorB);
+      updateTrackDisplay();
+      if (P.visualCategory === 'item') {
+        setCategory('item');
+        if (P.activeItem) setRetroItem(P.activeItem);
+      } else {
+        setCategory('field');
+        if (P.mode) setFieldMode(P.mode);
+      }
+      saveParams();
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Scene settings imported from JSON.' }));
+    } catch (err) {
+      console.warn('Import error:', err);
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Failed to import JSON: ${err.message}` }));
+    } finally {
+      importJsonInput.value = '';
+    }
+  });
+
+  document.getElementById('btnResetDefaults')?.addEventListener('click', () => {
+    try {
+      localStorage.removeItem('psychograph_params');
+    } catch (e) {}
+    loadParams(() => {
+      signalField.setMode(visMode);
+      signalField.rebuild(P.rows, getCols());
+    });
+    syncControls();
+    skyboxManager.applyPreset('void', 1.0);
+    vcrOsd.setVisible(!!P.vhsOsd);
+    setColors(P.colorA, P.colorB);
+    updateTrackDisplay();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Settings reset to factory defaults.' }));
+  });
+
+  const pFastBoot = document.getElementById('pFastBoot');
+  if (pFastBoot) {
+    pFastBoot.checked = localStorage.getItem('avatar_fast_boot') === 'true' || Boolean(P.fastBoot);
+    pFastBoot.addEventListener('change', (e) => {
+      P.fastBoot = e.target.checked;
+      try {
+        localStorage.setItem('avatar_fast_boot', String(e.target.checked));
+      } catch (err) {}
+      saveParams();
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Fast boot ${e.target.checked ? 'enabled' : 'disabled'}` }));
+    });
+  }
 
   // Deck track badge click: open Console -> Export / Track Identity Tab & focus pTitle
   const deckTrackBadge = document.getElementById('deckTrackBadge');
@@ -795,22 +1009,52 @@ export function updateCameraUI() {
 // Auto-boot sequence
 const bootEl = document.getElementById('bootScreen');
 const bootTerm = document.getElementById('bootTerminal');
-const _saved = (() => { try { return JSON.parse(localStorage.getItem('psychograph_params') || '{}'); } catch { return {}; } })();
+const _isFastBoot = (() => {
+  try {
+    return localStorage.getItem('avatar_fast_boot') === 'true' ||
+           Boolean(JSON.parse(localStorage.getItem('psychograph_params') || '{}').fastBoot);
+  } catch {
+    return false;
+  }
+})();
 
-if (bootEl && !_saved.fastBoot) {
+if (bootEl && !_isFastBoot) {
   import('../boot.js').then(({ BootScreen }) => {
     const boot = new BootScreen(bootTerm);
-    const start = () => {
-      bootTerm.style.opacity = '1';
-      boot.run(bootEl).then(() => {
-        bootEl.classList.add('done');
-        setTimeout(() => bootEl.remove(), 400);
-        initApp();
-      });
+    let finished = false;
+    const finishBoot = () => {
+      if (finished) return;
+      finished = true;
+      bootEl.classList.add('done');
+      setTimeout(() => bootEl.remove(), 250);
+      initApp();
     };
-    document.addEventListener('click', start, { once: true });
-    document.addEventListener('keydown', start, { once: true });
-  }).catch(() => {
+
+    boot.onSkipCallback = () => finishBoot();
+
+    // S key or Escape to skip immediately
+    const onBootKey = (e) => {
+      if (e.key === 's' || e.key === 'S' || e.key === 'Escape') {
+        window.removeEventListener('keydown', onBootKey);
+        boot.skip();
+        finishBoot();
+      }
+    };
+    window.addEventListener('keydown', onBootKey);
+
+    bootTerm.style.opacity = '1';
+    boot.run(bootEl)
+      .then(() => {
+        window.removeEventListener('keydown', onBootKey);
+        finishBoot();
+      })
+      .catch((err) => {
+        console.warn('Boot sequence error:', err);
+        window.removeEventListener('keydown', onBootKey);
+        finishBoot();
+      });
+  }).catch((err) => {
+    console.warn('Boot import failed:', err);
     bootEl.remove();
     initApp();
   });

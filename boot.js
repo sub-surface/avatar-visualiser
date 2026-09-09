@@ -519,6 +519,15 @@ class BootAudio {
     g.connect(this.lpf);
     src.start();
   }
+
+  stopAll() {
+    try {
+      if (this.ctx && this.ctx.state !== 'closed') {
+        this.ctx.close();
+      }
+    } catch {}
+    this.ctx = null;
+  }
 }
 
 // ── Boot Screen Class ─────────────────────────────────────────────────────────
@@ -530,6 +539,7 @@ export class BootScreen {
     this.phaseSkip = 0;     // click: advance to next section
     this._phase = -1;       // current section index
     this.audio = new BootAudio();
+    this.onSkipCallback = null;
   }
 
   /** True if this section should collapse (either advance-click or full skip). */
@@ -537,6 +547,14 @@ export class BootScreen {
 
   /** Left-click: jump to the next section. */
   advance() { this.phaseSkip++; }
+
+  /** Full abort: skip entire boot sequence immediately. */
+  skip() {
+    this.skipped = true;
+    this.phaseSkip = 9999;
+    if (this.audio) this.audio.stopAll();
+    this.onSkipCallback?.();
+  }
 
   _line(text, cls = '') {
     if (!this._sk()) this.audio.chug();
@@ -761,94 +779,143 @@ export class BootScreen {
   }
 
   async run(containerEl) {
-    this.audio.init();
-    this.audio.beep(880, 0.15, 'square');
-    await this._sleep(80);
-    this.audio.beep(1200, 0.1, 'sine');
-    await this._sleep(50);
-    this.audio.beep(660, 0.12, 'sine');
+    const isFastPref = localStorage.getItem('avatar_fast_boot') === 'true';
 
-    // Shuffle a copy of TIPS so we can pop without repeats
-    const tipPool = [...TIPS].sort(() => Math.random() - 0.5);
-    const nextTip = () => tipPool.length ? tipPool.pop() : TIPS[0];
+    // Floating skip HUD bar at bottom
+    const skipHud = document.createElement('div');
+    skipHud.className = 'boot-skip-hud';
+    skipHud.innerHTML = `
+      <button class="boot-skip-btn" id="btnBootSkip">skip [S]</button>
+      <label class="boot-skip-chk-label" style="cursor:pointer;">
+        <input type="checkbox" id="chkBootFast" ${isFastPref ? 'checked' : ''} style="cursor:pointer;"> don't show on startup
+      </label>
+      <span class="boot-skip-hint">click anywhere to advance</span>
+    `;
+    containerEl.appendChild(skipHud);
 
-    // Phase 0: Intro animation
-    this._phase = 0;
-    const anim = INTRO_ANIMS[Math.floor(Math.random() * INTRO_ANIMS.length)];
-    await anim(containerEl, () => this._sk());
-    if (this.skipped) return;
+    const btnSkip = skipHud.querySelector('#btnBootSkip');
+    btnSkip?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.skip();
+    });
 
-    // Phase 1: ASCII widget
-    this._phase = 1;
-    const widgets = [
-      () => this._scopePulse(),
-      () => this._branchTree(),
-      () => this._echoText('INITIALISING'),
-    ];
-    await widgets[Math.floor(Math.random() * widgets.length)]();
-    if (this.skipped) return;
+    const chkFast = skipHud.querySelector('#chkBootFast');
+    chkFast?.addEventListener('change', (e) => {
+      e.stopPropagation();
+      localStorage.setItem('avatar_fast_boot', e.target.checked ? 'true' : 'false');
+    });
 
-    // Phase 2: BIOS POST
-    this._phase = 2;
-    this._line('');
+    const clickAdvancer = (e) => {
+      if (e.target === btnSkip || e.target === chkFast || e.target.closest('.boot-skip-hud')) return;
+      this.advance();
+    };
+    containerEl.addEventListener('click', clickAdvancer);
 
-    for (const entry of BIOS_LINES) {
-      if (this.skipped) break;
-      if (entry.action === 'memtest') { await this._memtest(); continue; }
-      if (entry.action === 'dots')    { await this._dots();    continue; }
-      if (entry.text === '') { this._line(''); await this._sleep(entry.delay ? entry.delay / 2 : 0); continue; }
-      await this._type(entry.text, entry.delay ? Math.max(1, entry.delay / 4) : 2);
-      await this._sleep(10);
+    const keyListener = (e) => {
+      if (e.key === 's' || e.key === 'S' || e.key === 'Escape') {
+        this.skip();
+      }
+    };
+    window.addEventListener('keydown', keyListener);
+
+    const cleanup = () => {
+      containerEl.removeEventListener('click', clickAdvancer);
+      window.removeEventListener('keydown', keyListener);
+      skipHud.remove();
+    };
+
+    try {
+      this.audio.init();
+      this.audio.beep(880, 0.15, 'square');
+      await this._sleep(80);
+      this.audio.beep(1200, 0.1, 'sine');
+      await this._sleep(50);
+      this.audio.beep(660, 0.12, 'sine');
+
+      // Shuffle a copy of TIPS so we can pop without repeats
+      const tipPool = [...TIPS].sort(() => Math.random() - 0.5);
+      const nextTip = () => tipPool.length ? tipPool.pop() : TIPS[0];
+
+      // Phase 0: Intro animation
+      this._phase = 0;
+      const anim = INTRO_ANIMS[Math.floor(Math.random() * INTRO_ANIMS.length)];
+      await anim(containerEl, () => this._sk());
+      if (this.skipped) return;
+
+      // Phase 1: ASCII widget
+      this._phase = 1;
+      const widgets = [
+        () => this._scopePulse(),
+        () => this._branchTree(),
+        () => this._echoText('INITIALISING'),
+      ];
+      await widgets[Math.floor(Math.random() * widgets.length)]();
+      if (this.skipped) return;
+
+      // Phase 2: BIOS POST
+      this._phase = 2;
+      this._line('');
+
+      for (const entry of BIOS_LINES) {
+        if (this.skipped) break;
+        if (entry.action === 'memtest') { await this._memtest(); continue; }
+        if (entry.action === 'dots')    { await this._dots();    continue; }
+        if (entry.text === '') { this._line(''); await this._sleep(entry.delay ? entry.delay / 2 : 0); continue; }
+        await this._type(entry.text, entry.delay ? Math.max(1, entry.delay / 4) : 2);
+        await this._sleep(10);
+      }
+      if (this.skipped) return;
+
+      // Random mid-boot tip — appears once during the BIOS phase
+      await this._tipBlock(nextTip());
+      if (this.skipped) return;
+
+      this._line('');
+      this.audio.beep(1100, 0.1, 'square');
+      await this._perfTests();
+      await this._sleep(100);
+      if (this.skipped) return;
+
+      this.audio.powerUpSweep(1.2);
+
+      // Phase 3: Logo + loading bars + tip
+      this._phase = 3;
+      this.el.innerHTML = '';
+
+      for (const line of ASCII_LOGO_SIMPLE) {
+        this._line(line, 'boot-logo');
+        await this._sleep(10);
+      }
+      this._line('');
+      await this._sleep(50);
+      if (this.skipped) return;
+
+      for (const line of ONBOARDING_HEADER) {
+        this._line(line, 'boot-header');
+        await this._sleep(10);
+      }
+      this._line('');
+      await this._sleep(50);
+      if (this.skipped) return;
+
+      for (const step of LOADING_STEPS) {
+        if (this.skipped) break;
+        await this._bar(step.label, step.duration / 3);
+        await this._sleep(5);
+      }
+      await this._sleep(100);
+      if (this.skipped) return;
+
+      // Final tip — different style each boot
+      await this._tipBlock(nextTip());
+      if (this.skipped) return;
+
+      this._line('');
+      this.audio.beep(880, 0.1, 'sine');
+      await this._type('  System ready. Initialising visualiser...', 4, 'boot-bright');
+      await this._sleep(200);
+    } finally {
+      cleanup();
     }
-    if (this.skipped) return;
-
-    // Random mid-boot tip — appears once during the BIOS phase
-    await this._tipBlock(nextTip());
-    if (this.skipped) return;
-
-    this._line('');
-    this.audio.beep(1100, 0.1, 'square');
-    await this._perfTests();
-    await this._sleep(100);
-    if (this.skipped) return;
-
-    this.audio.powerUpSweep(1.2);
-
-    // Phase 3: Logo + loading bars + tip
-    this._phase = 3;
-    this.el.innerHTML = '';
-
-    for (const line of ASCII_LOGO_SIMPLE) {
-      this._line(line, 'boot-logo');
-      await this._sleep(10);
-    }
-    this._line('');
-    await this._sleep(50);
-    if (this.skipped) return;
-
-    for (const line of ONBOARDING_HEADER) {
-      this._line(line, 'boot-header');
-      await this._sleep(10);
-    }
-    this._line('');
-    await this._sleep(50);
-    if (this.skipped) return;
-
-    for (const step of LOADING_STEPS) {
-      if (this.skipped) break;
-      await this._bar(step.label, step.duration / 3);
-      await this._sleep(5);
-    }
-    await this._sleep(100);
-    if (this.skipped) return;
-
-    // Final tip — different style each boot
-    await this._tipBlock(nextTip());
-    if (this.skipped) return;
-
-    this._line('');
-    this.audio.beep(880, 0.1, 'sine');
-    await this._type('  System ready. Initialising visualiser...', 4, 'boot-bright');
-    await this._sleep(200);
   }
 }

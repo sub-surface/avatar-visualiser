@@ -26,7 +26,7 @@ function setLabel(id, value) {
   if (target) target.textContent = value;
 }
 
-function syncControls() {
+export function syncControls() {
   const bindings = {
     FreqScale: 'freqScale',
     FreqRange: 'freqRange',

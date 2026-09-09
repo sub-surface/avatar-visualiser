@@ -108,7 +108,7 @@
   <!-- ── STUDIO TOP DECK (Audio Transport & Header) ────────── -->
   <header id="studioTopDeck">
     <!-- Island Left: Track Metadata -->
-    <div class="deck-island">
+    <div class="deck-island deck-island-title">
       <div class="track-badge" id="deckTrackBadge" style="cursor:pointer;" title="Click to edit track identity & title card">
         <div class="track-title" id="deckTrackTitle">AVATAR VISUALISER</div>
         <div class="track-sub" id="deckTrackArtist">SUB-SURFACE TECHNOLOGIES</div>
@@ -291,6 +291,19 @@
           <input type="range" id="pItemGlitch" min="0" max="2" step="0.05" value="0.4">
           <span class="c-val" id="vItemGlitch">0.4</span>
         </div>
+
+        <div class="section-tag">Model Texture Editor</div>
+        <div id="texSlotSummary" style="font-size:0.54rem; color:var(--s-mid); margin-bottom:4px;">no custom 3D model loaded</div>
+        <div class="image-dropzone" id="texDropzone" title="Drag & drop texture files or click to add">
+          <div style="font-size:0.56rem; color:var(--s-hi);">drop textures (.png, .jpg) to auto-map</div>
+          <div style="font-size:0.48rem; color:var(--s-mid);">intelligently matches mesh and material names</div>
+        </div>
+        <input type="file" id="modelTexturesInput" multiple accept="image/*,.png,.jpg,.jpeg,.tga,.bmp,.webp" style="display:none">
+        <div class="tex-slot-grid" id="texSlotGrid"></div>
+        <div style="display:flex; gap:4px; margin-top:6px;">
+          <button class="chrome" id="btnBrowseTextures" style="flex:1; font-size:0.54rem;">+ add texture files</button>
+          <button class="chrome" id="btnClearTextures" style="font-size:0.54rem;">clear</button>
+        </div>
       </div>
 
       <!-- Tab: Camera Director -->
@@ -389,6 +402,19 @@
             <option value="off">disabled / off</option>
           </select>
         </div>
+
+        <div class="section-tag">Scene Presets & Settings</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:4px;">
+          <button class="chrome" id="btnSavePreset" title="Save scene parameters to browser storage">💾 save preset</button>
+          <button class="chrome" id="btnExportPresetJson" title="Export settings as .json file">⬇ export json</button>
+          <button class="chrome" id="btnImportPresetJson" title="Import settings from .json file">⬆ import json</button>
+          <button class="chrome" id="btnResetDefaults" title="Restore factory defaults">⟲ reset</button>
+        </div>
+        <div class="c-row" style="margin-top:2px; margin-bottom:4px;">
+          <label for="pFastBoot">fast boot (skip bios)</label>
+          <input type="checkbox" id="pFastBoot" style="accent-color:var(--vcr-green); cursor:pointer;">
+        </div>
+        <input type="file" id="importJsonInput" accept=".json,application/json" style="display:none">
 
         <div class="section-tag">Aspect Ratio</div>
         <div class="c-row">

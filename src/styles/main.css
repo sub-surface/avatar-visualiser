@@ -123,7 +123,7 @@ canvas#glCanvas, canvas {
   color: var(--s-lo);
   text-decoration: none;
   background: transparent;
-  border: 1px solid var(--panel-border);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 3px 8px;
   border-radius: 2px;
   cursor: pointer;
@@ -242,4 +242,57 @@ body.clean-mode:hover #studioConsole {
   font-weight: 600;
   white-space: pre;
   letter-spacing: 0;
+}
+
+/* Boot Skip HUD Controls */
+.boot-skip-hud {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(12, 16, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.60rem;
+  color: var(--s-mid);
+  z-index: 10000;
+  user-select: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+.boot-skip-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  transition: all 0.15s;
+}
+.boot-skip-btn:hover {
+  background: var(--vcr-cyan, #00ffff);
+  color: #000;
+  border-color: var(--vcr-cyan, #00ffff);
+}
+.boot-skip-chk-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.56rem;
+  color: var(--s-mid);
+}
+.boot-skip-hint {
+  font-size: 0.52rem;
+  color: var(--s-lo, rgba(255, 255, 255, 0.4));
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding-left: 12px;
 }

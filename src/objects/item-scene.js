@@ -105,12 +105,19 @@ export class ItemSceneManager {
   }
 
   async loadDaeModel(fileOrUrl, filename = 'custom.dae') {
+    let daeText = '';
+    if (fileOrUrl && typeof fileOrUrl !== 'string') {
+      try {
+        daeText = await fileOrUrl.text();
+      } catch (e) {}
+    }
+
     const { ColladaLoader } = await import('three/addons/loaders/ColladaLoader.js');
     const loadingManager = new THREE.LoadingManager();
     // Neutral transparent 1x1 png fallback prevents ERR_FILE_NOT_FOUND when external texture files are omitted
     const fallbackPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
     loadingManager.setURLModifier((itemUrl) => {
-      if (itemUrl.startsWith('blob:') && (itemUrl.endsWith('.png') || itemUrl.endsWith('.jpg') || itemUrl.endsWith('.jpeg') || itemUrl.endsWith('.tga') || itemUrl.endsWith('.bmp'))) {
+      if (itemUrl.startsWith('blob:') && (itemUrl.endsWith('.png') || itemUrl.endsWith('.jpg') || itemUrl.endsWith('.jpeg') || itemUrl.endsWith('.tga') || itemUrl.endsWith('.bmp') || itemUrl.endsWith('.webp'))) {
         return fallbackPixel;
       }
       return itemUrl;
@@ -134,6 +141,17 @@ export class ItemSceneManager {
           }
 
           const modelScene = collada.scene;
+          this.modelMeshes = [];
+
+          // Parse expected texture filenames from Collada XML
+          const expectedFileNames = new Set();
+          if (daeText) {
+            const initFromMatches = daeText.matchAll(/<init_from>\s*([^<\s\r\n]+)\s*<\/init_from>/gi);
+            for (const m of initFromMatches) {
+              const fn = m[1].replace(/\\/g, '/').split('/').pop().trim();
+              if (fn) expectedFileNames.add(fn);
+            }
+          }
 
           // If model was modeled flat on the floor (height Y significantly less than depth Z and width X),
           // default it to standing vertical facing forward (+Z) like the other retro items
@@ -177,7 +195,8 @@ export class ItemSceneManager {
 
           modelScene.traverse((child) => {
             if (child.isMesh) {
-              if (!child.material) child.material = defaultMat;
+              this.modelMeshes.push(child);
+              if (!child.material) child.material = defaultMat.clone();
               if (child.geometry) {
                 const wireGeo = new THREE.WireframeGeometry(child.geometry);
                 const wireMesh = new THREE.LineSegments(wireGeo, wireMat);
@@ -185,6 +204,45 @@ export class ItemSceneManager {
               }
             }
           });
+
+          // Compile texture slots
+          this.textureSlots = [];
+          let slotIdx = 0;
+          if (expectedFileNames.size > 0) {
+            for (const expectedFile of expectedFileNames) {
+              const stem = expectedFile.replace(/\.[^.]+$/, '').toLowerCase();
+              const matchingMeshes = this.modelMeshes.filter(m => {
+                const mName = (m.name || '').toLowerCase();
+                const matName = (m.material?.name || '').toLowerCase();
+                return mName.includes(stem) || matName.includes(stem) || stem.includes(mName) || stem.includes(matName);
+              });
+              const targetUuids = matchingMeshes.length
+                ? matchingMeshes.map(m => m.uuid)
+                : this.modelMeshes.map(m => m.uuid);
+              this.textureSlots.push({
+                id: `slot_${slotIdx++}`,
+                expectedFile,
+                name: expectedFile.replace(/\.[^.]+$/, ''),
+                assigned: false,
+                assignedFile: null,
+                previewUrl: null,
+                targetMeshUuids: targetUuids,
+              });
+            }
+          } else {
+            for (const mesh of this.modelMeshes) {
+              const slotName = mesh.material?.name || mesh.name || `mesh_${slotIdx}`;
+              this.textureSlots.push({
+                id: `slot_${slotIdx++}`,
+                expectedFile: `${slotName}.png`,
+                name: slotName,
+                assigned: false,
+                assignedFile: null,
+                previewUrl: null,
+                targetMeshUuids: [mesh.uuid],
+              });
+            }
+          }
 
           const customItem = {
             group,
@@ -210,16 +268,136 @@ export class ItemSceneManager {
           this.rootGroup.add(group);
           if (this.customTexture) customItem.setLabelTexture(this.customTexture);
           this.setActiveItem('custom');
+          window.dispatchEvent(new CustomEvent('avatar-textures-updated', { detail: { slots: this.textureSlots } }));
           resolve(customItem);
         },
         undefined,
         (err) => {
+          console.error('Collada load error:', err);
           if (isBlob) URL.revokeObjectURL(url);
-          console.warn('[ItemSceneManager] DAE Collada load error:', err);
           reject(err);
         }
       );
     });
+  }
+
+  getTextureSlots() {
+    return this.textureSlots || [];
+  }
+
+  autoAssignTextures(fileList) {
+    if (!this.textureSlots || !this.textureSlots.length) return 0;
+    const files = Array.from(fileList);
+    let matchedCount = 0;
+    const texLoader = new THREE.TextureLoader();
+
+    const norm = (str) => String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    for (const file of files) {
+      const fileName = file.name;
+      const fileStem = fileName.replace(/\.[^.]+$/, '');
+      const normFile = norm(fileStem);
+
+      const matchingSlots = this.textureSlots.filter((slot) => {
+        const slotFile = slot.expectedFile.toLowerCase();
+        if (slotFile === fileName.toLowerCase()) return true;
+        const normSlot = norm(slot.name);
+        if (normSlot === normFile) return true;
+        if (normSlot.length > 2 && normFile.length > 2 && (normSlot.includes(normFile) || normFile.includes(normSlot))) return true;
+        return false;
+      });
+
+      if (matchingSlots.length > 0) {
+        matchedCount++;
+        const url = URL.createObjectURL(file);
+        texLoader.load(url, (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.flipY = false;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+
+          for (const slot of matchingSlots) {
+            slot.assigned = true;
+            slot.assignedFile = fileName;
+            slot.previewUrl = url;
+
+            slot.targetMeshUuids.forEach((uuid) => {
+              const mesh = (this.modelMeshes || []).find((m) => m.uuid === uuid);
+              if (mesh) {
+                if (!mesh.material || mesh.material.isLineBasicMaterial) {
+                  mesh.material = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.25 });
+                }
+                mesh.material.map = texture;
+                mesh.material.needsUpdate = true;
+              }
+            });
+          }
+          window.dispatchEvent(new CustomEvent('avatar-textures-updated', { detail: { slots: this.textureSlots } }));
+        });
+      }
+    }
+
+    if (matchedCount > 0) {
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Mapped ${matchedCount} textures to 3D model` }));
+    }
+    return matchedCount;
+  }
+
+  assignTextureToSlot(slotId, file) {
+    const slot = (this.textureSlots || []).find((s) => s.id === slotId);
+    if (!slot) return;
+    const url = URL.createObjectURL(file);
+    const texLoader = new THREE.TextureLoader();
+    texLoader.load(url, (texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.flipY = false;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+
+      slot.assigned = true;
+      slot.assignedFile = file.name;
+      slot.previewUrl = url;
+
+      slot.targetMeshUuids.forEach((uuid) => {
+        const mesh = (this.modelMeshes || []).find((m) => m.uuid === uuid);
+        if (mesh) {
+          if (!mesh.material || mesh.material.isLineBasicMaterial) {
+            mesh.material = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.25 });
+          }
+          mesh.material.map = texture;
+          mesh.material.needsUpdate = true;
+        }
+      });
+      window.dispatchEvent(new CustomEvent('avatar-textures-updated', { detail: { slots: this.textureSlots } }));
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Assigned: ${file.name}` }));
+    });
+  }
+
+  clearTextures() {
+    if (!this.textureSlots) return;
+    const defaultMat = new THREE.MeshStandardMaterial({
+      color: 0xd8d8d8,
+      roughness: 0.55,
+      metalness: 0.25,
+    });
+    this.textureSlots.forEach((slot) => {
+      slot.assigned = false;
+      slot.assignedFile = null;
+      slot.previewUrl = null;
+      slot.targetMeshUuids.forEach((uuid) => {
+        const mesh = (this.modelMeshes || []).find((m) => m.uuid === uuid);
+        if (mesh) {
+          mesh.material = defaultMat.clone();
+          mesh.material.needsUpdate = true;
+        }
+      });
+    });
+    window.dispatchEvent(new CustomEvent('avatar-textures-updated', { detail: { slots: this.textureSlots } }));
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Textures cleared' }));
+  }
+
+  getTextureSlots() {
+    return this.textureSlots || [];
   }
 
   disposeItem(item) {
