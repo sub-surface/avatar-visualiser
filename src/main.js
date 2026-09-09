@@ -17,6 +17,7 @@ import { SoundCloudImporter } from './ui/soundcloud-modal.js';
 import { vcrOsd } from './vhs/vcr-osd.js';
 import { skyboxManager } from './look/skybox.js';
 import { sequenceModal } from './ui/sequence-modal.js';
+import { extractPaletteFromImage } from './look/palette-extractor.js';
 
 const startupAudioUrl = new URL('../Startup.wav', import.meta.url).href;
 
@@ -249,7 +250,29 @@ export async function loadAudioBuffer(fileOrBlob, filename = 'Audio Track') {
   }
 }
 
-/* ── SoundCloud Integration ──────────────────────────────── */
+async function applyArtworkPalette(imgOrUrl) {
+  try {
+    const palette = await extractPaletteFromImage(imgOrUrl);
+    if (palette && palette.colorA && palette.colorB) {
+      P.colorA = palette.colorA;
+      P.colorB = palette.colorB;
+      const pColorA = document.getElementById('pColorA');
+      const pColorB = document.getElementById('pColorB');
+      const vColorA = document.getElementById('vColorA');
+      const vColorB = document.getElementById('vColorB');
+      if (pColorA) pColorA.value = palette.colorA;
+      if (pColorB) pColorB.value = palette.colorB;
+      if (vColorA) vColorA.textContent = palette.colorA.toUpperCase();
+      if (vColorB) vColorB.textContent = palette.colorB.toUpperCase();
+      setColors(P.colorA, P.colorB);
+      saveParams();
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Artwork palette synced: ${palette.colorA} · ${palette.colorB}` }));
+    }
+  } catch (err) {
+    console.warn('Artwork palette extraction error:', err);
+  }
+}
+
 const soundcloudModal = new SoundCloudImporter({
   onTrackLoaded: (meta) => {
     if (meta.title) {
@@ -271,6 +294,7 @@ const soundcloudModal = new SoundCloudImporter({
   onArtworkLoaded: async (artUrl) => {
     try {
       await itemScene.loadCustomImage(artUrl);
+      await applyArtworkPalette(artUrl);
       setCategory('item');
       // Update image dropzone preview
       const thumb = document.getElementById('itemImgThumb');
@@ -278,7 +302,7 @@ const soundcloudModal = new SoundCloudImporter({
         thumb.src = artUrl;
         thumb.style.display = 'block';
       }
-      window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'SoundCloud artwork mapped to 3D asset' }));
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'SoundCloud artwork mapped to 3D asset & palette' }));
     } catch (e) {
       console.warn('Artwork texture load error:', e);
     }
@@ -299,6 +323,7 @@ if (itemDropzone && itemImgInput) {
     if (!file) return;
     const url = URL.createObjectURL(file);
     await itemScene.loadCustomImage(url);
+    await applyArtworkPalette(file);
     URL.revokeObjectURL(url);
     if (itemImgThumb) {
       itemImgThumb.src = url;
@@ -368,12 +393,13 @@ document.body.addEventListener('drop', async (e) => {
   } else if (file.type.startsWith('image/') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp')) {
     const url = URL.createObjectURL(file);
     await itemScene.loadCustomImage(url);
+    await applyArtworkPalette(file);
     if (itemImgThumb) {
       itemImgThumb.src = url;
       itemImgThumb.style.display = 'block';
     }
     setCategory('item');
-    window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Artwork dropped: ${file.name}` }));
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Artwork & palette loaded: ${file.name}` }));
   } else if (file.type.startsWith('audio/') || name.endsWith('.wav') || name.endsWith('.mp3') || name.endsWith('.flac') || name.endsWith('.ogg') || name.endsWith('.m4a')) {
     await loadAudioBuffer(file, file.name);
   }

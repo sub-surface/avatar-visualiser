@@ -394,7 +394,11 @@ export class SignalField {
     this.colorA.copy(this.baseColorA);
     this.colorB.copy(this.baseColorB);
     if (project.colorCycle > 0 && frame) {
-      const shift = (frame.lfo1 + 1) * 0.5 * project.colorCycle;
+      const bpm = Math.max(20, Math.min(400, project.bpm || 120));
+      // Lock color breathing cycle to 4 musical beats (1 bar)
+      const beatPhase = ((frame.time ?? 0) * (bpm / 60) * Math.PI) / 2;
+      const cycleSine = Math.sin(beatPhase);
+      const shift = (cycleSine * 0.5 + 0.5) * project.colorCycle;
       this.colorA.lerp(this.baseColorB, shift);
       this.colorB.lerp(this.baseColorA, shift);
     }

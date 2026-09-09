@@ -134,4 +134,31 @@ describe('field audio reactivity setting', () => {
     expect(hexA.toLowerCase()).toBe('#00f0ff');
     expect(hexB.toLowerCase()).toBe('#ff0055');
   });
+
+  it('extracts dominant base and vibrant accent from pixel buffer', async () => {
+    const { extractColorsFromPixels } = await import('../src/look/palette-extractor.js');
+    const width = 8, height = 8;
+    const pixels = new Uint8Array(width * height * 4);
+
+    // Fill mostly with dark violet (dominant)
+    for (let i = 0; i < width * height; i++) {
+      pixels[i * 4] = 40;     // R
+      pixels[i * 4 + 1] = 10; // G
+      pixels[i * 4 + 2] = 60; // B
+      pixels[i * 4 + 3] = 255;
+    }
+
+    // A few pixels with bright neon green (accent)
+    for (let i = 0; i < 4; i++) {
+      pixels[i * 4] = 20;     // R
+      pixels[i * 4 + 1] = 240; // G
+      pixels[i * 4 + 2] = 80; // B
+      pixels[i * 4 + 3] = 255;
+    }
+
+    const { colorA, colorB } = extractColorsFromPixels(pixels, width, height);
+    expect(colorA).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(colorB).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(colorA).not.toBe(colorB);
+  });
 });
