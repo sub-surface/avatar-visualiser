@@ -282,6 +282,16 @@ export class SignalField {
     }
   }
 
+  get mesh() {
+    return this.object;
+  }
+
+  setVisible(visible) {
+    if (this.object) {
+      this.object.visible = Boolean(visible);
+    }
+  }
+
   rebuild(rows, cols, closed = ['sphere', 'polar', 'topology', 'tunnel'].includes(this.mode)) {
     const nextRows = Math.max(2, Math.min(160, Math.round(rows)));
     const nextCols = Math.max(8, Math.min(384, Math.round(cols)));

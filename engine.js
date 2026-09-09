@@ -27,6 +27,21 @@ export const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window
 camera.position.set(0, CAM_BASE.y, CAM_BASE.z);
 camera.lookAt(0, -0.5, 0);
 
+/* ── Scene Lighting ────────────────────────────────────────── */
+export const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+ambientLight.name = 'GlobalAmbientLight';
+scene.add(ambientLight);
+
+export const dirLight = new THREE.DirectionalLight(0xfff8ee, 1.8);
+dirLight.name = 'GlobalDirLight';
+dirLight.position.set(5, 9, 6);
+scene.add(dirLight);
+
+export const fillLight = new THREE.DirectionalLight(0x88bbff, 0.9);
+fillLight.name = 'GlobalFillLight';
+fillLight.position.set(-5, 4, -4);
+scene.add(fillLight);
+
 /* ── Shared material + colour scratch ──────────────────────── */
 export const material    = new THREE.LineBasicMaterial({ vertexColors: true });
 export const _colA       = new THREE.Color(LINE_COLOR);

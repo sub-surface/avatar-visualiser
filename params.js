@@ -214,28 +214,36 @@ export function bindText(id, callback) {
 }
 
 export function updateTrackDisplay() {
-  const title = element('pTitle')?.value.trim() ?? '';
-  const artist = element('pArtist')?.value.trim() ?? '';
-  const bpm = element('pBpm')?.value.trim() ?? '';
-  const genre = element('pGenre')?.value.trim() ?? '';
-  const time = element('dispCurrent')?.textContent.trim() ?? '';
+  const title = element('pTitle')?.value?.trim() || P.title || '';
+  const artist = element('pArtist')?.value?.trim() || P.artist || '';
+  const bpm = element('pBpm')?.value?.trim() || (P.bpm ? String(P.bpm) : '');
+  const genre = element('pGenre')?.value?.trim() || P.genre || '';
+  const time = element('dispCurrent')?.textContent?.trim() ?? '';
 
-  element('dispTitle').textContent = title;
-  element('dispArtist').textContent = artist;
-  element('dispBpm').textContent = bpm;
-  element('dispGenre').textContent = genre;
-  element('dispRule').style.display = title ? 'block' : 'none';
+  const elTitle = element('dispTitle') || element('deckTrackTitle');
+  if (elTitle) elTitle.textContent = title || 'AVATAR VISUALISER';
+
+  const elArtist = element('dispArtist') || element('deckTrackArtist');
+  if (elArtist) elArtist.textContent = artist || 'SUB-SURFACE TECHNOLOGIES';
+
+  if (element('dispBpm')) element('dispBpm').textContent = bpm;
+  if (element('dispGenre')) element('dispGenre').textContent = genre;
+  if (element('dispRule')) element('dispRule').style.display = title ? 'block' : 'none';
 
   const showPill = (pillId, dividerId, visible) => {
-    element(pillId).style.display = visible ? 'flex' : 'none';
-    if (dividerId) element(dividerId).style.display = visible ? 'block' : 'none';
+    const p = element(pillId);
+    if (p) p.style.display = visible ? 'flex' : 'none';
+    const d = dividerId ? element(dividerId) : null;
+    if (d) d.style.display = visible ? 'block' : 'none';
   };
   showPill('pillTime', 'divTime', Boolean(time));
   showPill('pillBpm', 'divBpm', Boolean(bpm));
   showPill('pillGenre', null, Boolean(genre));
 
-  element('divTime').style.display = time && (bpm || genre) ? 'block' : 'none';
-  element('divBpm').style.display = bpm && genre ? 'block' : 'none';
+  const divTime = element('divTime');
+  if (divTime) divTime.style.display = time && (bpm || genre) ? 'block' : 'none';
+  const divBpm = element('divBpm');
+  if (divBpm) divBpm.style.display = bpm && genre ? 'block' : 'none';
 }
 
 export function fmtTime(seconds) {
@@ -243,7 +251,10 @@ export function fmtTime(seconds) {
 }
 
 export function setTimeDisplay(current, total) {
-  element('dispCurrent').textContent = total ? `${fmtTime(current)} / ${fmtTime(total)}` : '';
+  const dispCurrent = element('dispCurrent');
+  if (dispCurrent) {
+    dispCurrent.textContent = total ? `${fmtTime(current)} / ${fmtTime(total)}` : '';
+  }
   updateTrackDisplay();
 }
 

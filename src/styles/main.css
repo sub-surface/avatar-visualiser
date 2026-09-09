@@ -166,3 +166,80 @@ body.clean-mode:hover #studioConsole {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* ── Retro BIOS Boot Screen & Terminal ────────────────────── */
+#bootScreen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: opacity 0.5s ease;
+}
+#bootScreen.done {
+  opacity: 0;
+  pointer-events: none;
+}
+#bootTerminal {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  padding: 24px 28px;
+  overflow-y: auto;
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--s-hi);
+  white-space: pre;
+  scrollbar-width: none;
+}
+#bootTerminal::-webkit-scrollbar {
+  display: none;
+}
+.boot-line {
+  min-height: 1.5em;
+  color: var(--s-mid);
+  white-space: pre;
+  font-family: 'DM Mono', 'Courier New', monospace;
+}
+.boot-dim {
+  color: rgba(162, 182, 192, 0.45);
+  font-style: italic;
+}
+.boot-bright {
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.boot-ok {
+  color: #33cc66;
+  font-weight: 500;
+}
+.boot-accent {
+  color: var(--ui-accent, #c7dce7);
+}
+.boot-secondary {
+  color: var(--s-mid, #a2b6c0);
+}
+.boot-tertiary {
+  color: rgba(162, 182, 192, 0.6);
+}
+.boot-logo {
+  color: var(--ui-accent, #c7dce7);
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 0.70rem;
+  white-space: pre;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+.boot-header {
+  color: #ffffff;
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 0.70rem;
+  font-weight: 600;
+  white-space: pre;
+  letter-spacing: 0;
+}

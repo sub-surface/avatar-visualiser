@@ -34,7 +34,7 @@ export class ItemSceneManager {
     this.lightRig.add(rimLight);
 
     // Ambient light
-    const ambLight = new THREE.AmbientLight(0x222633, 1.4);
+    const ambLight = new THREE.AmbientLight(0xffffff, 1.6);
     this.lightRig.add(ambLight);
 
     this.rootGroup.add(this.lightRig);

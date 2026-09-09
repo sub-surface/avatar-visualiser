@@ -29,8 +29,8 @@ function accentRgb() {
 // ── BIOS POST content ───────────────────────────────────────────────────────
 const BIOS_LINES = [
   { text: '┌──────────────────────────────────────────────────────────┐', delay: 2, cls: 'boot-tertiary' },
-  { text: '│  SUB-SURFACE DSP-CORE BIOS  v1.0.0  (C) 2024  sub-surface│', delay: 2, cls: 'boot-tertiary' },
-  { text: '│  WaveCore FFT Engine · WebGL Terrain Renderer · WebCodecs│', delay: 2, cls: 'boot-tertiary' },
+  { text: '│  SUB-SURFACE DSP-CORE BIOS  v2.0.0  (C) 2026  sub-surface  │', delay: 2, cls: 'boot-tertiary' },
+  { text: '│  WaveCore FFT Engine · WebGL Terrain Renderer · WebCodecs  │', delay: 2, cls: 'boot-tertiary' },
   { text: '└──────────────────────────────────────────────────────────┘', delay: 2, cls: 'boot-tertiary' },
   { text: '', delay: 60 },
   { text: '<span class="boot-secondary">Main Processor</span>  : <span class="boot-accent">WaveCore DSP-X</span>  @ 44.1kHz / 48kHz', delay: 8 },
@@ -92,34 +92,32 @@ const BIOS_LINES = [
 
 // ── ASCII Logo (AVATAR in large block chars) ────────────────────────────────
 const ASCII_LOGO = [
-  ' ▄▄▄·  ▌ ▐· ▄▄▄· ▄▄▄▄▄ ▄▄▄· ▄▄▄ ',
-  '▐█ ▀█ ▪█·█▌▐█ ▀█  ██  ▐█ ▀█ ▀▄ █·',
-  '▐█▀▀█ ▐█▐█·▄█▀▀█  ▐█.▪▄█▀▀█ ▐▀▀▄ ',
-  '▐█ ▪▐▌ ███ ▐█ ▪▐▌ ▐█▌·▐█ ▪▐▌▐█•█▌',
-  ' ▀  ▀ . ▀   ▀  ▀  ▀▀▀  ▀  ▀ ·▀  ▀',
+  '   █████╗ ██╗   ██╗ █████╗ ████████╗ █████╗ ██████╗  ',
+  '  ██╔══██╗██║   ██║██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗ ',
+  '  ███████║██║   ██║███████║   ██║   ███████║██████╔╝ ',
+  '  ██╔══██║╚██╗ ██╔╝██╔══██║   ██║   ██╔══██║██╔══██╗ ',
+  '  ██║  ██║ ╚████╔╝ ██║  ██║   ██║   ██║  ██║██║  ██║ ',
+  '  ╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ',
 ];
 
 // Fallback simpler logo if above is too wide
 const ASCII_LOGO_SIMPLE = [
-  '  ▄▄▄·  ▌ ▐· ▄▄▄· ▄▄▄▄▄ ▄▄▄· ▄▄▄  ',
-  '  ▐█ ▀█ ▪█·█▌▐█ ▀█  ██  ▐█ ▀█ ▀▄ █·',
-  '  ▄█▀▀█ ▐█▐█·▄█▀▀█  ▐█.▪▄█▀▀█ ▐▀▀▄ ',
-  '  ▐█ ▪▐▌ ███ ▐█ ▪▐▌ ▐█▌·▐█ ▪▐▌▐█•█▌',
-  '   ▀  ▀ . ▀   ▀  ▀  ▀▀▀  ▀  ▀ ·▀  ▀',
-  '',
-  '  ∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿',
-  '  ▁▂▂▃▄▅▆▇██▇▇▆▅▄▃▂▁▁▂▃▄▅▆▇███▇▆▅▄▃▂▁',
-  '  ▁▂▃▄▅▅▆▇▇██▇▆▅▄▃▂▂▁▁▁▂▃▄▅▆▇█▇▆▅▄▃▂▁',
-  '  ∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿',
+  '   █████╗ ██╗   ██╗ █████╗ ████████╗ █████╗ ██████╗  ',
+  '  ██╔══██╗██║   ██║██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗ ',
+  '  ███████║██║   ██║███████║   ██║   ███████║██████╔╝ ',
+  '  ██╔══██║╚██╗ ██╔╝██╔══██║   ██║   ██╔══██║██╔══██╗ ',
+  '  ██║  ██║ ╚████╔╝ ██║  ██║   ██║   ██║  ██║██║  ██║ ',
+  '  ╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ',
+  '  ───────────────────────────────────────────────────',
 ];
 
 const ONBOARDING_HEADER = [
-  '╔══════════════════════════════════════════════════════╗',
-  '║   SUB-SURFACE AVATAR VISUALISER  v0.9               ║',
-  '║   Real-time Audio Reactive Terrain Engine            ║',
-  '║   Three.js · Web Audio API · WebCodecs · WebGL 2.0  ║',
-  '║   ∿ Joy Division "Unknown Pleasures" — reimagined ∿  ║',
-  '╚══════════════════════════════════════════════════════╝',
+  '┌────────────────────────────────────────────────────┐',
+  '│  SUB-SURFACE AVATAR VISUALISER v2.0                │',
+  '│  Real-time 3D Audio Reactive Hardware Instrument   │',
+  '│  Three.js · Web Audio API · WebCodecs · WebGL 2.0  │',
+  '│  Retro Physical Artifacts & Low-Res VHS Emulation  │',
+  '└────────────────────────────────────────────────────┘',
 ];
 
 const LOADING_STEPS = [

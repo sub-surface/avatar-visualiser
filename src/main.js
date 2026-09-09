@@ -52,7 +52,7 @@ export function setCategory(cat) {
   const isItem = cat === 'item';
   
   itemScene.setVisible(isItem);
-  signalField.mesh.visible = !isItem;
+  signalField.setVisible(!isItem);
 
   document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.cat === cat);
@@ -74,7 +74,7 @@ export async function setFieldMode(mode) {
   visCategory = 'field';
   P.visualCategory = 'field';
   itemScene.setVisible(false);
-  signalField.mesh.visible = true;
+  signalField.setVisible(true);
 
   document.body.classList.remove(`vis-${visMode}`);
   visMode = mode;
@@ -97,7 +97,7 @@ export async function setRetroItem(itemId) {
   P.visualCategory = 'item';
   P.activeItem = itemId;
   
-  signalField.mesh.visible = false;
+  signalField.setVisible(false);
   itemScene.setVisible(true);
   itemScene.setActiveItem(itemId);
 
