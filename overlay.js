@@ -11,9 +11,34 @@ export { calculateTracklistAlpha };
 
 let _compCanvas = null;
 let _compCtx    = null;
+let _cachedArtist = null;
+let _cachedTrackedArtist = '';
+let _cachedTitle = null;
+let _cachedTitleScale = -1;
+let _cachedTitleWidth = 0;
 
 function fmtTime(s) {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+}
+
+/**
+ * Fast determination of whether a frame requires 2D compositing.
+ * If no 2D text or OSD elements are visible, the WebGL canvas can be encoded
+ * directly with zero copy overhead.
+ */
+export function canBypassComposite(meta, time, duration, albumState = null) {
+  if (meta?.vhsOsd) return false;
+  const titleCardMode = meta?.titleCard || 'top';
+  const hasMeta = Boolean(meta?.artist || meta?.title || meta?.bpm || meta?.genre);
+  if (titleCardMode !== 'off' && hasMeta) return false;
+  if (albumState && Array.isArray(albumState.tracks) && albumState.tracks.length > 1) {
+    const style = albumState.style || meta?.albumTracklistStyle || 'vcr-osd';
+    if (style !== 'off') {
+      const alpha = calculateTracklistAlpha(time, duration);
+      if (alpha > 0.005) return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -31,6 +56,11 @@ export function initOverlayCanvas(width, height) {
 export function freeOverlayCanvas() {
   _compCanvas = null;
   _compCtx    = null;
+  _cachedArtist = null;
+  _cachedTrackedArtist = '';
+  _cachedTitle = null;
+  _cachedTitleScale = -1;
+  _cachedTitleWidth = 0;
 }
 
 /**
@@ -42,6 +72,7 @@ export function freeOverlayCanvas() {
  * @param {number} time     - current playback time in seconds
  * @param {number} duration - total duration in seconds
  * @param {string} visMode  - current visualisation mode (bowl, polar, sphere, wave)
+ * @param {Object} [albumState=null] - continuous album playlist state
  * @returns {HTMLCanvasElement} the composited 2D canvas
  */
 export function compositeFrame(glCanvas, meta, time, duration, visMode, albumState = null) {
@@ -76,11 +107,14 @@ export function compositeFrame(glCanvas, meta, time, duration, visMode, albumSta
 
     // 1. Artist (clean uppercase spaced monospace)
     if (meta.artist) {
+      if (meta.artist !== _cachedArtist) {
+        _cachedArtist = meta.artist;
+        _cachedTrackedArtist = meta.artist.toUpperCase().split('').join(' ');
+      }
       const artistSize = Math.max(10, Math.round(13 * scale));
       ctx.font = `500 ${artistSize}px "DM Mono", "Courier New", monospace`;
       ctx.fillStyle = 'rgba(230, 235, 245, 0.95)';
-      const trackedArtist = meta.artist.toUpperCase().split('').join(' ');
-      ctx.fillText(trackedArtist, cx, y);
+      ctx.fillText(_cachedTrackedArtist, cx, y);
       y += Math.max(16, Math.round(22 * scale));
     }
 
@@ -91,7 +125,12 @@ export function compositeFrame(glCanvas, meta, time, duration, visMode, albumSta
       ctx.font = `italic 400 ${titleSize}px "DM Serif Display", Georgia, serif`;
       ctx.fillStyle = '#ffffff';
       ctx.fillText(meta.title, cx, y + titleSize * 0.85);
-      titleWidth = ctx.measureText(meta.title).width;
+      if (meta.title !== _cachedTitle || scale !== _cachedTitleScale) {
+        _cachedTitle = meta.title;
+        _cachedTitleScale = scale;
+        _cachedTitleWidth = ctx.measureText(meta.title).width;
+      }
+      titleWidth = _cachedTitleWidth;
       y += titleSize + Math.max(8, Math.round(14 * scale));
     }
 

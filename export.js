@@ -28,7 +28,7 @@ import { signalField, FIELD_MODES } from './vis/field.js';
 import { getOrCreateItemScene } from './src/objects/item-scene.js';
 import { skyboxManager } from './src/look/skybox.js';
 import { lookRenderer } from './look.js';
-import { initOverlayCanvas, freeOverlayCanvas, compositeFrame } from './overlay.js';
+import { initOverlayCanvas, freeOverlayCanvas, compositeFrame, canBypassComposite } from './overlay.js';
 import { calculateTransitionGlitch } from './src/playlist/album-manager.js';
 
 function logStatus(message) {
@@ -217,9 +217,11 @@ async function encodeAudio(encoder, buffer, offsetTimestampUs = 0) {
   const sampleRate = buffer.sampleRate;
   const channelCount = buffer.numberOfChannels;
   const chunkSize = 4096;
+  const fullPlanar = new Float32Array(chunkSize * channelCount);
+
   for (let offset = 0; offset < buffer.length; offset += chunkSize) {
     const frameCount = Math.min(chunkSize, buffer.length - offset);
-    const planar = new Float32Array(frameCount * channelCount);
+    const planar = frameCount === chunkSize ? fullPlanar : new Float32Array(frameCount * channelCount);
     for (let channel = 0; channel < channelCount; channel++) {
       planar.set(buffer.getChannelData(channel).subarray(offset, offset + frameCount), channel * frameCount);
     }
@@ -234,7 +236,6 @@ async function encodeAudio(encoder, buffer, offsetTimestampUs = 0) {
     encoder.encode(audioData);
     audioData.close();
   }
-  await encoder.flush();
 }
 
 async function runExport(
@@ -317,9 +318,32 @@ async function runExport(
 
   const baseTracking = project.vhsTracking || 0;
   const baseSyncDrop = project.vhsSyncDrop || 0;
+  let lastYieldTime = performance.now();
 
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
-    while (encoder.encodeQueueSize > 4) await new Promise((resolve) => setTimeout(resolve, 0));
+    // Zero-overhead hardware encoder backpressure (sub-millisecond wakeup)
+    if (encoder.encodeQueueSize > 8) {
+      await new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (!done) {
+            done = true;
+            encoder.removeEventListener?.('dequeue', onDequeue);
+            resolve();
+          }
+        };
+        const onDequeue = () => {
+          if (encoder.encodeQueueSize <= 4) finish();
+        };
+        encoder.addEventListener?.('dequeue', onDequeue);
+        if (encoder.encodeQueueSize <= 4) {
+          finish();
+        } else {
+          setTimeout(finish, 8);
+        }
+      });
+    }
+
     const time = frameIndex / fps;
 
     // Subtle magnetic tape head switch glitch during album track transitions
@@ -395,33 +419,41 @@ async function runExport(
       lookRenderer.render(scene, camera, project, { frameIndex, force: true });
     }
 
-    setTimeDisplay(time, duration);
-    const frameCanvas = compositeFrame(
-      renderer.domElement,
-      {
-        ...getTrackMeta(),
-        title: project.title,
-        artist: project.artist,
-        bpm: project.bpm ? String(project.bpm) : '',
-        genre: project.genre,
-        vhsOsd: project.vhsOsd,
-        albumTracklistStyle: project.albumTracklistStyle,
-      },
-      time,
-      duration,
-      currentMode,
-      albumState,
-    );
+    const meta = {
+      ...getTrackMeta(),
+      title: project.title,
+      artist: project.artist,
+      bpm: project.bpm ? String(project.bpm) : '',
+      genre: project.genre,
+      vhsOsd: project.vhsOsd,
+      albumTracklistStyle: project.albumTracklistStyle,
+    };
+
+    // Zero-copy direct WebGL bypass when overlays are inactive
+    const frameSource = canBypassComposite(meta, time, duration, albumState)
+      ? renderer.domElement
+      : compositeFrame(
+          renderer.domElement,
+          meta,
+          time,
+          duration,
+          currentMode,
+          albumState,
+        );
+
     const timestamp = Math.round((globalFrameOffset + frameIndex) * (1e6 / fps));
-    const videoFrame = new VideoFrame(frameCanvas, {
+    const videoFrame = new VideoFrame(frameSource, {
       timestamp,
       duration: Math.round(1e6 / fps),
     });
     encoder.encode(videoFrame, { keyFrame: (globalFrameOffset + frameIndex) % (fps * 2) === 0 });
     videoFrame.close();
 
-    if (frameIndex % 30 === 0) await encoder.flush();
-    if (frameIndex % 10 === 0) {
+    // Time-based cooperative yield (every ~40ms) keeps UI responsive without stalling fast GPUs
+    const now = performance.now();
+    if (now - lastYieldTime >= 40 || frameIndex === totalFrames - 1) {
+      lastYieldTime = now;
+      setTimeDisplay(time, duration);
       onProgress(Math.round((frameIndex / totalFrames) * 100));
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
@@ -511,6 +543,7 @@ export async function startExport(audioFile, visualMode) {
       height,
       framerate: fps,
       bitrate,
+      hardwareAcceleration: 'prefer-hardware',
       latencyMode: project.exportPreset === 'lofi' ? 'realtime' : 'quality',
     });
 
@@ -527,6 +560,10 @@ export async function startExport(audioFile, visualMode) {
 
     logStatus(`Exporting ${duration.toFixed(1)}s at ${width}×${height} · ${fps} fps`);
     setProgressText('0%');
+
+    // Run audio encoding concurrently with video rendering
+    const audioEncodePromise = encodeAudio(audioEncoder, audioBuffer);
+
     await runExport(
       videoEncoder,
       audioBuffer,
@@ -536,8 +573,9 @@ export async function startExport(audioFile, visualMode) {
       project,
       (progress) => { setProgressText(`${progress}%`); },
     );
-    logStatus('Encoding audio...');
-    await encodeAudio(audioEncoder, audioBuffer);
+
+    logStatus('Finalizing media stream...');
+    await audioEncodePromise;
     await videoEncoder.flush();
     await audioEncoder.flush();
     muxer.finalize();
@@ -561,6 +599,20 @@ export async function startExport(audioFile, visualMode) {
     getOrCreateItemScene(scene)?.setVisible(P.visualCategory === 'item');
     signalField.mesh.visible = P.visualCategory !== 'item';
     window.dispatchEvent(new CustomEvent('avatar-rebuild-vis'));
+  }
+}
+
+async function decodeTrackAudio(track, sampleRate) {
+  if (!track || !track.file) {
+    throw new Error(`Track (${track?.title || 'Unknown'}) has no audio file attached.`);
+  }
+  const decodeCtx = new AudioContext({ sampleRate });
+  try {
+    const arrayBuffer = await track.file.arrayBuffer();
+    const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+    return audioBuffer;
+  } finally {
+    try { await decodeCtx.close(); } catch {}
   }
 }
 
@@ -632,6 +684,7 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
       height,
       framerate: fps,
       bitrate,
+      hardwareAcceleration: 'prefer-hardware',
       latencyMode: primaryProject.exportPreset === 'lofi' ? 'realtime' : 'quality',
     });
 
@@ -653,27 +706,28 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
     logStatus(`Starting album export: ${totalTracks} tracks (${totalAlbumDuration.toFixed(1)}s total)`);
     setProgressText('0%');
 
-    // Sequential $O(1)$ memory processing: decode single track, render, free buffer
+    // Pipeline audio decoding: pre-decode track 0 immediately
+    let currentAudioPromise = decodeTrackAudio(tracks[0], sampleRate);
+
+    // Sequential $O(1)$ memory processing with pipelined pre-decoding & concurrent audio encoding
     for (let i = 0; i < totalTracks; i++) {
       const track = tracks[i];
       const trackProject = cloneProject(track.projectConfig || P);
-      const trackFile = track.file;
 
-      logStatus(`[${i + 1}/${totalTracks}] Decoding ${track.title}...`);
-      setProgressText(`T${i + 1} decode`);
+      logStatus(`[${i + 1}/${totalTracks}] Preparing ${track.title}...`);
+      setProgressText(`T${i + 1} prep`);
 
-      if (!trackFile) {
-        throw new Error(`Track ${i + 1} (${track.title}) has no audio file attached.`);
-      }
-
-      // Standalone AudioContext for single-track decoding with fixed 44.1kHz rate
-      const decodeCtx = new AudioContext({ sampleRate });
-      const arrayBuffer = await trackFile.arrayBuffer();
-      let audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
-      await decodeCtx.close();
+      // Await current track's decoded audio (resolves instantly if pre-decoded in background during previous track)
+      let audioBuffer = await currentAudioPromise;
 
       const trackDuration = audioBuffer.length / audioBuffer.sampleRate;
       track.duration = trackDuration;
+
+      // Pipeline next track audio decoding in background concurrently with current track GPU rendering!
+      let nextAudioPromise = null;
+      if (i + 1 < totalTracks) {
+        nextAudioPromise = decodeTrackAudio(tracks[i + 1], sampleRate);
+      }
 
       // Apply bespoke look, skybox and colors for this track
       if (skyboxManager) {
@@ -690,6 +744,9 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
       };
 
       const trackFrames = Math.ceil(trackDuration * fps);
+
+      // Concurrently encode audio stream in background while GPU renders video frames
+      const audioEncodePromise = encodeAudio(audioEncoder, audioBuffer, globalAudioOffsetUs);
 
       await runExport(
         videoEncoder,
@@ -710,16 +767,17 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
         },
       );
 
-      logStatus(`[${i + 1}/${totalTracks}] Encoding audio stream...`);
-      await encodeAudio(audioEncoder, audioBuffer, globalAudioOffsetUs);
+      // Await concurrent audio encoding to complete
+      await audioEncodePromise;
 
       globalFrameOffset += trackFrames;
       globalAudioOffsetUs += Math.round((audioBuffer.length / audioBuffer.sampleRate) * 1e6);
 
-      // Dereference audio buffer for instant GC reclamation
+      // Dereference current track audio buffer for instant GC reclamation
       audioBuffer = null;
-      await videoEncoder.flush();
-      await audioEncoder.flush();
+
+      // Advance pre-decoded audio promise for next iteration
+      currentAudioPromise = nextAudioPromise;
     }
 
     logStatus('Finalizing continuous album MP4...');

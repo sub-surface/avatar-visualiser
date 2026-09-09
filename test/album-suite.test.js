@@ -7,7 +7,7 @@ import {
   formatDuration,
 } from '../src/playlist/album-manager.js';
 import { PARAM_SCHEMA, createDefaultProject, sanitizeProject } from '../project-schema.js';
-import { drawTracklistOverlay } from '../overlay.js';
+import { drawTracklistOverlay, canBypassComposite } from '../overlay.js';
 
 describe('Album Playlist & Continuous Visualizer Suite', () => {
   let manager;
@@ -255,6 +255,45 @@ describe('Album Playlist & Continuous Visualizer Suite', () => {
       expect(() => {
         drawTracklistOverlay(mockCtx, tracks, 0, 2.0, 180, 'off', 1920, 1080);
       }).not.toThrow();
+    });
+  });
+
+  describe('Export Pipeline Optimizations & Direct WebGL Bypass', () => {
+    it('determines when direct WebGL VideoFrame bypass is safe', () => {
+      // 1. Full bypass when title card is off, OSD is off, and no album overlay
+      const cleanMeta = {
+        titleCard: 'off',
+        vhsOsd: false,
+        artist: 'Test Artist',
+        title: 'Test Track',
+      };
+      expect(canBypassComposite(cleanMeta, 10, 180, null)).toBe(true);
+
+      // 2. Bypass disabled when VHS OSD is active
+      const osdMeta = { ...cleanMeta, vhsOsd: true };
+      expect(canBypassComposite(osdMeta, 10, 180, null)).toBe(false);
+
+      // 3. Bypass disabled when title card is visible (e.g. top mode with artist/title)
+      const titleMeta = { ...cleanMeta, titleCard: 'top' };
+      expect(canBypassComposite(titleMeta, 10, 180, null)).toBe(false);
+
+      // 4. In album mode, bypass during the meat of the track (t = 30s) when tracklist alpha = 0
+      const albumState = {
+        tracks: [{ title: 'Track 1' }, { title: 'Track 2' }],
+        style: 'vcr-osd',
+      };
+      // At t=30s in a 180s track, calculateTracklistAlpha is 0, so bypass is safe!
+      expect(canBypassComposite(cleanMeta, 30, 180, albumState)).toBe(true);
+
+      // At t=1.0s (fade window), tracklist is visible, so bypass is disabled (compositing required)
+      expect(canBypassComposite(cleanMeta, 1.0, 180, albumState)).toBe(false);
+
+      // When album tracklist style is 'off', bypass is safe even during head/tail
+      const albumStateOff = {
+        tracks: [{ title: 'Track 1' }, { title: 'Track 2' }],
+        style: 'off',
+      };
+      expect(canBypassComposite(cleanMeta, 1.0, 180, albumStateOff)).toBe(true);
     });
   });
 });
