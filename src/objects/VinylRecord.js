@@ -7,6 +7,12 @@ export function createVinylRecord(defaultTexture = null) {
   const group = new THREE.Group();
   group.name = 'VinylRecord';
 
+  // Main upright disc holder (vertical orientation)
+  const discHolder = new THREE.Group();
+  discHolder.name = 'VinylDiscHolder';
+  discHolder.rotation.x = Math.PI / 2;
+  group.add(discHolder);
+
   // Vinyl disc: radius 2.6, height 0.04
   const discGeo = new THREE.CylinderGeometry(2.6, 2.6, 0.04, 64);
   const vinylMat = new THREE.MeshStandardMaterial({
@@ -15,7 +21,7 @@ export function createVinylRecord(defaultTexture = null) {
     metalness: 0.55,
   });
   const disc = new THREE.Mesh(discGeo, vinylMat);
-  group.add(disc);
+  discHolder.add(disc);
 
   // Concentric vinyl groove rings (visual grooves using thin line loops)
   const grooveMat = new THREE.LineBasicMaterial({
@@ -31,7 +37,7 @@ export function createVinylRecord(defaultTexture = null) {
       pts.push(new THREE.Vector3(Math.cos(theta) * r, 0.022, Math.sin(theta) * r));
     }
     ringGeo.setFromPoints(pts);
-    group.add(new THREE.Line(ringGeo, grooveMat));
+    discHolder.add(new THREE.Line(ringGeo, grooveMat));
     
     // Bottom grooves
     const ringGeoB = new THREE.BufferGeometry();
@@ -41,7 +47,7 @@ export function createVinylRecord(defaultTexture = null) {
       ptsB.push(new THREE.Vector3(Math.cos(theta) * r, -0.022, Math.sin(theta) * r));
     }
     ringGeoB.setFromPoints(ptsB);
-    group.add(new THREE.Line(ringGeoB, grooveMat));
+    discHolder.add(new THREE.Line(ringGeoB, grooveMat));
   }
 
   // Center circular label sticker (top & bottom)
@@ -56,18 +62,18 @@ export function createVinylRecord(defaultTexture = null) {
   const labelTop = new THREE.Mesh(labelGeo, labelMat);
   labelTop.rotation.x = -Math.PI / 2;
   labelTop.position.y = 0.022;
-  group.add(labelTop);
+  discHolder.add(labelTop);
 
   const labelBottom = new THREE.Mesh(labelGeo, labelMat);
   labelBottom.rotation.x = Math.PI / 2;
   labelBottom.position.y = -0.022;
-  group.add(labelBottom);
+  discHolder.add(labelBottom);
 
   // Center spindle hole (metallic rim)
   const holeGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.045, 24);
   const holeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 });
   const hole = new THREE.Mesh(holeGeo, holeMat);
-  group.add(hole);
+  discHolder.add(hole);
 
   // Holographic wireframe glitch mesh
   const wireGeo = new THREE.WireframeGeometry(discGeo);
@@ -78,7 +84,7 @@ export function createVinylRecord(defaultTexture = null) {
     blending: THREE.AdditiveBlending,
   });
   const wireMesh = new THREE.LineSegments(wireGeo, wireMat);
-  group.add(wireMesh);
+  discHolder.add(wireMesh);
 
   return {
     group,
@@ -97,6 +103,7 @@ export function createVinylRecord(defaultTexture = null) {
 }
 
 export function createFallbackVinylLabel(title = 'AVATAR', subtitle = 'SIDE A · 33⅓ RPM') {
+  if (typeof document === 'undefined' || !document.createElement) return null;
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;

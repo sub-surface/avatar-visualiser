@@ -80,6 +80,7 @@ export function createCassetteTape(defaultTexture = null) {
 }
 
 export function createFallbackCassetteLabel(title = 'AVATAR', subtitle = 'TYPE II · CHROME') {
+  if (typeof document === 'undefined' || !document.createElement) return null;
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 256;

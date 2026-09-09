@@ -105,6 +105,12 @@ export const PARAM_SCHEMA = Object.freeze({
   itemSpinBpmSync: { type: 'boolean', default: false, update: 'hot' },
   itemGlitch: number(0.3, 0, 2, { update: 'hot' }),
   itemWobble: number(0.5, 0, 2, { update: 'hot' }),
+  itemRotX: number(0, -180, 180, { update: 'hot' }),
+  itemRotY: number(0, -180, 180, { update: 'hot' }),
+  itemRotZ: number(0, -180, 180, { update: 'hot' }),
+
+  skyboxPreset: choice('void', ['void', 'neon-grid', 'sunset-90s', 'deep-space', 'sgi-slate', 'cyber-green', 'custom']),
+  skyboxLightTone: number(1.0, 0.1, 3.0, { update: 'look' }),
 
   vhsTracking: number(0, 0, 1, { update: 'look' }),
   vhsCurvature: number(0, 0, 1, { update: 'look' }),
@@ -182,6 +188,7 @@ export function createDefaultProject() {
   project.cameraAnchor = { ...PRESET_DEFAULTS[0] };
   delete project.cameraAnchor.id;
   delete project.cameraAnchor.name;
+  project.exportSceneSequence = ['cartridge', 'sphere', 'vinyl', 'wave', 'cassette', 'cathedral', 'floppy', 'tunnel'];
   return project;
 }
 
@@ -197,6 +204,18 @@ export function sanitizeProject(raw = {}) {
   project.cameraAnchor = sanitizeCameraAnchor(source, warnings);
   if (!source.cameraShot && Array.isArray(source.camStyles) && source.camStyles.length) {
     project.cameraShot = 'manual';
+  }
+
+  const validScenes = [
+    'sphere', 'wave', 'bowl', 'polar', 'topology', 'cathedral', 'ribbon', 'tunnel',
+    'cartridge', 'vinyl', 'cassette', 'floppy', 'custom',
+  ];
+  const defaultSequence = ['cartridge', 'sphere', 'vinyl', 'wave', 'cassette', 'cathedral', 'floppy', 'tunnel'];
+  if (Array.isArray(source.exportSceneSequence)) {
+    const filtered = source.exportSceneSequence.filter((s) => typeof s === 'string' && validScenes.includes(s));
+    project.exportSceneSequence = filtered.length ? filtered : [...defaultSequence];
+  } else {
+    project.exportSceneSequence = [...defaultSequence];
   }
 
   project.title = safeText(source.title, 60);

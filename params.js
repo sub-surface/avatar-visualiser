@@ -95,6 +95,11 @@ function syncControls() {
     ItemSpinSpeed: 'itemSpinSpeed',
     ItemGlitch: 'itemGlitch',
     ItemWobble: 'itemWobble',
+    ItemRotX: 'itemRotX',
+    ItemRotY: 'itemRotY',
+    ItemRotZ: 'itemRotZ',
+    SkyboxPreset: 'skyboxPreset',
+    SkyboxLightTone: 'skyboxLightTone',
     VhsTracking: 'vhsTracking',
     VhsCurvature: 'vhsCurvature',
     VhsSyncDrop: 'vhsSyncDrop',
@@ -102,7 +107,13 @@ function syncControls() {
 
   for (const [suffix, key] of Object.entries(bindings)) {
     setInput(`p${suffix}`, P[key]);
-    setLabel(`v${suffix}`, P[key]);
+    if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ') {
+      setLabel(`v${suffix}`, `${P[key]}°`);
+    } else if (key === 'skyboxLightTone') {
+      setLabel(`v${suffix}`, Number(P[key]).toFixed(2));
+    } else {
+      setLabel(`v${suffix}`, P[key]);
+    }
   }
 
   const lpfPosition = Math.log10(P.lpfCutoff / 200) / Math.log10(20000 / 200);
@@ -182,7 +193,15 @@ export function bindRange(id, valueId, key, onChange) {
     if (key === 'complexity') value = Math.max(1, Math.min(12, Math.round(value)));
     P[key] = value;
     input.value = value;
-    if (label) label.textContent = value;
+    if (label) {
+      if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ') {
+        label.textContent = `${value}°`;
+      } else if (key === 'skyboxLightTone') {
+        label.textContent = Number(value).toFixed(2);
+      } else {
+        label.textContent = value;
+      }
+    }
     onChange?.(value);
     saveParams();
   });

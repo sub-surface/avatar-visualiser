@@ -220,6 +220,28 @@
           <label>vcr osd hud</label>
           <input type="checkbox" id="pVhsOsd" checked style="accent-color:var(--vcr-green); cursor:pointer;">
         </div>
+
+        <div class="section-tag">Atmosphere & Skybox</div>
+        <div class="c-row">
+          <label title="Curated 3D environment skybox">skybox</label>
+          <select class="c-select" id="pSkyboxPreset">
+            <option value="void" selected>minimal void</option>
+            <option value="neon-grid">neon grid 80s</option>
+            <option value="sunset-90s">sunset 90s</option>
+            <option value="deep-space">deep space</option>
+            <option value="sgi-slate">SGI workstation</option>
+            <option value="cyber-green">cyber CRT green</option>
+            <option value="custom">custom image</option>
+          </select>
+        </div>
+        <div class="c-row">
+          <label title="Atmospheric ambient lighting brightness">light tone</label>
+          <input type="range" id="pSkyboxLightTone" min="0.2" max="3" step="0.05" value="1.0">
+          <span class="c-val" id="vSkyboxLightTone">1.00</span>
+        </div>
+        <div class="c-row" id="rowCustomSkybox" style="display:none; margin-top:4px;">
+          <button class="chrome" id="btnUploadSkybox" style="width:100%; border-style:dashed; font-size:0.56rem;">+ upload skybox image</button>
+        </div>
       </div>
 
       <!-- Tab 2: 3D Centerpiece Asset Controls -->
@@ -228,6 +250,28 @@
         <div class="image-dropzone" id="itemDropzone" title="Click to upload custom artwork or drag image file">
           <img class="image-preview-thumb" id="itemImgThumb" alt="Artwork preview">
           <div class="dropzone-label">click or drop artwork image (PNG / JPG)</div>
+        </div>
+
+        <div class="section-tag">Orientation & Tilt</div>
+        <div class="c-row">
+          <label title="Pitch rotation around X axis (degrees)">pitch (x)</label>
+          <input type="range" id="pItemRotX" min="-180" max="180" step="1" value="0">
+          <span class="c-val" id="vItemRotX">0°</span>
+        </div>
+        <div class="c-row">
+          <label title="Yaw offset around Y axis (degrees)">yaw (y)</label>
+          <input type="range" id="pItemRotY" min="-180" max="180" step="1" value="0">
+          <span class="c-val" id="vItemRotY">0°</span>
+        </div>
+        <div class="c-row">
+          <label title="Roll rotation around Z axis (degrees)">roll (z)</label>
+          <input type="range" id="pItemRotZ" min="-180" max="180" step="1" value="0">
+          <span class="c-val" id="vItemRotZ">0°</span>
+        </div>
+        <div style="display:flex; gap:4px; margin-top:4px;">
+          <button class="chrome" id="btnOrientUpright" title="Stand asset upright (Pitch +90°)" style="flex:1; font-size:0.54rem;">stand upright</button>
+          <button class="chrome" id="btnOrientFlat" title="Lay asset flat (Pitch -90°)" style="flex:1; font-size:0.54rem;">lay flat</button>
+          <button class="chrome" id="btnOrientReset" title="Reset rotations to 0" style="flex:1; font-size:0.54rem;">reset</button>
         </div>
 
         <div class="section-tag">Spin & Physics</div>
@@ -343,6 +387,12 @@
           </select>
         </div>
 
+        <div class="section-tag">Timeline Scene Sequence</div>
+        <div class="c-row" style="margin-bottom:2px;">
+          <button class="chrome" id="btnEditSceneSequence" style="width:100%; border-color:var(--vcr-cyan); color:var(--vcr-cyan); font-size:0.62rem;" title="Configure which scenes the video will cycle through">🎞 edit scene sequence</button>
+        </div>
+        <div id="seqSummary" style="font-size:0.54rem; color:var(--s-mid); text-align:center; margin-bottom:6px;">8 scenes in export sequence</div>
+
         <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
           <button class="chrome btn-rec" id="btnExportMp4" disabled>● RECORD VIDEO (MP4)</button>
           <div id="progress" style="font-size:0.58rem; color:var(--s-mid); text-align:center;">load an audio file to record</div>
@@ -354,6 +404,31 @@
     <div class="console-action-bar">
       <button class="chrome" id="btnDirectorShortcut" title="Quick open Camera Director (Hotkey: D)">director</button>
       <button class="chrome" id="btnToggleConsole">console</button>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Export Scene Sequence ───────────────────────── -->
+  <div class="modal-scrim" id="sequenceModal" style="display:none;">
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-head">
+        <div class="modal-title">Export Scene Sequence</div>
+        <button class="chrome" id="seqBtnClose">✕</button>
+      </div>
+      <div style="font-size:0.58rem; color:var(--s-mid); margin-bottom:8px; line-height:1.4;">
+        Select which scenes the video will cycle through on musical energy cue peaks. Drag items or click arrows to reorder the playlist.
+      </div>
+      <div style="display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap;">
+        <button class="chrome" id="seqBtnSelectAll" style="font-size:0.52rem;">select all</button>
+        <button class="chrome" id="seqBtnFieldOnly" style="font-size:0.52rem;">fields only</button>
+        <button class="chrome" id="seqBtnItemsOnly" style="font-size:0.52rem;">3D items only</button>
+        <button class="chrome" id="seqBtnReset" style="font-size:0.52rem; margin-left:auto;">reset order</button>
+      </div>
+      <div class="sequence-list" id="seqList">
+        <!-- Dynamically populated by sequence-modal.js -->
+      </div>
+      <div class="modal-actions" style="margin-top:12px;">
+        <button class="chrome btn-active-highlight" id="seqBtnDone" style="width:100%;">done</button>
+      </div>
     </div>
   </div>
 
@@ -386,6 +461,7 @@
   <!-- Hidden Native Inputs -->
   <input type="file" id="wavInput" accept=".wav,.mp3,.flac,.ogg,.aac,.m4a,audio/*" style="display:none">
   <input type="file" id="itemImgInput" accept="image/*" style="display:none">
+  <input type="file" id="skyboxImgInput" accept="image/*" style="display:none">
   <input type="file" id="daeInput" accept=".dae,model/vnd.collada+xml" style="display:none">
 
   <!-- Core App Bootstrap -->

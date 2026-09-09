@@ -69,17 +69,31 @@ The style-seed menu provides editable cross-mode starting points:
 
 The randomizer is schema-driven, so newly registered visual parameters participate automatically. It chooses coherent harmonic colours and one of the eight modes.
 
-## 3D Retro Artifacts
+## 3D Retro Artifacts & Orientation
 
-In addition to Signal Fields, AVATAR features interactive 3D retro hardware artifacts with customizable labels and audio-reactive glitch physics:
+In addition to Signal Fields, AVATAR features interactive 3D retro hardware artifacts with customizable labels, granular orientation controls, and audio-reactive glitch physics:
 
 - **Game Cartridge** — 3D retro 64-bit console cartridge with label recess and side grips
-- **Vinyl Record** — 12" LP with realistic vinyl micro-grooves, spindle hole, and center sticker
-- **Cassette Tape** — compact cassette shell with dual rotating tape spools and sticker label
+- **Vinyl Record** — 12" LP standing upright vertically with realistic vinyl micro-grooves, spindle hole, and center sticker
+- **Cassette Tape** — compact cassette shell with synchronized dual tape spools and sticker label
 - **Floppy Disk** — classic 3.5" diskette with sliding metal shutter and adhesive paper label
-- **Custom 3D Model (.dae)** — import your own 3D Collada models (`.dae`) via the `+ import .dae` button or by dragging and dropping `.dae` files directly onto the app! Custom models are auto-scaled, centered, and participate in the full audio-reactive spin and glitch pipeline.
+- **Custom 3D Model (.dae)** — import your own 3D Collada models (`.dae`) via the `+ import .dae` button or by dragging and dropping `.dae` files directly onto the app! Flat models automatically stand upright facing the camera.
+- **Orientation & Tilt Controls** — granular pitch ($X$), yaw ($Y$), and roll ($Z$) sliders ($-180^\circ$ to $+180^\circ$) with quick 1-click presets: `[stand upright]`, `[lay flat]`, and `[reset]`.
 
 You can upload any custom image (PNG/JPG) to map onto the label, or automatically inherit high-resolution album art imported from SoundCloud. Artifacts support turntable spin (RPM or BPM tempo sync), audio-reactive bass wobble/tilt, and polygonal vertex tear glitches.
+
+## Curated Retro Skyboxes & Atmospheric Lighting
+
+The Look console features authentic atmospheric environments rendered onto 360° reflection backgrounds with matched ambient, key, and fill lighting rigs:
+
+- **Minimal Void** — classic pure dark void with neutral studio lighting
+- **Neon Grid 80s** — synthwave violet horizon, distant stars, magenta glow line, and perspective neon-cyan grid floor
+- **Sunset 90s** — deep indigo sky fading through magenta to golden horizon with iconic striped sun and water ripples
+- **Deep Space** — starfield with cyan and purple atmospheric nebula clouds and diffraction spike flares
+- **SGI Workstation** — classic 1995 Silicon Graphics IRIX desktop gradient and cool slate lighting
+- **Cyber CRT Green** — retro phosphor terminal glow with vertical scanlines and emerald lighting
+- **Custom Image Upload** — upload any background image (PNG/JPG); AVATAR automatically extracts the dominant color to tint the ambient lighting
+- **Light Tone** — granular ambient lighting tone multiplier ($0.2\times$ to $3.0\times$)
 
 ## SoundCloud Import
 
@@ -98,8 +112,10 @@ The Look console provides authentic analog tape and retro-display emulation:
 - **PS2 480p / 240p** — 6th-gen console line rasterization
 - **Tape Memory** & **Long Exposure** (ghost phosphor feedback)
 
-## Audio and tempo
+## Audio Safety and Playback
 
+- Built-in brickwall safety limiter (`DynamicsCompressorNode` with -1.0 dBFS threshold, 20:1 ratio, 1ms attack) and Butterworth filter damping ($Q = 0.7071$) protect ears and headphones from filter explosions or audio spikes.
+- Preview playback cleanly detects track conclusion without looping blast spikes, safely stopping audio and resetting the playhead.
 - File preview is analysed directly from decoded PCM.
 - Live input uses one managed Web Audio graph.
 - Microphone monitoring is off by default to prevent feedback.
@@ -108,7 +124,7 @@ The Look console provides authentic analog tape and retro-display emulation:
 
 ## Camera intelligence
 
-The old preset/group director has been replaced by a compact intent system:
+The camera director features an intelligent intent system:
 
 - shot: auto, hero, overhead, horizon, side, macro, underslung, or manual
 - movement: still, drift, orbit, pendulum, rail, or deterministic handheld
@@ -117,21 +133,14 @@ The old preset/group director has been replaced by a compact intent system:
 Auto framing understands the active visual family. Orbit the scene normally and
 the result becomes a manual anchor; “capture orbit” makes that intent explicit.
 Procedural and audio movement are reversible offsets on top of the real pose.
-Legacy preset/group configs migrate their first selected shot into the manual
-anchor.
 
-## Export
+## Export & Scene Sequence Playlist
 
-Exports use the same:
+Exports produce deterministic MP4 video using WebCodecs muxing:
 
-- FFT and stereo signal frame
-- field equations and history texture
-- modulation clock
-- camera shot and movement grammar
-- colour pipeline
-- Look Lab renderer
-
-Energy cues are detected once and turned into a deterministic timeline. `cinematic`, `types`, `generative`, and `random` modes use those cues for camera, view, or parameter changes. Generative randomness is seeded from the audio and metadata, so repeating an export with the same project produces the same visual decisions.
+- **Timeline Scene Sequence** — configure exactly which scenes the video will cycle through on musical cue points using the `🎞 edit scene sequence` popup modal. Select scenes with checkboxes and reorder them via drag-and-drop or up/down arrows. The export dynamically transitions between both wireframe geometric fields and spinning 3D physical artifacts!
+- Deterministic energy cues detected from audio PCM drive shot cuts and scene transitions.
+- Renders with the active skybox environment and atmospheric lighting rig.
 
 ## Project structure
 

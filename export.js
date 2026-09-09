@@ -9,6 +9,9 @@ import {
   renderer,
   scene,
   camera,
+  ambientLight,
+  dirLight,
+  fillLight,
   beginExportResize,
   endExportResize,
 } from './engine.js';
@@ -22,6 +25,7 @@ import { createSeededRandom } from './signal.js';
 import { RenderSession } from './render-session.js';
 import { signalField, FIELD_MODES } from './vis/field.js';
 import { getOrCreateItemScene } from './src/objects/item-scene.js';
+import { skyboxManager } from './src/look/skybox.js';
 import { lookRenderer } from './look.js';
 import { initOverlayCanvas, freeOverlayCanvas, compositeFrame } from './overlay.js';
 
@@ -117,16 +121,33 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
   const shots = CAMERA_SHOTS
     .map((shot) => shot.id)
     .filter((shot) => !['auto', 'manual'].includes(shot));
-  const triggers = ['off', 'static', 'ambient'].includes(project.cycleMode)
+
+  const ITEM_SCENE_IDS = ['cartridge', 'vinyl', 'cassette', 'floppy', 'custom'];
+  const sequence = (Array.isArray(project.exportSceneSequence) && project.exportSceneSequence.length > 0)
+    ? project.exportSceneSequence
+    : ['cartridge', 'sphere', 'vinyl', 'wave', 'cassette', 'cathedral', 'floppy', 'tunnel'];
+
+  const triggers = (['off', 'static'].includes(project.cycleMode) && sequence.length <= 1)
     ? []
     : findModeTriggers(channelL, audioBuffer.sampleRate, project);
   const random = createSeededRandom(seedFrom(audioBuffer, getTrackMeta()));
 
-  let currentModeIndex = Math.max(0, modes.indexOf(initialMode));
+  // Ensure skybox background & atmospheric lighting matches project configuration
+  if (skyboxManager) {
+    skyboxManager.setTarget(scene, { ambientLight, dirLight, fillLight });
+    skyboxManager.applyPreset(project.skyboxPreset || 'void', project.skyboxLightTone || 1.0);
+  }
+
+  let seqIndex = 0;
+  let currentSceneId = sequence.length > 1
+    ? sequence[0]
+    : (project.visualCategory === 'item' ? (project.activeItem || 'cartridge') : initialMode);
+  let isItemMode = ITEM_SCENE_IDS.includes(currentSceneId);
+  let currentMode = isItemMode ? 'sphere' : currentSceneId;
+  let currentModeIndex = Math.max(0, modes.indexOf(currentMode));
   let shotIndex = Math.max(0, shots.indexOf(project.cameraShot));
   let triggerIndex = 0;
-  let currentMode = modes[currentModeIndex];
-  if (['off', 'static'].includes(project.cycleMode)) project.cameraMotion = 'still';
+  if (['off', 'static'].includes(project.cycleMode) && sequence.length <= 1) project.cameraMotion = 'still';
 
   session.reset({ clearField: false });
   session.setMode(currentMode, { immediate: true });
@@ -136,11 +157,10 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
   lookRenderer.resetCadence();
 
   const itemScene = getOrCreateItemScene(scene);
-  const isItemMode = project.visualCategory === 'item';
   if (isItemMode && itemScene) {
     itemScene.setVisible(true);
     signalField.mesh.visible = false;
-    itemScene.setActiveItem(project.activeItem || 'cartridge');
+    itemScene.setActiveItem(currentSceneId);
   } else if (itemScene) {
     itemScene.setVisible(false);
     signalField.mesh.visible = true;
@@ -154,18 +174,36 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
 
     while (triggerIndex < triggers.length && time >= triggers[triggerIndex]) {
       triggerIndex++;
-      if (['cinematic', 'types', 'generative', 'random'].includes(project.cycleMode)) {
-        shotIndex = (shotIndex + 1) % shots.length;
-      }
-      if (['types', 'random'].includes(project.cycleMode)) {
+      if (sequence.length > 1) {
+        seqIndex = (seqIndex + 1) % sequence.length;
+        currentSceneId = sequence[seqIndex];
+        if (ITEM_SCENE_IDS.includes(currentSceneId)) {
+          isItemMode = true;
+          if (itemScene) {
+            itemScene.setVisible(true);
+            signalField.mesh.visible = false;
+            itemScene.setActiveItem(currentSceneId);
+          }
+        } else {
+          isItemMode = false;
+          if (itemScene) itemScene.setVisible(false);
+          signalField.mesh.visible = true;
+          currentMode = currentSceneId;
+          session.setMode(currentSceneId);
+        }
+      } else if (['types', 'random'].includes(project.cycleMode)) {
         currentModeIndex = (currentModeIndex + 1) % modes.length;
         currentMode = modes[currentModeIndex];
         session.setMode(currentMode);
       }
+
+      if (['cinematic', 'types', 'generative', 'random'].includes(project.cycleMode) || sequence.length > 1) {
+        shotIndex = (shotIndex + 1) % shots.length;
+      }
       if (['generative', 'random'].includes(project.cycleMode)) {
         randomiseSnapshot(project, random, false);
       }
-      logStatus(`Cue ${triggerIndex}/${triggers.length}: ${currentMode} · ${shots[shotIndex]}`);
+      logStatus(`Cue ${triggerIndex}/${triggers.length}: ${currentSceneId} · ${shots[shotIndex]}`);
     }
 
     const signalFrame = session.stepPcm(

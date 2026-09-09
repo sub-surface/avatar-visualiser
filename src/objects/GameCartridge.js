@@ -96,6 +96,7 @@ export function createGameCartridge(defaultTexture = null) {
 
 /** Fallback retro cartridge label */
 export function createFallbackLabel(title = 'AVATAR', subtitle = '64-BIT STEREO') {
+  if (typeof document === 'undefined' || !document.createElement) return null;
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;

@@ -68,6 +68,7 @@ export function createFloppyDisk(defaultTexture = null) {
 }
 
 export function createFallbackFloppyLabel(title = 'AVATAR', subtitle = '2HD · 1.44 MB') {
+  if (typeof document === 'undefined' || !document.createElement) return null;
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 384;

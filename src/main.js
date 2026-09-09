@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { renderer, scene, camera, fadeOut, fadeIn, setTheme, setColors } from '../engine.js';
+import { renderer, scene, camera, ambientLight, dirLight, fillLight, fadeOut, fadeIn, setTheme, setColors } from '../engine.js';
 import { P, getCols, loadParams, saveParams, bindRange, bindSelect, bindText, updateTrackDisplay } from '../params.js';
 import { PARAM_SCHEMA } from '../project-schema.js';
 import { initAudio, stopAudio, setupAnalyser, getAnalyserL, getAnalyserR, getFreqDataL, getFreqDataR, isAudioReady, getLPF, getGainNode, getAudioContext, getAudioDevices } from '../audio.js';
@@ -15,6 +15,8 @@ import { CameraRig, CameraDirector, shotPose, CAMERA_SHOTS, CAMERA_MOTIONS } fro
 import { getOrCreateItemScene, RETRO_ITEMS } from './objects/item-scene.js';
 import { SoundCloudImporter } from './ui/soundcloud-modal.js';
 import { vcrOsd } from './vhs/vcr-osd.js';
+import { skyboxManager } from './look/skybox.js';
+import { sequenceModal } from './ui/sequence-modal.js';
 
 const startupAudioUrl = new URL('../Startup.wav', import.meta.url).href;
 
@@ -162,11 +164,25 @@ export function startPreview(startTime = 0) {
 
   previewSource = previewCtx.createBufferSource();
   previewSource.buffer = previewBuffer;
-  previewSource.loop = true;
+  previewSource.loop = false;
+
+  const currentSource = previewSource;
+  previewSource.onended = () => {
+    if (previewSource === currentSource && isPreviewPlaying) {
+      const elapsed = previewCtx.currentTime - previewStartedAt;
+      if (elapsed >= (previewBuffer.duration - 0.2)) {
+        stopPreview();
+        previewPausedAt = 0;
+        if (previewScrub) previewScrub.value = 0;
+        vcrOsd.setPlayState('stop');
+        window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Playback finished.' }));
+      }
+    }
+  };
 
   setupAnalyser(previewCtx, { monitor: true });
   previewSource.connect(getLPF());
-  previewSource.start(0, startTime);
+  previewSource.start(0, Math.min(startTime, Math.max(0, previewBuffer.duration - 0.05)));
   previewStartedAt = previewCtx.currentTime - startTime;
   isPreviewPlaying = true;
   if (topPreviewBtn) topPreviewBtn.textContent = 'pause';
@@ -364,18 +380,27 @@ function animate(timestamp) {
   let signalAdvanced = false;
 
   if (isPreviewPlaying && previewBuffer) {
-    const cur = (previewCtx.currentTime - previewStartedAt) % previewBuffer.duration;
-    if (previewScrub) previewScrub.value = cur / previewBuffer.duration;
-    vcrOsd.updateTime(cur);
-    signalTime = cur;
-    const left = previewBuffer.getChannelData(0);
-    const right = previewBuffer.numberOfChannels > 1 ? previewBuffer.getChannelData(1) : left;
-    signalFrame = previewSession.stepPcm(left, right, cur * previewBuffer.sampleRate, {
-      dt,
-      time: cur,
-      sampleRate: previewBuffer.sampleRate,
-    });
-    signalAdvanced = true;
+    const elapsed = previewCtx.currentTime - previewStartedAt;
+    if (elapsed >= previewBuffer.duration) {
+      stopPreview();
+      previewPausedAt = 0;
+      if (previewScrub) previewScrub.value = 0;
+      vcrOsd.setPlayState('stop');
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Playback finished.' }));
+    } else {
+      const cur = Math.max(0, Math.min(previewBuffer.duration, elapsed));
+      if (previewScrub) previewScrub.value = cur / previewBuffer.duration;
+      vcrOsd.updateTime(cur);
+      signalTime = cur;
+      const left = previewBuffer.getChannelData(0);
+      const right = previewBuffer.numberOfChannels > 1 ? previewBuffer.getChannelData(1) : left;
+      signalFrame = previewSession.stepPcm(left, right, cur * previewBuffer.sampleRate, {
+        dt,
+        time: cur,
+        sampleRate: previewBuffer.sampleRate,
+      });
+      signalAdvanced = true;
+    }
   } else if (isAudioReady()) {
     const aL = getAnalyserL();
     const aR = getAnalyserR();
@@ -394,7 +419,10 @@ function animate(timestamp) {
   if (signalFrame) {
     if (signalAdvanced) bpmTick(dt, signalFrame.env.kick);
     const lpf = getLPF();
-    if (lpf) lpf.frequency.setTargetAtTime(signalFrame.effectiveCutoff, lpf.context.currentTime, 0.03);
+    if (lpf && Number.isFinite(signalFrame.effectiveCutoff)) {
+      const safeCutoff = Math.max(20, Math.min(18000, signalFrame.effectiveCutoff));
+      lpf.frequency.setTargetAtTime(safeCutoff, lpf.context.currentTime, 0.03);
+    }
 
     // Audio-reactive UI accent (reusing cached THREE.Color, no per-frame allocations)
     if (P.uiReactivity > 0) {
@@ -448,6 +476,15 @@ export function initApp() {
 
   // Update VCR OSD visibility
   vcrOsd.setVisible(!!P.vhsOsd);
+
+  // Atmospheric Skybox Initialization
+  skyboxManager.setTarget(scene, { ambientLight, dirLight, fillLight });
+  skyboxManager.applyPreset(P.skyboxPreset || 'void', P.skyboxLightTone || 1.0);
+  const rowCustomSkybox = document.getElementById('rowCustomSkybox');
+  if (rowCustomSkybox) rowCustomSkybox.style.display = (P.skyboxPreset === 'custom') ? 'flex' : 'none';
+
+  // Export Scene Sequence Modal Initialization
+  sequenceModal.init();
 
   // Buttons
   document.getElementById('btnSoundCloud')?.addEventListener('click', () => soundcloudModal.open());
@@ -517,6 +554,80 @@ export function initApp() {
   bindRange('pScanlines', 'vScanlines', 'lookScanlines');
   bindRange('pChroma', 'vChroma', 'lookChroma');
   bindRange('pNoise', 'vNoise', 'lookNoise');
+
+  // Atmospheric Skybox Controls
+  bindSelect('pSkyboxPreset', null, 'skyboxPreset', (preset) => {
+    skyboxManager.applyPreset(preset, P.skyboxLightTone);
+    const rowCustom = document.getElementById('rowCustomSkybox');
+    if (rowCustom) rowCustom.style.display = (preset === 'custom') ? 'flex' : 'none';
+  });
+
+  bindRange('pSkyboxLightTone', 'vSkyboxLightTone', 'skyboxLightTone', (tone) => {
+    skyboxManager.setLightTone(tone);
+  });
+
+  const btnUploadSkybox = document.getElementById('btnUploadSkybox');
+  const skyboxImgInput = document.getElementById('skyboxImgInput');
+  if (btnUploadSkybox && skyboxImgInput) {
+    btnUploadSkybox.addEventListener('click', () => skyboxImgInput.click());
+    skyboxImgInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      skyboxImgInput.value = '';
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Loading custom skybox...' }));
+      try {
+        await skyboxManager.loadCustomImage(file);
+        P.skyboxPreset = 'custom';
+        const presetSelect = document.getElementById('pSkyboxPreset');
+        if (presetSelect) presetSelect.value = 'custom';
+        const rowCustom = document.getElementById('rowCustomSkybox');
+        if (rowCustom) rowCustom.style.display = 'flex';
+        saveParams();
+        window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Custom skybox loaded.' }));
+      } catch (err) {
+        window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Failed to load skybox image.' }));
+      }
+    });
+  }
+
+  // 3D Asset Orientation Sliders & Presets
+  bindRange('pItemRotX', 'vItemRotX', 'itemRotX');
+  bindRange('pItemRotY', 'vItemRotY', 'itemRotY');
+  bindRange('pItemRotZ', 'vItemRotZ', 'itemRotZ');
+
+  const updateRotDisplays = () => {
+    const rx = document.getElementById('pItemRotX'); if (rx) rx.value = P.itemRotX;
+    const lx = document.getElementById('vItemRotX'); if (lx) lx.textContent = `${P.itemRotX}°`;
+    const ry = document.getElementById('pItemRotY'); if (ry) ry.value = P.itemRotY;
+    const ly = document.getElementById('vItemRotY'); if (ly) ly.textContent = `${P.itemRotY}°`;
+    const rz = document.getElementById('pItemRotZ'); if (rz) rz.value = P.itemRotZ;
+    const lz = document.getElementById('vItemRotZ'); if (lz) lz.textContent = `${P.itemRotZ}°`;
+    saveParams();
+  };
+
+  document.getElementById('btnOrientUpright')?.addEventListener('click', () => {
+    P.itemRotX = 90;
+    P.itemRotY = 0;
+    P.itemRotZ = 0;
+    updateRotDisplays();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Asset oriented upright (+90°)' }));
+  });
+
+  document.getElementById('btnOrientFlat')?.addEventListener('click', () => {
+    P.itemRotX = -90;
+    P.itemRotY = 0;
+    P.itemRotZ = 0;
+    updateRotDisplays();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Asset laid flat (-90°)' }));
+  });
+
+  document.getElementById('btnOrientReset')?.addEventListener('click', () => {
+    P.itemRotX = 0;
+    P.itemRotY = 0;
+    P.itemRotZ = 0;
+    updateRotDisplays();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Asset orientation reset (0°)' }));
+  });
 
   // Camera Director Controls & Telemetry
   document.querySelectorAll('.cam-shot-btn').forEach((btn) => {

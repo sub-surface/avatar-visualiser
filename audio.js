@@ -57,11 +57,20 @@ export function setupAnalyser(context, { monitor = true, owned = false } = {}) {
   lowPassFilter = context.createBiquadFilter();
   lowPassFilter.type = 'lowpass';
   lowPassFilter.frequency.value = P.lpfCutoff;
+  lowPassFilter.Q.value = 0.7071; // Critical Butterworth damping prevents IIR filter explosions
 
   splitter = context.createChannelSplitter(2);
   merger = context.createChannelMerger(2);
   monitorGain = context.createGain();
   monitorGain.gain.value = monitor ? 1 : 0;
+
+  // Brickwall safety limiter protects headphones/ears from digital spikes/transient clicks
+  const safetyLimiter = context.createDynamicsCompressor();
+  safetyLimiter.threshold.value = -1.0;
+  safetyLimiter.knee.value = 0.0;
+  safetyLimiter.ratio.value = 20.0;
+  safetyLimiter.attack.value = 0.001;
+  safetyLimiter.release.value = 0.05;
 
   analyserL = context.createAnalyser();
   analyserR = context.createAnalyser();
@@ -76,7 +85,8 @@ export function setupAnalyser(context, { monitor = true, owned = false } = {}) {
   analyserL.connect(merger, 0, 0);
   analyserR.connect(merger, 0, 1);
   merger.connect(monitorGain);
-  monitorGain.connect(context.destination);
+  monitorGain.connect(safetyLimiter);
+  safetyLimiter.connect(context.destination);
 
   freqDataL = new Uint8Array(analyserL.frequencyBinCount);
   freqDataR = new Uint8Array(analyserR.frequencyBinCount);

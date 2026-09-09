@@ -566,3 +566,133 @@ select.c-select option {
   gap: 8px;
   margin-top: 6px;
 }
+
+/* ── Sequence Playlist Modal ───────────────────────────────── */
+.sequence-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+.seq-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.seq-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--s-mid);
+}
+
+.seq-item.active-item {
+  border-left: 3px solid var(--vcr-cyan);
+}
+
+.seq-item.disabled-item {
+  opacity: 0.55;
+  border-left: 3px solid transparent;
+}
+
+.seq-drag-handle {
+  cursor: grab;
+  color: var(--s-mid);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.seq-drag-handle:active {
+  cursor: grabbing;
+}
+
+.seq-rank {
+  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  color: var(--vcr-cyan);
+  min-width: 14px;
+  text-align: center;
+}
+
+.seq-check {
+  accent-color: var(--vcr-green);
+  cursor: pointer;
+  width: 13px;
+  height: 13px;
+}
+
+.seq-label {
+  flex: 1;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--s-hi);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seq-badge {
+  font-size: 0.52rem;
+  font-family: var(--font-mono);
+  padding: 2px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-item {
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--vcr-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+}
+
+.badge-field {
+  background: rgba(176, 144, 200, 0.15);
+  color: #cda8e6;
+  border: 1px solid rgba(176, 144, 200, 0.35);
+}
+
+.seq-btns {
+  display: flex;
+  gap: 2px;
+}
+
+.seq-btn-arrow {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--s-mid);
+  font-size: 0.5rem;
+  padding: 2px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.seq-btn-arrow:hover:not(:disabled) {
+  border-color: var(--s-hi);
+  color: var(--s-hi);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.seq-btn-arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.seq-item.is-dragging {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.seq-item.drag-over {
+  border-top: 2px solid var(--vcr-cyan);
+  background: rgba(0, 229, 255, 0.08);
+}

@@ -124,6 +124,15 @@ export class ItemSceneManager {
           }
 
           const modelScene = collada.scene;
+
+          // If model was modeled flat on the floor (height Y significantly less than depth Z and width X),
+          // default it to standing vertical facing forward (+Z) like the other retro items
+          const rawBox = new THREE.Box3().setFromObject(modelScene);
+          const rawSize = rawBox.getSize(new THREE.Vector3());
+          if (rawSize.y < rawSize.z * 0.75 && rawSize.y < rawSize.x * 0.75) {
+            modelScene.rotation.x = Math.PI / 2;
+          }
+
           const box = new THREE.Box3().setFromObject(modelScene);
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
@@ -229,25 +238,28 @@ export class ItemSceneManager {
       this.spinAngle += speed * 1.5 * dt;
     }
 
-    // Base rotation
-    group.rotation.y = this.spinAngle;
+    // Manual rotation offsets (in degrees from user menu)
+    const degToRad = Math.PI / 180;
+    const manualRotX = (project.itemRotX ?? 0) * degToRad;
+    const manualRotY = (project.itemRotY ?? 0) * degToRad;
+    const manualRotZ = (project.itemRotZ ?? 0) * degToRad;
 
-    // Audio-reactive wobble / tilt
+    // Use Euler order 'YXZ' so pitch (X) and roll (Z) smoothly tilt the vertically spinning object
+    group.rotation.order = 'YXZ';
+
+    // Base rotation + manual offsets
+    group.rotation.y = manualRotY + this.spinAngle;
+
+    // Audio-reactive wobble / tilt + manual pitch & roll
     const wobbleAmt = project.itemWobble ?? 0.5;
     const wobblePitch = Math.sin(time * 2.2) * 0.12 * wobbleAmt + (kick * 0.15 * wobbleAmt);
     const wobbleRoll = Math.cos(time * 1.8) * 0.10 * wobbleAmt + (sub * 0.12 * wobbleAmt);
-    group.rotation.x = wobblePitch;
-    group.rotation.z = wobbleRoll;
+    group.rotation.x = manualRotX + wobblePitch;
+    group.rotation.z = manualRotZ + wobbleRoll;
 
     // Rhythmic bounce on kick hits
     const bounce = kick * 0.3 * wobbleAmt;
     group.position.y = bounce;
-
-    // Vinyl/Cassette specific animations
-    if (this.activeId === 'cassette' && currentItem.spoolL && currentItem.spoolR) {
-      currentItem.spoolL.rotation.z += (speed + kick * 2) * dt * 4;
-      currentItem.spoolR.rotation.z += (speed + kick * 2) * dt * 4;
-    }
 
     // Audio-reactive Glitch Engine
     const glitchSetting = project.itemGlitch ?? 0.3;
