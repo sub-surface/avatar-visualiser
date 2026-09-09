@@ -258,8 +258,8 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
 }
 
 const progressElement = document.getElementById('progress');
-const topLoadButton = document.getElementById('topLoadBtn');
-const topRenderButton = document.getElementById('topRenderBtn');
+const topLoadButton = document.getElementById('btnLoadFile');
+const topRenderButton = document.getElementById('btnExportMp4');
 
 export let isExporting = false;
 
@@ -288,8 +288,8 @@ export async function startExport(audioFile, visualMode) {
   const fps = project.exportPreset === 'high' || project.exportPreset === 'lossless' ? 60 : 30;
   let writable = null;
   isExporting = true;
-  topLoadButton.disabled = true;
-  topRenderButton.disabled = true;
+  if (topLoadButton) topLoadButton.disabled = true;
+  if (topRenderButton) topRenderButton.disabled = true;
 
   try {
     await document.fonts.ready;
@@ -375,8 +375,8 @@ export async function startExport(audioFile, visualMode) {
     lookRenderer.clearFeedback();
     lookRenderer.resetCadence();
     isExporting = false;
-    topRenderButton.disabled = false;
-    topLoadButton.disabled = false;
+    if (topRenderButton) topRenderButton.disabled = false;
+    if (topLoadButton) topLoadButton.disabled = false;
     setTimeDisplay(0, 0);
     getOrCreateItemScene(scene)?.setVisible(P.visualCategory === 'item');
     signalField.mesh.visible = P.visualCategory !== 'item';

@@ -108,7 +108,7 @@
   <header id="studioTopDeck">
     <!-- Island Left: Track Metadata -->
     <div class="deck-island">
-      <div class="track-badge">
+      <div class="track-badge" id="deckTrackBadge" style="cursor:pointer;" title="Click to edit track identity & title card">
         <div class="track-title" id="deckTrackTitle">AVATAR VISUALISER</div>
         <div class="track-sub" id="deckTrackArtist">SUB-SURFACE TECHNOLOGIES</div>
       </div>
@@ -363,6 +363,32 @@
 
       <!-- Tab 4: Export & Video Format -->
       <div class="console-body" id="cTabMaster">
+        <div class="section-tag">Track Identity & Title Card</div>
+        <div class="c-row">
+          <label>title</label>
+          <input type="text" class="c-input" id="pTitle" placeholder="e.g. Okinawa">
+        </div>
+        <div class="c-row">
+          <label>artist</label>
+          <input type="text" class="c-input" id="pArtist" placeholder="e.g. MØRVIDD">
+        </div>
+        <div class="c-row">
+          <label>bpm</label>
+          <input type="text" class="c-input" id="pBpm" placeholder="e.g. 74">
+        </div>
+        <div class="c-row">
+          <label>genre</label>
+          <input type="text" class="c-input" id="pGenre" placeholder="e.g. Ambient">
+        </div>
+        <div class="c-row">
+          <label>title card</label>
+          <select class="c-select" id="pExportTitleCard">
+            <option value="top" selected>top center</option>
+            <option value="bottom">bottom center</option>
+            <option value="off">disabled / off</option>
+          </select>
+        </div>
+
         <div class="section-tag">Aspect Ratio</div>
         <div class="c-row">
           <label>aspect</label>

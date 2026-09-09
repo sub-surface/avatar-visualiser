@@ -52,100 +52,72 @@ export function compositeFrame(glCanvas, meta, time, duration, visMode) {
   // 1. Draw the WebGL frame
   ctx.drawImage(glCanvas, 0, 0, w, h);
 
-  // 2. Draw text overlay if there's any metadata to show
-  if (!meta.artist && !meta.title && !meta.bpm && !meta.genre) return _compCanvas;
+  // 2. Draw text overlay if enabled and there is metadata to show
+  const titleCardMode = meta.titleCard || 'top';
+  const hasMeta = Boolean(meta.artist || meta.title || meta.bpm || meta.genre);
 
-  const scale = h / 1080;
-  let cx = w / 2;
-  let y  = h * 0.10;
-  let align = 'center';
-  const isLowRes = h < 600;
+  if (titleCardMode !== 'off' && hasMeta) {
+    const scale = Math.max(0.45, h / 1080);
+    const cx = w / 2;
+    let y = (titleCardMode === 'bottom') ? Math.round(h * 0.78) : Math.round(h * 0.12);
 
-  // Layout overrides for export
-  if (visMode === 'wave') {
-    y = h * 0.82; // Move to bottom
-  } else if (visMode === 'sphere' && w > h) {
-    // Side-by-side layout: text left, visualiser right
-    cx = w * 0.08; 
-    y  = h * 0.45;
-    align = 'left';
-  }
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
 
-  const drawText = (txt, x, y, font, style) => {
-    ctx.font = font;
-    ctx.fillStyle = style;
-    ctx.textAlign = align;
-    
-    if (isLowRes) {
-      // Punchy shadow for low-res legibility
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = 4 * (h/480);
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
+    // Crisp contrast shadow for legibility over 3D visuals
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = Math.max(4, Math.round(8 * scale));
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 2;
+
+    // 1. Artist (clean uppercase spaced monospace)
+    if (meta.artist) {
+      const artistSize = Math.max(10, Math.round(13 * scale));
+      ctx.font = `500 ${artistSize}px "DM Mono", "Courier New", monospace`;
+      ctx.fillStyle = 'rgba(230, 235, 245, 0.95)';
+      const trackedArtist = meta.artist.toUpperCase().split('').join(' ');
+      ctx.fillText(trackedArtist, cx, y);
+      y += Math.max(16, Math.round(22 * scale));
     }
-    
-    ctx.fillText(txt, x, y);
-    
-    // Reset shadow
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-  };
 
-  const monoSmall = `${isLowRes ? '400' : '300'} ${Math.round(13 * (isLowRes ? scale * 1.5 : scale))}px "DM Mono", "Courier New", monospace`;
-  const serifLarge = `italic ${isLowRes ? '500' : '400'} ${Math.round(34 * (isLowRes ? scale * 1.5 : scale))}px "DM Serif Display", Georgia, serif`;
-  const monoTiny = `${isLowRes ? '400' : '300'} ${Math.round(11 * (isLowRes ? scale * 1.5 : scale))}px "DM Mono", "Courier New", monospace`;
+    // 2. Title (prominent italic serif)
+    let titleWidth = 0;
+    if (meta.title) {
+      const titleSize = Math.max(22, Math.round(42 * scale));
+      ctx.font = `italic 400 ${titleSize}px "DM Serif Display", Georgia, serif`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(meta.title, cx, y + titleSize * 0.85);
+      titleWidth = ctx.measureText(meta.title).width;
+      y += titleSize + Math.max(8, Math.round(14 * scale));
+    }
 
-  // Colors: use current UI palette accent, fall back to defaults
-  const accentRgb = getComputedStyle(document.documentElement)
-    .getPropertyValue('--ui-accent-rgb').trim() || '162, 182, 192';
-  const titleAlpha  = isLowRes ? 0.95 : 0.85;
-  const artistAlpha = isLowRes ? 0.95 : 0.80;
-  const ruleAlpha   = isLowRes ? 0.40 : 0.20;
-  const pillAlpha   = isLowRes ? 0.70 : 0.45;
-  const colMauve = `rgba(${accentRgb}, ${artistAlpha})`;
-  const colSlate = `rgba(${accentRgb}, ${titleAlpha})`;
-  const colRule  = `rgba(${accentRgb}, ${ruleAlpha})`;
-  const colPills = `rgba(${accentRgb}, ${pillAlpha})`;
-
-  // Artist
-  if (meta.artist) {
-    drawText(meta.artist.toUpperCase(), cx, y, monoSmall, colMauve);
-    y += Math.round(20 * scale);
-  }
-
-  // Title
-  if (meta.title) {
-    const titleSize = Math.round(34 * (isLowRes ? scale * 1.5 : scale));
-    drawText(meta.title, cx, y + titleSize, serifLarge, colSlate);
-    y += titleSize + Math.round(14 * scale);
-  }
-
-  // Hairline rule
-  if (meta.title || meta.artist) {
-    const ruleW = Math.round(100 * (isLowRes ? scale * 1.5 : scale));
-    ctx.strokeStyle = colRule;
-    ctx.lineWidth   = isLowRes ? 2 : 1;
-    ctx.beginPath();
-    if (align === 'center') {
+    // 3. Hairline Underline Rule
+    if (meta.title || meta.artist) {
+      const ruleW = Math.max(160 * scale, titleWidth + 36 * scale);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)';
+      ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
+      ctx.beginPath();
       ctx.moveTo(cx - ruleW / 2, y);
       ctx.lineTo(cx + ruleW / 2, y);
-    } else {
-      ctx.moveTo(cx, y);
-      ctx.lineTo(cx + ruleW, y);
+      ctx.stroke();
+      y += Math.max(14, Math.round(20 * scale));
     }
-    ctx.stroke();
-    y += Math.round(22 * scale);
-  }
 
-  // Metadata pills
-  const pills = [];
-  if (time !== undefined && duration) pills.push(`${fmtTime(time)} / ${fmtTime(duration)}`);
-  if (meta.bpm)   pills.push(`${meta.bpm} bpm`);
-  if (meta.genre) pills.push(meta.genre);
-  if (pills.length) {
-    drawText(pills.join('  ·  '), cx, y, monoTiny, colPills);
+    // 4. Metadata Pills: Playhead / Duration · BPM · Genre
+    const pills = [];
+    if (time !== undefined && duration) pills.push(`${fmtTime(time)} / ${fmtTime(duration)}`);
+    if (meta.bpm) pills.push(`${meta.bpm} bpm`);
+    if (meta.genre) pills.push(meta.genre);
+
+    if (pills.length) {
+      const pillSize = Math.max(9, Math.round(12 * scale));
+      ctx.font = `400 ${pillSize}px "DM Mono", "Courier New", monospace`;
+      ctx.fillStyle = 'rgba(215, 225, 238, 0.88)';
+      ctx.fillText(pills.join('   ·   '), cx, y);
+    }
+
+    ctx.restore();
   }
 
   // Authentic VCR OSD HUD overlay if enabled

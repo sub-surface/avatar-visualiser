@@ -333,6 +333,22 @@ select.c-select option {
   color: #fff;
 }
 
+input.c-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--s-hi);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  border: 1px solid var(--panel-border);
+  padding: 3px 6px;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input.c-input:focus {
+  border-color: var(--vcr-cyan);
+}
+
 /* 3D Asset Image Dropzone */
 .image-dropzone {
   border: 1px dashed var(--panel-border);

@@ -207,11 +207,27 @@ export async function loadAudioBuffer(fileOrBlob, filename = 'Audio Track') {
     const ab = await fileOrBlob.arrayBuffer();
     previewBuffer = await previewCtx.decodeAudioData(ab);
     
-    if (trackTitleEl && (!P.title || P.title === 'AVATAR VISUALISER')) {
-      const cleanName = filename.replace(/\.[^.]+$/, '');
+    const cleanName = filename.replace(/\.[^.]+$/, '');
+    const dashMatch = cleanName.match(/^([^\-]+)\s*-\s*(.+)$/);
+    if (dashMatch) {
+      const parsedArtist = dashMatch[1].trim();
+      const parsedTitle = dashMatch[2].trim();
+      P.artist = parsedArtist;
+      P.title = parsedTitle;
+      const artistInput = document.getElementById('pArtist');
+      const titleInput = document.getElementById('pTitle');
+      if (artistInput) artistInput.value = parsedArtist;
+      if (titleInput) titleInput.value = parsedTitle;
+      if (trackArtistEl) trackArtistEl.textContent = parsedArtist;
+      if (trackTitleEl) trackTitleEl.textContent = parsedTitle;
+    } else {
       P.title = cleanName;
-      trackTitleEl.textContent = cleanName;
+      const titleInput = document.getElementById('pTitle');
+      if (titleInput) titleInput.value = cleanName;
+      if (trackTitleEl) trackTitleEl.textContent = cleanName;
     }
+    updateTrackDisplay();
+    saveParams();
     topRenderBtn.disabled = false;
     topPreviewBtn.disabled = false;
     topRenderBtn.classList.add('btn-active-highlight');
@@ -686,6 +702,27 @@ export function initApp() {
     P.vhsOsd = e.target.checked;
     vcrOsd.setVisible(P.vhsOsd);
     saveParams();
+  });
+
+  // Track Identity & Title Card bindings
+  bindText('pTitle', () => updateTrackDisplay());
+  bindText('pArtist', () => updateTrackDisplay());
+  bindText('pBpm', () => updateTrackDisplay());
+  bindText('pGenre', () => updateTrackDisplay());
+  bindSelect('pExportTitleCard', null, 'exportTitleCard');
+  bindSelect('pExportAspect', null, 'exportAspect');
+  bindSelect('pExportOrient', null, 'exportOrientation');
+  bindSelect('pExportPreset', null, 'exportPreset');
+
+  // Deck track badge click: open Console -> Export / Track Identity Tab & focus pTitle
+  const deckTrackBadge = document.getElementById('deckTrackBadge');
+  deckTrackBadge?.addEventListener('click', () => {
+    consolePanel?.classList.add('open');
+    consoleToggle?.classList.add('btn-active-highlight');
+    document.querySelectorAll('.console-tab, .console-body').forEach(el => el.classList.remove('active'));
+    document.querySelector('.console-tab[data-target="cTabMaster"]')?.classList.add('active');
+    document.getElementById('cTabMaster')?.classList.add('active');
+    document.getElementById('pTitle')?.focus();
   });
 
   // Export Trigger

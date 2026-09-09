@@ -97,6 +97,7 @@ export const PARAM_SCHEMA = Object.freeze({
   exportPreset: choice('standard', ['standard', 'high', 'lossless', 'lofi']),
   exportOrientation: choice('horizontal', ['horizontal', 'vertical']),
   exportAspect: choice('16:9', ['16:9', '4:3']),
+  exportTitleCard: choice('top', ['top', 'bottom', 'off']),
   fastBoot: { type: 'boolean', default: false, update: 'hot' },
 
   visualCategory: choice('field', ['field', 'item']),
@@ -189,6 +190,9 @@ export function createDefaultProject() {
   delete project.cameraAnchor.id;
   delete project.cameraAnchor.name;
   project.exportSceneSequence = ['cartridge', 'sphere', 'vinyl', 'wave', 'cassette', 'cathedral', 'floppy', 'tunnel'];
+  project.title = '';
+  project.artist = '';
+  project.genre = '';
   return project;
 }
 

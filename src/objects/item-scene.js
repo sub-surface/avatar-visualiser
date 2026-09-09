@@ -106,7 +106,17 @@ export class ItemSceneManager {
 
   async loadDaeModel(fileOrUrl, filename = 'custom.dae') {
     const { ColladaLoader } = await import('three/addons/loaders/ColladaLoader.js');
-    const loader = new ColladaLoader();
+    const loadingManager = new THREE.LoadingManager();
+    // Neutral transparent 1x1 png fallback prevents ERR_FILE_NOT_FOUND when external texture files are omitted
+    const fallbackPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+    loadingManager.setURLModifier((itemUrl) => {
+      if (itemUrl.startsWith('blob:') && (itemUrl.endsWith('.png') || itemUrl.endsWith('.jpg') || itemUrl.endsWith('.jpeg') || itemUrl.endsWith('.tga') || itemUrl.endsWith('.bmp'))) {
+        return fallbackPixel;
+      }
+      return itemUrl;
+    });
+
+    const loader = new ColladaLoader(loadingManager);
     const isBlob = typeof fileOrUrl !== 'string';
     const url = isBlob ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
 
@@ -158,11 +168,21 @@ export class ItemSceneManager {
             blending: THREE.AdditiveBlending,
           });
 
+          // Ensure every mesh has solid standard material if missing textures
+          const defaultMat = new THREE.MeshStandardMaterial({
+            color: 0xd8d8d8,
+            roughness: 0.55,
+            metalness: 0.25,
+          });
+
           modelScene.traverse((child) => {
-            if (child.isMesh && child.geometry) {
-              const wireGeo = new THREE.WireframeGeometry(child.geometry);
-              const wireMesh = new THREE.LineSegments(wireGeo, wireMat);
-              child.add(wireMesh);
+            if (child.isMesh) {
+              if (!child.material) child.material = defaultMat;
+              if (child.geometry) {
+                const wireGeo = new THREE.WireframeGeometry(child.geometry);
+                const wireMesh = new THREE.LineSegments(wireGeo, wireMat);
+                child.add(wireMesh);
+              }
             }
           });
 

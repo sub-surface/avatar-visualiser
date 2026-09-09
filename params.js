@@ -18,7 +18,7 @@ function element(id) {
 
 function setInput(id, value) {
   const target = element(id);
-  if (target) target.value = value;
+  if (target) target.value = (value !== undefined && value !== null) ? value : '';
 }
 
 function setLabel(id, value) {
@@ -82,6 +82,11 @@ function syncControls() {
     ExportPreset: 'exportPreset',
     ExportOrient: 'exportOrientation',
     ExportAspect: 'exportAspect',
+    ExportTitleCard: 'exportTitleCard',
+    Title: 'title',
+    Artist: 'artist',
+    Bpm: 'bpm',
+    Genre: 'genre',
     LookProfile: 'lookProfile',
     LookPixelSnap: 'lookPixelSnap',
     LookColorBits: 'lookColorBits',
@@ -226,6 +231,12 @@ export function bindText(id, callback) {
     if (id === 'pBpm') {
       const value = Number(input.value);
       if (Number.isFinite(value)) P.bpm = Math.max(20, Math.min(400, value));
+    } else if (id === 'pTitle') {
+      P.title = input.value;
+    } else if (id === 'pArtist') {
+      P.artist = input.value;
+    } else if (id === 'pGenre') {
+      P.genre = input.value;
     }
     callback?.();
     saveParams();
@@ -278,10 +289,10 @@ export function setTimeDisplay(current, total) {
 }
 
 export function getTrackMeta() {
-  return {
-    title: element('pTitle')?.value.trim() ?? '',
-    artist: element('pArtist')?.value.trim() ?? '',
-    bpm: element('pBpm')?.value.trim() ?? '',
-    genre: element('pGenre')?.value.trim() ?? '',
-  };
+  const title = element('pTitle')?.value?.trim() || P.title || '';
+  const artist = element('pArtist')?.value?.trim() || P.artist || '';
+  const bpm = element('pBpm')?.value?.trim() || (P.bpm ? String(P.bpm) : '');
+  const genre = element('pGenre')?.value?.trim() || P.genre || '';
+  const titleCard = element('pExportTitleCard')?.value || P.exportTitleCard || 'top';
+  return { title, artist, bpm, genre, titleCard };
 }

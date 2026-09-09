@@ -65,4 +65,20 @@ describe('project schema', () => {
     });
     expect(project.cameraAnchor).toEqual({ az: 720, el: -89, dist: 0.25, lookY: 20 });
   });
+
+  it('validates track identity fields and exportTitleCard option', () => {
+    const { project } = sanitizeProject({
+      title: 'Okinawa',
+      artist: 'MØRVIDD',
+      genre: 'Ambient Jungle',
+      exportTitleCard: 'bottom',
+    });
+    expect(project.title).toBe('Okinawa');
+    expect(project.artist).toBe('MØRVIDD');
+    expect(project.genre).toBe('Ambient Jungle');
+    expect(project.exportTitleCard).toBe('bottom');
+
+    const invalid = sanitizeProject({ exportTitleCard: 'unsupported' });
+    expect(invalid.project.exportTitleCard).toBe('top');
+  });
 });
