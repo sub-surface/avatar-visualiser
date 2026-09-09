@@ -85,6 +85,7 @@ export function syncControls() {
     ExportOrient: 'exportOrientation',
     ExportAspect: 'exportAspect',
     ExportTitleCard: 'exportTitleCard',
+    AlbumTracklistStyle: 'albumTracklistStyle',
     Title: 'title',
     Artist: 'artist',
     Bpm: 'bpm',
@@ -162,6 +163,9 @@ export function saveParams() {
     isLight: document.body.classList.contains('light-mode'),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('avatar-params-saved', { detail: P }));
+  }
 }
 
 export function loadParams(rebuildVisual) {
@@ -298,5 +302,6 @@ export function getTrackMeta() {
   const bpm = element('pBpm')?.value?.trim() || (P.bpm ? String(P.bpm) : '');
   const genre = element('pGenre')?.value?.trim() || P.genre || '';
   const titleCard = element('pExportTitleCard')?.value || P.exportTitleCard || 'top';
-  return { title, artist, bpm, genre, titleCard };
+  const albumTracklistStyle = element('pAlbumTracklistStyle')?.value || P.albumTracklistStyle || 'vcr-osd';
+  return { title, artist, bpm, genre, titleCard, albumTracklistStyle };
 }

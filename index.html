@@ -127,6 +127,7 @@
       </div>
       <button class="chrome" id="btnLoadFile" title="Drop or load local audio file">drop / load</button>
       <button class="chrome btn-soundcloud" id="btnSoundCloud" title="Import track & artwork directly from SoundCloud">☁ soundcloud</button>
+      <button class="chrome" id="btnTopAlbumSuite" title="Open Album Playlist & Continuous Visualizer Suite">💿 album</button>
     </div>
 
     <!-- Island Right: Live Status -->
@@ -489,6 +490,20 @@
           </select>
         </div>
 
+        <div class="section-tag">Album Playlist Suite & Continuous Export</div>
+        <div class="c-row">
+          <label for="pAlbumTracklistStyle">tracklist style</label>
+          <select class="c-select" id="pAlbumTracklistStyle">
+            <option value="vcr-osd" selected>vcr osd (phosphor green)</option>
+            <option value="minimal">minimal studio (clean typography)</option>
+            <option value="off">off (no tracklist)</option>
+          </select>
+        </div>
+        <div class="c-row" style="margin-bottom:2px;">
+          <button class="chrome" id="btnOpenAlbumSuite" style="width:100%; border-color:var(--vcr-amber); color:var(--vcr-amber); font-size:0.62rem;" title="Manage multi-track album playlist and continuous visualizer">💿 album playlist suite</button>
+        </div>
+        <div id="albumSuiteSummary" style="font-size:0.54rem; color:var(--s-mid); text-align:center; margin-bottom:6px;">Single track mode (no album playlist)</div>
+
         <div class="section-tag">Timeline Scene Sequence</div>
         <div class="c-row" style="margin-bottom:2px;">
           <button class="chrome" id="btnEditSceneSequence" style="width:100%; border-color:var(--vcr-cyan); color:var(--vcr-cyan); font-size:0.62rem;" title="Configure which scenes the video will cycle through">🎞 edit scene sequence</button>
@@ -609,6 +624,40 @@
       </div>
     </div>
   </div>
+
+  <!-- ── MODAL: Album Playlist & Multi-Track Suite ───────────── -->
+  <div class="modal-scrim" id="albumModal" style="display:none;">
+    <div class="modal-box" style="max-width:580px; width:92vw;">
+      <div class="modal-head">
+        <div class="modal-title">Album Playlist Suite</div>
+        <button class="chrome" id="albumBtnClose">✕</button>
+      </div>
+      <div style="font-size:0.58rem; color:var(--s-mid); line-height:1.4;">
+        Multi-track continuous album visualizer suite. Each track maintains its own isolated visual parameters, scene type, colors, skybox, and camera choreography.
+      </div>
+      <div class="image-dropzone" id="albumDropzone" style="min-height:54px; cursor:pointer;" title="Click or drop audio files here">
+        <div class="dropzone-label">+ drop audio files here (.wav, .mp3, .flac) or click to browse</div>
+      </div>
+      <input type="file" id="albumMultiFileInput" accept=".wav,.mp3,.flac,.ogg,.m4a,audio/*" multiple style="display:none">
+      <div class="album-track-list" id="albumTrackList">
+        <!-- Populated dynamically by album-modal.js -->
+      </div>
+      <div class="modal-actions" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:space-between; margin-top:8px;">
+        <div style="display:flex; gap:6px;">
+          <button class="chrome" id="albumBtnAddTracks">+ add tracks</button>
+          <button class="chrome" id="albumBtnClear" style="opacity:0.7;">clear</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="chrome" id="albumBtnPlayContinuous" title="Preview continuous album playback with auto track switching">▶ play album</button>
+          <button class="chrome btn-active-highlight" id="albumBtnExportMp4" title="Render full continuous album to single MP4">● record album mp4</button>
+          <button class="chrome" id="albumBtnDone">done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LIVE ALBUM TRACKLIST OVERLAY ───────────────────────── -->
+  <div id="liveAlbumTracklist" class="live-album-tracklist" style="display:none;"></div>
 
   <!-- Hidden Native Inputs -->
   <input type="file" id="wavInput" accept=".wav,.mp3,.flac,.ogg,.aac,.m4a,audio/*" style="display:none">

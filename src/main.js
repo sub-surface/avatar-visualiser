@@ -10,7 +10,7 @@ import { RenderSession } from '../render-session.js';
 import { lookRenderer } from '../look.js';
 import { applyLookProfile } from '../look-profiles.js';
 import { compositeFrame, initOverlayCanvas, freeOverlayCanvas } from '../overlay.js';
-import { startExport, isExporting } from '../export.js?v=2.0.2';
+import { startExport, startAlbumExport, isExporting } from '../export.js?v=2.0.2';
 import { CameraRig, CameraDirector, shotPose, CAMERA_SHOTS, CAMERA_MOTIONS } from '../cam.js';
 import { getOrCreateItemScene, RETRO_ITEMS } from './objects/item-scene.js';
 import { SoundCloudImporter } from './ui/soundcloud-modal.js';
@@ -18,6 +18,8 @@ import { vcrOsd } from './vhs/vcr-osd.js';
 import { skyboxManager } from './look/skybox.js';
 import { sequenceModal } from './ui/sequence-modal.js';
 import { extractPaletteFromImage } from './look/palette-extractor.js';
+import { albumManager, formatDuration, calculateTracklistAlpha, calculateTransitionGlitch } from './playlist/album-manager.js';
+import { albumModal } from './ui/album-modal.js';
 
 const startupAudioUrl = new URL('../Startup.wav', import.meta.url).href;
 
@@ -183,6 +185,15 @@ export async function startPreview(startTime = 0) {
     if (previewSource === currentSource && isPreviewPlaying) {
       const elapsed = previewCtx.currentTime - previewStartedAt;
       if (elapsed >= (previewBuffer.duration - 0.2)) {
+        if (albumManager.isPlayingContinuous && albumManager.hasTracks()) {
+          const nextIdx = albumManager.activeTrackIndex + 1;
+          if (nextIdx < albumManager.tracks.length) {
+            playAlbumTrack(nextIdx);
+            return;
+          } else {
+            albumManager.isPlayingContinuous = false;
+          }
+        }
         stopPreview();
         previewPausedAt = 0;
         if (previewScrub) previewScrub.value = 0;
@@ -199,6 +210,17 @@ export async function startPreview(startTime = 0) {
   isPreviewPlaying = true;
   if (topPreviewBtn) topPreviewBtn.textContent = 'pause';
   vcrOsd.setPlayState('play');
+}
+
+export async function playAlbumTrack(index) {
+  const track = albumManager.selectTrack(index, P);
+  if (!track || !track.file) return;
+
+  stopPreview();
+  albumModal.applyTrackToDeck(track);
+  await loadAudioBuffer(track.file, track.filename);
+  await startPreview(0);
+  window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Album Track [${index + 1}/${albumManager.tracks.length}]: ${track.title}` }));
 }
 
 export function stopPreview() {
@@ -421,6 +443,74 @@ const _uiColB = new THREE.Color();
 const _uiColResult = new THREE.Color();
 let _lastUiStyle = '';
 let _vu0 = null, _vu1 = null, _vu2 = null, _vu3 = null, _vu4 = null;
+let _lastTracklistHtml = '';
+let _lastTracklistOpacity = '';
+
+function updateLiveAlbumTracklist(trackTime, trackDuration) {
+  const el = document.getElementById('liveAlbumTracklist');
+  if (!el) return;
+
+  const style = P.albumTracklistStyle || 'vcr-osd';
+  if (!albumManager.hasTracks() || style === 'off') {
+    if (el.style.display !== 'none') el.style.display = 'none';
+    return;
+  }
+
+  const alpha = calculateTracklistAlpha(trackTime, trackDuration);
+  if (alpha <= 0.005) {
+    if (el.style.display !== 'none') {
+      el.style.opacity = '0';
+      el.style.display = 'none';
+    }
+    return;
+  }
+
+  if (el.style.display !== 'block') el.style.display = 'block';
+  const opacityStr = alpha.toFixed(2);
+  if (_lastTracklistOpacity !== opacityStr) {
+    _lastTracklistOpacity = opacityStr;
+    el.style.opacity = opacityStr;
+  }
+  const clsName = `live-album-tracklist ${style}`;
+  if (el.className !== clsName) el.className = clsName;
+
+  const tracks = albumManager.tracks;
+  const activeIdx = albumManager.activeTrackIndex;
+  const total = tracks.length;
+
+  const maxVisible = Math.min(6, total);
+  let startIdx = 0;
+  if (total > maxVisible) {
+    startIdx = Math.max(0, Math.min(total - maxVisible, activeIdx - Math.floor(maxVisible / 2)));
+  }
+  const endIdx = Math.min(total, startIdx + maxVisible);
+
+  let html = '';
+  if (style === 'vcr-osd') {
+    html += `<div class="osd-head">PROGRAM: ALBUM TRACKLIST [${String(activeIdx + 1).padStart(2, '0')}/${String(total).padStart(2, '0')}]</div>`;
+    for (let i = startIdx; i < endIdx; i++) {
+      const t = tracks[i];
+      const isCur = i === activeIdx;
+      const num = String(i + 1).padStart(2, '0');
+      const dur = formatDuration(t.duration);
+      html += `<div class="osd-row ${isCur ? 'active' : ''}"><span>${isCur ? '▶ ' : '  '}${num}. ${t.title || 'Untitled'}</span><span>${isCur ? dur + ' ◄' : dur}</span></div>`;
+    }
+  } else {
+    html += `<div class="osd-head">ALBUM PLAYLIST · TRACK ${activeIdx + 1} OF ${total}</div>`;
+    for (let i = startIdx; i < endIdx; i++) {
+      const t = tracks[i];
+      const isCur = i === activeIdx;
+      const num = String(i + 1).padStart(2, '0');
+      const dur = formatDuration(t.duration);
+      html += `<div class="osd-row ${isCur ? 'active' : ''}"><span>${num}   ${t.title || 'Untitled'}</span><span>${dur}</span></div>`;
+    }
+  }
+
+  if (_lastTracklistHtml !== html) {
+    _lastTracklistHtml = html;
+    el.innerHTML = html;
+  }
+}
 
 function animate(timestamp) {
   requestAnimationFrame(animate);
@@ -534,6 +624,16 @@ function animate(timestamp) {
     }
   }
 
+  // Update live on-screen album tracklist overlay
+  if (albumManager.hasTracks()) {
+    const trackTime = isPreviewPlaying && previewCtx ? Math.max(0, previewCtx.currentTime - previewStartedAt) : previewPausedAt;
+    const trackDur = previewBuffer?.duration || albumManager.getActiveTrack()?.duration || 0;
+    updateLiveAlbumTracklist(trackTime, trackDur);
+  } else {
+    const el = document.getElementById('liveAlbumTracklist');
+    if (el && el.style.display !== 'none') el.style.display = 'none';
+  }
+
   if (!P.previewOutput || lookRenderer.shouldRender(P, signalTime)) {
     lookRenderer.render(scene, camera, P, { frameIndex: visualFrameIndex++ });
   }
@@ -563,6 +663,31 @@ export function initApp() {
 
   // Export Scene Sequence Modal Initialization
   sequenceModal.init();
+
+  // Album Suite Modal Initialization
+  albumModal.init({
+    onTrackSelected: (track) => {
+      if (track.file) {
+        loadAudioBuffer(track.file, track.filename);
+      }
+    },
+    onStartContinuousPlay: async () => {
+      albumManager.isPlayingContinuous = true;
+      const startIdx = albumManager.activeTrackIndex >= 0 ? albumManager.activeTrackIndex : 0;
+      await playAlbumTrack(startIdx);
+    },
+  });
+
+  document.getElementById('btnTopAlbumSuite')?.addEventListener('click', () => albumModal.open());
+  document.getElementById('btnOpenAlbumSuite')?.addEventListener('click', () => albumModal.open());
+  bindSelect('pAlbumTracklistStyle', null, 'albumTracklistStyle');
+
+  // Keep active album track snapshot synchronized whenever params change
+  window.addEventListener('avatar-params-saved', () => {
+    if (albumManager.hasTracks()) {
+      albumManager.flushActiveSnapshot(P);
+    }
+  });
 
   // Buttons
   document.getElementById('btnSoundCloud')?.addEventListener('click', () => soundcloudModal.open());

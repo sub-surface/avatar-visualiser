@@ -1129,3 +1129,217 @@ body.light-mode #palettePop {
 body.light-mode .pal-dot.active {
   border-color: #0f172a;
 }
+
+/* ── Album Playlist Suite Modal & Items ────────────────────── */
+.album-track-list {
+  max-height: 290px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 4px;
+}
+
+.album-track-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+body.light-mode .album-track-item {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+.album-track-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.album-track-item.active {
+  border-left-color: var(--vcr-amber);
+  background: rgba(255, 176, 0, 0.06);
+}
+
+.album-order-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.album-btn-arr {
+  background: none;
+  border: none;
+  color: var(--s-mid);
+  font-size: 0.5rem;
+  cursor: pointer;
+  padding: 1px 3px;
+  line-height: 1;
+}
+.album-btn-arr:hover:not(:disabled) {
+  color: var(--s-hi);
+}
+.album-btn-arr:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+.album-track-num {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--vcr-amber);
+}
+
+.album-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.album-input-title {
+  background: transparent;
+  border: none;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--s-hi);
+  outline: none;
+  padding: 0;
+}
+.album-input-title:focus {
+  border-bottom: 1px solid var(--vcr-amber);
+}
+.album-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.album-input-artist {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--s-mid);
+  outline: none;
+  padding: 0;
+}
+.album-input-artist:focus {
+  border-bottom: 1px solid var(--s-mid);
+}
+.album-track-dur {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--s-mid);
+  white-space: nowrap;
+}
+
+.album-actions-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.album-btn-del {
+  padding: 3px 6px;
+  font-size: 0.55rem;
+  color: var(--s-mid);
+}
+.album-btn-del:hover {
+  color: #ff4d4d;
+}
+
+.album-empty-msg {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 0.64rem;
+  color: var(--s-mid);
+  font-family: var(--mono);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+/* ── Live Album Tracklist On-Screen Display ─────────────────── */
+.live-album-tracklist {
+  position: fixed;
+  top: 14%;
+  left: 4%;
+  z-index: 90;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+  user-select: none;
+}
+.live-album-tracklist.vcr-osd {
+  background: rgba(4, 12, 6, 0.85);
+  border: 2px solid #39ff14;
+  padding: 14px 18px;
+  font-family: "Courier New", monospace;
+  color: #39ff14;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  max-width: 440px;
+}
+.live-album-tracklist.vcr-osd .osd-head {
+  font-size: 0.78rem;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.4);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.live-album-tracklist.vcr-osd .osd-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  font-weight: bold;
+}
+.live-album-tracklist.vcr-osd .osd-row.active {
+  background: rgba(57, 255, 20, 0.22);
+  color: #ffe04d;
+  padding: 0 4px;
+}
+
+.live-album-tracklist.minimal {
+  background: rgba(12, 16, 24, 0.86);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-family: "DM Mono", monospace;
+  color: rgba(230, 235, 245, 0.95);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  max-width: 440px;
+}
+.live-album-tracklist.minimal .osd-head {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(215, 225, 238, 0.65);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.live-album-tracklist.minimal .osd-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+  line-height: 1.6;
+  color: rgba(195, 205, 220, 0.7);
+}
+.live-album-tracklist.minimal .osd-row.active {
+  color: #ffffff;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.live-album-tracklist.minimal .osd-row.active::before {
+  content: '●';
+  color: #00e5ff;
+  margin-right: 6px;
+  font-size: 0.6rem;
+}
+

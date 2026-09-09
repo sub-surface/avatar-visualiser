@@ -100,6 +100,7 @@ export const PARAM_SCHEMA = Object.freeze({
   exportOrientation: choice('horizontal', ['horizontal', 'vertical']),
   exportAspect: choice('16:9', ['16:9', '4:3']),
   exportTitleCard: choice('top', ['top', 'bottom', 'off']),
+  albumTracklistStyle: choice('vcr-osd', ['vcr-osd', 'minimal', 'off']),
   fastBoot: { type: 'boolean', default: false, update: 'hot' },
 
   visualCategory: choice('field', ['field', 'item']),
