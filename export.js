@@ -257,9 +257,17 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
   }
 }
 
-const progressElement = document.getElementById('progress');
-const topLoadButton = document.getElementById('btnLoadFile');
-const topRenderButton = document.getElementById('btnExportMp4');
+function setExportButtonsDisabled(disabled) {
+  const loadBtn = document.getElementById('btnLoadFile');
+  const exportBtn = document.getElementById('btnExportMp4');
+  if (loadBtn) loadBtn.disabled = Boolean(disabled);
+  if (exportBtn) exportBtn.disabled = Boolean(disabled);
+}
+
+function setProgressText(text) {
+  const el = document.getElementById('progress');
+  if (el) el.textContent = text;
+}
 
 export let isExporting = false;
 
@@ -288,13 +296,12 @@ export async function startExport(audioFile, visualMode) {
   const fps = project.exportPreset === 'high' || project.exportPreset === 'lossless' ? 60 : 30;
   let writable = null;
   isExporting = true;
-  if (topLoadButton) topLoadButton.disabled = true;
-  if (topRenderButton) topRenderButton.disabled = true;
+  setExportButtonsDisabled(true);
 
   try {
     await document.fonts.ready;
     logStatus(`Decoding ${audioFile.name}`);
-    progressElement.textContent = 'decoding...';
+    setProgressText('decoding...');
     const audioContext = new AudioContext();
     const audioBuffer = await audioContext.decodeAudioData(await audioFile.arrayBuffer());
     await audioContext.close();
@@ -345,7 +352,7 @@ export async function startExport(audioFile, visualMode) {
     });
 
     logStatus(`Exporting ${duration.toFixed(1)}s at ${width}×${height} · ${fps} fps`);
-    progressElement.textContent = '0%';
+    setProgressText('0%');
     await runExport(
       videoEncoder,
       audioBuffer,
@@ -353,7 +360,7 @@ export async function startExport(audioFile, visualMode) {
       duration,
       visualMode,
       project,
-      (progress) => { progressElement.textContent = `${progress}%`; },
+      (progress) => { setProgressText(`${progress}%`); },
     );
     logStatus('Encoding audio...');
     await encodeAudio(audioEncoder, audioBuffer);
@@ -361,11 +368,11 @@ export async function startExport(audioFile, visualMode) {
     await audioEncoder.flush();
     muxer.finalize();
     await writable.close();
-    progressElement.textContent = 'done.';
+    setProgressText('done.');
     logStatus('Export complete');
   } catch (error) {
     logStatus(`Export failed: ${error.message ?? error}`);
-    progressElement.textContent = `err: ${error.message ?? error}`;
+    setProgressText(`err: ${error.message ?? error}`);
     try { await writable?.abort(); } catch {}
   } finally {
     freeOverlayCanvas();
@@ -375,8 +382,7 @@ export async function startExport(audioFile, visualMode) {
     lookRenderer.clearFeedback();
     lookRenderer.resetCadence();
     isExporting = false;
-    if (topRenderButton) topRenderButton.disabled = false;
-    if (topLoadButton) topLoadButton.disabled = false;
+    setExportButtonsDisabled(false);
     setTimeDisplay(0, 0);
     getOrCreateItemScene(scene)?.setVisible(P.visualCategory === 'item');
     signalField.mesh.visible = P.visualCategory !== 'item';

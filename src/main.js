@@ -10,7 +10,7 @@ import { RenderSession } from '../render-session.js';
 import { lookRenderer } from '../look.js';
 import { applyLookProfile } from '../look-profiles.js';
 import { compositeFrame, initOverlayCanvas, freeOverlayCanvas } from '../overlay.js';
-import { startExport, isExporting } from '../export.js';
+import { startExport, isExporting } from '../export.js?v=2.0.2';
 import { CameraRig, CameraDirector, shotPose, CAMERA_SHOTS, CAMERA_MOTIONS } from '../cam.js';
 import { getOrCreateItemScene, RETRO_ITEMS } from './objects/item-scene.js';
 import { SoundCloudImporter } from './ui/soundcloud-modal.js';

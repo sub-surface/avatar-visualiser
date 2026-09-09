@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https: blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob: data:;">
   <title>AVATAR — Audio Visualiser & Hardware Instrument</title>
 
   <!-- Open Graph / Social Preview -->
@@ -173,7 +174,7 @@
       <div class="console-body active" id="cTabLook">
         <div class="section-tag">Hardware Profile</div>
         <div class="c-row">
-          <label>profile</label>
+          <label for="pLookProfile">profile</label>
           <select class="c-select" id="pLookProfile">
             <option value="clean">clean digital</option>
             <option value="vhs-master" selected>VHS master</option>
@@ -187,43 +188,43 @@
 
         <div class="section-tag">Analog VCR & CRT Shaders</div>
         <div class="c-row">
-          <label title="Bottom head-switching noise band">tape tracking</label>
+          <label for="pTapeTracking" title="Bottom head-switching noise band">tape tracking</label>
           <input type="range" id="pTapeTracking" min="0" max="1" step="0.05" value="0.85">
           <span class="c-val" id="vTapeTracking">0.85</span>
         </div>
         <div class="c-row">
-          <label title="Horizontal sync slip and line tearing">sync jitter</label>
+          <label for="pTapeSyncDrop" title="Horizontal sync slip and line tearing">sync jitter</label>
           <input type="range" id="pTapeSyncDrop" min="0" max="1" step="0.05" value="0.5">
           <span class="c-val" id="vTapeSyncDrop">0.5</span>
         </div>
         <div class="c-row">
-          <label title="CRT barrel glass curvature & vignette">crt tube</label>
+          <label for="pCrtCurvature" title="CRT barrel glass curvature & vignette">crt tube</label>
           <input type="range" id="pCrtCurvature" min="0" max="1" step="0.05" value="0.15">
           <span class="c-val" id="vCrtCurvature">0.15</span>
         </div>
         <div class="c-row">
-          <label title="Alternating row scanlines">scanlines</label>
+          <label for="pScanlines" title="Alternating row scanlines">scanlines</label>
           <input type="range" id="pScanlines" min="0" max="1" step="0.05" value="0.35">
           <span class="c-val" id="vScanlines">0.35</span>
         </div>
         <div class="c-row">
-          <label title="NTSC composite color bleed">chroma split</label>
+          <label for="pChroma" title="NTSC composite color bleed">chroma split</label>
           <input type="range" id="pChroma" min="0" max="1" step="0.05" value="0.75">
           <span class="c-val" id="vChroma">0.75</span>
         </div>
         <div class="c-row">
-          <label title="Analog magnetic tape noise">noise</label>
+          <label for="pNoise" title="Analog magnetic tape noise">noise</label>
           <input type="range" id="pNoise" min="0" max="1" step="0.05" value="0.35">
           <span class="c-val" id="vNoise">0.35</span>
         </div>
         <div class="c-row" style="margin-top:4px;">
-          <label>vcr osd hud</label>
+          <label for="pVhsOsd">vcr osd hud</label>
           <input type="checkbox" id="pVhsOsd" checked style="accent-color:var(--vcr-green); cursor:pointer;">
         </div>
 
         <div class="section-tag">Atmosphere & Skybox</div>
         <div class="c-row">
-          <label title="Curated 3D environment skybox">skybox</label>
+          <label for="pSkyboxPreset" title="Curated 3D environment skybox">skybox</label>
           <select class="c-select" id="pSkyboxPreset">
             <option value="void" selected>minimal void</option>
             <option value="neon-grid">neon grid 80s</option>
@@ -235,7 +236,7 @@
           </select>
         </div>
         <div class="c-row">
-          <label title="Atmospheric ambient lighting brightness">light tone</label>
+          <label for="pSkyboxLightTone" title="Atmospheric ambient lighting brightness">light tone</label>
           <input type="range" id="pSkyboxLightTone" min="0.2" max="3" step="0.05" value="1.0">
           <span class="c-val" id="vSkyboxLightTone">1.00</span>
         </div>
@@ -254,17 +255,17 @@
 
         <div class="section-tag">Orientation & Tilt</div>
         <div class="c-row">
-          <label title="Pitch rotation around X axis (degrees)">pitch (x)</label>
+          <label for="pItemRotX" title="Pitch rotation around X axis (degrees)">pitch (x)</label>
           <input type="range" id="pItemRotX" min="-180" max="180" step="1" value="0">
           <span class="c-val" id="vItemRotX">0°</span>
         </div>
         <div class="c-row">
-          <label title="Yaw offset around Y axis (degrees)">yaw (y)</label>
+          <label for="pItemRotY" title="Yaw offset around Y axis (degrees)">yaw (y)</label>
           <input type="range" id="pItemRotY" min="-180" max="180" step="1" value="0">
           <span class="c-val" id="vItemRotY">0°</span>
         </div>
         <div class="c-row">
-          <label title="Roll rotation around Z axis (degrees)">roll (z)</label>
+          <label for="pItemRotZ" title="Roll rotation around Z axis (degrees)">roll (z)</label>
           <input type="range" id="pItemRotZ" min="-180" max="180" step="1" value="0">
           <span class="c-val" id="vItemRotZ">0°</span>
         </div>
@@ -276,17 +277,17 @@
 
         <div class="section-tag">Spin & Physics</div>
         <div class="c-row">
-          <label title="Rotation speed (RPM)">spin speed</label>
+          <label for="pItemSpin" title="Rotation speed (RPM)">spin speed</label>
           <input type="range" id="pItemSpin" min="-4" max="4" step="0.1" value="1.0">
           <span class="c-val" id="vItemSpin">1.0</span>
         </div>
         <div class="c-row">
-          <label title="Audio-reactive wobble and tilt on bass">bass wobble</label>
+          <label for="pItemWobble" title="Audio-reactive wobble and tilt on bass">bass wobble</label>
           <input type="range" id="pItemWobble" min="0" max="2" step="0.05" value="0.6">
           <span class="c-val" id="vItemWobble">0.6</span>
         </div>
         <div class="c-row">
-          <label title="Mesh tearing and wireframe glitch intensity">mesh glitch</label>
+          <label for="pItemGlitch" title="Mesh tearing and wireframe glitch intensity">mesh glitch</label>
           <input type="range" id="pItemGlitch" min="0" max="2" step="0.05" value="0.4">
           <span class="c-val" id="vItemGlitch">0.4</span>
         </div>
@@ -319,7 +320,7 @@
 
         <div class="section-tag">Camera Motion Grammar</div>
         <div class="c-row">
-          <label title="Procedural motion choreography">movement</label>
+          <label for="pCameraMotion" title="Procedural motion choreography">movement</label>
           <select class="c-select" id="pCameraMotion">
             <option value="still" selected>locked still</option>
             <option value="drift">cinematic drift</option>
@@ -330,22 +331,22 @@
           </select>
         </div>
         <div class="c-row">
-          <label title="Motion sway intensity">amount</label>
+          <label for="pCameraAmount" title="Motion sway intensity">amount</label>
           <input type="range" id="pCameraAmount" min="0" max="2" step="0.05" value="0.35">
           <span class="c-val" id="vCameraAmount">0.35</span>
         </div>
         <div class="c-row">
-          <label title="Motion oscillation speed">speed</label>
+          <label for="pCameraSpeed" title="Motion oscillation speed">speed</label>
           <input type="range" id="pCameraSpeed" min="0" max="3" step="0.05" value="0.35">
           <span class="c-val" id="vCameraSpeed">0.35</span>
         </div>
         <div class="c-row">
-          <label title="Bass kick zoom punch & transient shake">audio punch</label>
+          <label for="pCameraAudio" title="Bass kick zoom punch & transient shake">audio punch</label>
           <input type="range" id="pCameraAudio" min="0" max="2" step="0.05" value="0.45">
           <span class="c-val" id="vCameraAudio">0.45</span>
         </div>
         <div class="c-row">
-          <label title="Easing duration between shot changes">cut smooth</label>
+          <label for="pCameraTransition" title="Easing duration between shot changes">cut smooth</label>
           <input type="range" id="pCameraTransition" min="0.05" max="3" step="0.05" value="0.8">
           <span class="c-val" id="vCameraTransition">0.80</span>
         </div>
@@ -356,7 +357,7 @@
           <button class="chrome" id="btnCamCapture" title="Save current mouse angle as manual anchor">💾 lock orbit</button>
         </div>
         <div class="c-row" style="margin-top:6px;">
-          <label title="Automatically cycle cinematic shots on musical phrases">auto director</label>
+          <label for="btnAutoDirector" title="Automatically cycle cinematic shots on musical phrases">auto director</label>
           <button class="chrome btn-pill" id="btnAutoDirector">OFF</button>
         </div>
       </div>
@@ -365,23 +366,23 @@
       <div class="console-body" id="cTabMaster">
         <div class="section-tag">Track Identity & Title Card</div>
         <div class="c-row">
-          <label>title</label>
+          <label for="pTitle">title</label>
           <input type="text" class="c-input" id="pTitle" placeholder="e.g. Okinawa">
         </div>
         <div class="c-row">
-          <label>artist</label>
+          <label for="pArtist">artist</label>
           <input type="text" class="c-input" id="pArtist" placeholder="e.g. MØRVIDD">
         </div>
         <div class="c-row">
-          <label>bpm</label>
+          <label for="pBpm">bpm</label>
           <input type="text" class="c-input" id="pBpm" placeholder="e.g. 74">
         </div>
         <div class="c-row">
-          <label>genre</label>
+          <label for="pGenre">genre</label>
           <input type="text" class="c-input" id="pGenre" placeholder="e.g. Ambient">
         </div>
         <div class="c-row">
-          <label>title card</label>
+          <label for="pExportTitleCard">title card</label>
           <select class="c-select" id="pExportTitleCard">
             <option value="top" selected>top center</option>
             <option value="bottom">bottom center</option>
@@ -391,21 +392,21 @@
 
         <div class="section-tag">Aspect Ratio</div>
         <div class="c-row">
-          <label>aspect</label>
+          <label for="pExportAspect">aspect</label>
           <select class="c-select" id="pExportAspect">
             <option value="16:9" selected>16:9 widescreen</option>
             <option value="4:3">4:3 retro CRT</option>
           </select>
         </div>
         <div class="c-row">
-          <label>orientation</label>
+          <label for="pExportOrient">orientation</label>
           <select class="c-select" id="pExportOrient">
             <option value="horizontal" selected>horizontal (landscape)</option>
             <option value="vertical">vertical (9:16 shorts/reels)</option>
           </select>
         </div>
         <div class="c-row">
-          <label>preset</label>
+          <label for="pExportPreset">preset</label>
           <select class="c-select" id="pExportPreset">
             <option value="standard" selected>standard HD</option>
             <option value="lossless">lossless master</option>
@@ -491,6 +492,6 @@
   <input type="file" id="daeInput" accept=".dae,model/vnd.collada+xml" style="display:none">
 
   <!-- Core App Bootstrap -->
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/main.js?v=2.0.2"></script>
 </body>
 </html>
