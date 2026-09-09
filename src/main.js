@@ -579,6 +579,8 @@ export function initApp() {
   });
 
   // Macro Sliders
+  bindRange('pReactivity', 'vReactivity', 'reactivity');
+  bindRange('pMaxDisp', 'vMaxDisp', 'maxDisp');
   bindRange('pTapeTracking', 'vTapeTracking', 'vhsTracking');
   bindRange('pTapeSyncDrop', 'vTapeSyncDrop', 'vhsSyncDrop');
   bindRange('pCrtCurvature', 'vCrtCurvature', 'vhsCurvature');

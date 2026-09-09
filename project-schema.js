@@ -24,6 +24,7 @@ export const PARAM_SCHEMA = Object.freeze({
   smoothing: number(0.55, 0, 0.99, { update: 'audio', random: [0.1, 0.95] }),
   freqScale: choice('log', ['log', 'linear', 'dnb']),
   freqRange: number(0.55, 0.01, 1, { update: 'audio', random: [0.1, 1] }),
+  reactivity: number(1.0, 0.1, 4.0, { update: 'hot', random: [0.5, 2.5] }),
 
   modSub: number(0.5, 0, 2, { update: 'hot', random: [0, 1] }),
   modKick: number(0.8, 0, 3, { update: 'hot', random: [0, 2] }),

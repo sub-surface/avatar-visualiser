@@ -364,9 +364,13 @@ export class SignalField {
     uniforms.uTime.value = frame?.time ?? 0;
     uniforms.uSampleRate.value = frame?.sampleRate ?? 44100;
     uniforms.uFreqScale.value = scaleCode(project.freqScale);
-    uniforms.uFreqRange.value = project.freqRange;
-    uniforms.uDisp.value = project.maxDisp * (1 + (frame?.env?.sub ?? 0) * project.modSub + (frame?.lfo1 ?? 0) * project.lfoToDisp);
-    uniforms.uBowlExp.value = project.bowlExp - (frame?.env?.high ?? 0) * project.modHigh + (frame?.lfo1 ?? 0) * project.lfoToBowl;
+    const react = Number.isFinite(project.reactivity) ? project.reactivity : 1.0;
+    const kickPunch = (frame?.env?.kick ?? 0) * (project.modKick ?? 0.8) * 0.5 * react;
+    const subPunch = (frame?.env?.sub ?? 0) * (project.modSub ?? 0.5) * react;
+    const transPunch = (frame?.env?.trans ?? 0) * (project.modTrans ?? 0.4) * 0.4 * react;
+    const lfoDisp = (frame?.lfo1 ?? 0) * (project.lfoToDisp ?? 0);
+    uniforms.uDisp.value = project.maxDisp * react * (1 + subPunch + kickPunch + transPunch + lfoDisp);
+    uniforms.uBowlExp.value = project.bowlExp - (frame?.env?.high ?? 0) * (project.modHigh ?? 0.8) * react + (frame?.lfo1 ?? 0) * project.lfoToBowl;
     uniforms.uSphereSize.value = project.sphereSize;
     uniforms.uPolarSpacing.value = project.polarSpacing + (frame?.lfo1 ?? 0) * project.lfoToPolar;
     uniforms.uWaveSpacing.value = Math.max(0.01, project.waveSpacing + (frame?.lfo1 ?? 0) * project.lfoToWave);

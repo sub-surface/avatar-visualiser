@@ -325,9 +325,19 @@ export class CameraRig {
     // If user is actively orbiting with mouse, let OrbitControls drive base position
     if (this.dragging) return;
 
-    // Auto-Director phrase switching (every 8 seconds of continuous time)
+    // Auto-Director phrase switching on musical drops and energy transitions
     if (this.autoDirector) {
-      if (time - this.lastCutTime >= 8.0) {
+      const peakSens = Number.isFinite(this.project?.peakSens) ? Math.max(0, Math.min(1, this.project.peakSens)) : 0.5;
+      const minSpacing = Math.max(3.0, 7.5 - peakSens * 4.5);
+      const elapsed = time - this.lastCutTime;
+      const isDrop = elapsed >= minSpacing && (
+        (frame?.env?.kick ?? 0) > 0.72 ||
+        (frame?.env?.trans ?? 0) > 0.68 ||
+        (frame?.env?.rms ?? 0) > 0.85
+      );
+      const isTimeout = elapsed >= (minSpacing * 2.0);
+
+      if (isDrop || isTimeout) {
         this.lastCutTime = time;
         this.autoIndex = (this.autoIndex + 1) % this.autoSequence.length;
         this.selectShot(this.autoSequence[this.autoIndex], mode, 1.2, isItem);

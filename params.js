@@ -72,6 +72,7 @@ export function syncControls() {
     Gain: 'gain',
     ColorCycle: 'colorCycle',
     UiReactivity: 'uiReactivity',
+    Reactivity: 'reactivity',
     CycleMode: 'cycleMode',
     PeakSens: 'peakSens',
     CameraMotion: 'cameraMotion',
@@ -115,7 +116,7 @@ export function syncControls() {
     setInput(`p${suffix}`, P[key]);
     if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ' || key === 'cameraFov') {
       setLabel(`v${suffix}`, `${P[key]}°`);
-    } else if (key === 'skyboxLightTone') {
+    } else if (key === 'skyboxLightTone' || key === 'reactivity') {
       setLabel(`v${suffix}`, Number(P[key]).toFixed(2));
     } else {
       setLabel(`v${suffix}`, P[key]);
@@ -202,7 +203,7 @@ export function bindRange(id, valueId, key, onChange) {
     if (label) {
       if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ' || key === 'cameraFov') {
         label.textContent = `${value}°`;
-      } else if (key === 'skyboxLightTone') {
+      } else if (key === 'skyboxLightTone' || key === 'reactivity') {
         label.textContent = Number(value).toFixed(2);
       } else {
         label.textContent = value;

@@ -33,25 +33,152 @@ function logStatus(message) {
   window.dispatchEvent(new CustomEvent('avatar-status', { detail: message }));
 }
 
-function findModeTriggers(mono, sampleRate, project) {
-  const windowSize = sampleRate;
-  const energy = [];
-  for (let offset = 0; offset < mono.length; offset += windowSize) {
-    const end = Math.min(offset + windowSize, mono.length);
+export function findModeTriggers(mono, sampleRate, project = {}) {
+  if (!mono || mono.length === 0 || !sampleRate) return [];
+
+  const hopSize = Math.max(256, Math.floor(sampleRate * 0.05)); // 50ms analysis window
+  const numFrames = Math.floor(mono.length / hopSize);
+  if (numFrames < 4) return [];
+
+  const duration = mono.length / sampleRate;
+  const peakSens = Number.isFinite(project?.peakSens) ? Math.max(0, Math.min(1, project.peakSens)) : 0.5;
+  const minSpacing = Math.max(2.5, 8.0 - peakSens * 5.0);
+
+  if (duration < minSpacing) return [];
+
+  // 1. Compute fine-grained RMS energy profile per 50ms frame
+  const energy = new Float32Array(numFrames);
+  for (let i = 0; i < numFrames; i++) {
+    const offset = i * hopSize;
+    const end = Math.min(offset + hopSize, mono.length);
     let sum = 0;
-    for (let index = offset; index < end; index++) sum += mono[index] * mono[index];
-    energy.push({ time: offset / sampleRate, rms: Math.sqrt(sum / Math.max(1, end - offset)) });
+    for (let j = offset; j < end; j++) {
+      const v = mono[j];
+      sum += v * v;
+    }
+    energy[i] = Math.sqrt(sum / Math.max(1, end - offset));
   }
 
-  const spacing = 8 - Math.max(0, Math.min(1, project.peakSens)) * 5;
-  const triggers = [];
-  for (const candidate of [...energy].sort((a, b) => b.rms - a.rms)) {
-    if (triggers.length >= 15) break;
-    if (triggers.every((entry) => Math.abs(entry.time - candidate.time) >= spacing)) {
-      triggers.push(candidate);
+  // 2. Score each frame for drop onsets & energy surges over rolling 1.5s baseline
+  const baselineWindow = 30;
+  const candidates = [];
+  let runningSum = 0;
+  let runningCount = 0;
+
+  for (let i = 0; i < numFrames; i++) {
+    runningSum += energy[i];
+    runningCount++;
+    if (i >= baselineWindow) {
+      runningSum -= energy[i - baselineWindow];
+      runningCount--;
+    }
+    const baseline = runningCount > 0 ? (runningSum / runningCount) : energy[i];
+    const prev = i > 0 ? energy[i - 1] : energy[i];
+
+    // Energy surge over recent baseline (breakdowns into drops)
+    const surge = Math.max(0, energy[i] - baseline);
+    // Instantaneous onset attack (snare/kick downbeat)
+    const attack = Math.max(0, energy[i] - prev);
+    const rms = energy[i];
+
+    // Combined drop score: heavily weights sudden surges into loud sections
+    const score = surge * 3.0 + attack * 2.0 + rms * 0.8;
+
+    const time = i * (hopSize / sampleRate);
+    // Exclude cues in the very first 1.2s or final 1.5s of the track
+    if (time >= 1.2 && time <= duration - 1.5) {
+      candidates.push({ frame: i, time, score, rms });
     }
   }
-  return triggers.sort((a, b) => a.time - b.time).map((entry) => entry.time);
+
+  // 3. Filter for local maxima within a +/- 2 frame (100ms) window
+  const localPeaks = [];
+  for (let c = 0; c < candidates.length; c++) {
+    const curr = candidates[c];
+    if (curr.score < 0.005) continue;
+    const prev1 = candidates[c - 1]?.score ?? 0;
+    const prev2 = candidates[c - 2]?.score ?? 0;
+    const next1 = candidates[c + 1]?.score ?? 0;
+    const next2 = candidates[c + 2]?.score ?? 0;
+    if (curr.score >= prev1 && curr.score >= prev2 && curr.score >= next1 && curr.score >= next2) {
+      localPeaks.push(curr);
+    }
+  }
+
+  // 4. Greedily pick strongest drop & energy peaks respecting minSpacing
+  const triggers = [];
+  const sortedPeaks = [...localPeaks].sort((a, b) => b.score - a.score);
+  for (const cand of sortedPeaks) {
+    if (triggers.every((t) => Math.abs(t.time - cand.time) >= minSpacing)) {
+      triggers.push(cand);
+    }
+  }
+
+  // Sort chronologically
+  triggers.sort((a, b) => a.time - b.time);
+
+  // 5. Ensure full track coverage: fill any remaining gap > maxSpacing
+  const maxSpacing = minSpacing * 2.2;
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    // Check gap before first trigger
+    const firstTime = triggers.length > 0 ? triggers[0].time : duration;
+    if (firstTime > maxSpacing) {
+      const best = localPeaks
+        .filter((p) => p.time >= minSpacing && p.time <= firstTime - minSpacing)
+        .sort((a, b) => b.score - a.score)[0];
+      if (best && triggers.every((t) => Math.abs(t.time - best.time) >= minSpacing)) {
+        triggers.push(best);
+        triggers.sort((a, b) => a.time - b.time);
+        expanded = true;
+        continue;
+      }
+    }
+
+    // Check gaps between consecutive triggers
+    for (let j = 0; j < triggers.length - 1; j++) {
+      const gap = triggers[j + 1].time - triggers[j].time;
+      if (gap > maxSpacing) {
+        const tStart = triggers[j].time + minSpacing;
+        const tEnd = triggers[j + 1].time - minSpacing;
+        if (tEnd > tStart) {
+          const best = localPeaks
+            .filter((p) => p.time >= tStart && p.time <= tEnd)
+            .sort((a, b) => b.score - a.score)[0];
+          if (best && triggers.every((t) => Math.abs(t.time - best.time) >= minSpacing)) {
+            triggers.push(best);
+            triggers.sort((a, b) => a.time - b.time);
+            expanded = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // Check gap after last trigger
+    if (triggers.length > 0) {
+      const lastTime = triggers[triggers.length - 1].time;
+      if (duration - lastTime > maxSpacing) {
+        const tStart = lastTime + minSpacing;
+        const tEnd = duration - 1.5;
+        if (tEnd > tStart) {
+          const best = localPeaks
+            .filter((p) => p.time >= tStart && p.time <= tEnd)
+            .sort((a, b) => b.score - a.score)[0];
+          if (best && triggers.every((t) => Math.abs(t.time - best.time) >= minSpacing)) {
+            triggers.push(best);
+            triggers.sort((a, b) => a.time - b.time);
+            expanded = true;
+            continue;
+          }
+        }
+      }
+    }
+  }
+
+  // Return trigger timestamps rounded to 2 decimals
+  return triggers.map((t) => +t.time.toFixed(2));
 }
 
 function seedFrom(audioBuffer, meta) {
