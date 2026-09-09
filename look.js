@@ -24,6 +24,9 @@ const postFragment = `
   uniform float uChroma;
   uniform float uNoise;
   uniform float uFeedback;
+  uniform float uVhsTracking;
+  uniform float uVhsSyncDrop;
+  uniform float uVhsCurvature;
   varying vec2 vUv;
 
   float hash21(vec2 p) {
@@ -38,9 +41,31 @@ const postFragment = `
   }
 
   void main() {
-    vec2 pixel = floor(vUv * uSourceSize);
+    // 1. Optional CRT Barrel Curvature
+    vec2 curvedUv = vUv;
+    if (uVhsCurvature > 0.001) {
+      vec2 dc = vUv - 0.5;
+      float dist = dot(dc, dc);
+      curvedUv = 0.5 + dc * (1.0 + dist * uVhsCurvature * 0.35);
+    }
+
+    // 2. VHS Horizontal Sync Jitter / Line Tearing
+    if (uVhsSyncDrop > 0.001) {
+      float lineJitter = hash21(vec2(floor(curvedUv.y * uSourceSize.y * 0.5), floor(uFrame * 0.5)));
+      if (lineJitter > (1.0 - 0.08 * uVhsSyncDrop)) {
+        curvedUv.x += (hash21(vec2(uFrame, floor(curvedUv.y * 32.0))) - 0.5) * 0.035 * uVhsSyncDrop;
+      }
+    }
+
+    // 3. VCR Bottom Head-Switching Noise Band
+    if (uVhsTracking > 0.001 && curvedUv.y < (0.075 * uVhsTracking)) {
+      float trackNoise = hash21(vec2(curvedUv.y * 120.0, uFrame * 4.0));
+      curvedUv.x += (trackNoise - 0.5) * (0.06 * uVhsTracking);
+    }
+
+    vec2 pixel = floor(curvedUv * uSourceSize);
     vec2 snapped = (pixel + 0.5) / uSourceSize;
-    vec2 uv = mix(vUv, snapped, clamp(uPixelSnap, 0.0, 1.0));
+    vec2 uv = mix(curvedUv, snapped, clamp(uPixelSnap, 0.0, 1.0));
     float field = mod(uFrame, 2.0);
     uv.y += (field - 0.5) * uInterlace / uSourceSize.y;
 
@@ -52,6 +77,14 @@ const postFragment = `
       texture2D(tScene, uv - chromaOffset).b
     );
 
+    // Magnetic tape dropouts (subtle horizontal flecks)
+    if (uVhsTracking > 0.001) {
+      float drop = hash21(vec2(uFrame * 17.0, floor(pixel.y * 0.5)));
+      if (drop > (1.0 - 0.015 * uVhsTracking) && hash21(vec2(pixel.x, uFrame)) > 0.75) {
+        colour += vec3(0.35 * uVhsTracking);
+      }
+    }
+
     vec3 previous = texture2D(tPrevious, uv * 0.998 + 0.001).rgb;
     colour = max(colour, previous * clamp(uFeedback, 0.0, 0.98));
 
@@ -61,6 +94,16 @@ const postFragment = `
     colour = floor(clamp(colour + dither + noise, 0.0, 1.0) * levels + 0.5) / levels;
 
     float scan = mix(1.0, 0.72 + 0.28 * sin(pixel.y * 3.14159265), uScanlines);
+
+    // CRT edge vignette
+    if (uVhsCurvature > 0.001) {
+      float vig = 1.0 - dot(curvedUv - 0.5, curvedUv - 0.5) * 1.3 * uVhsCurvature;
+      scan *= clamp(vig, 0.0, 1.0);
+      if (curvedUv.x < 0.0 || curvedUv.x > 1.0 || curvedUv.y < 0.0 || curvedUv.y > 1.0) {
+        colour = vec3(0.004);
+      }
+    }
+
     gl_FragColor = vec4(colour * scan, centre.a);
   }
 `;
@@ -113,6 +156,9 @@ class LookRenderer {
         uChroma: { value: 0 },
         uNoise: { value: 0 },
         uFeedback: { value: 0 },
+        uVhsTracking: { value: 0 },
+        uVhsSyncDrop: { value: 0 },
+        uVhsCurvature: { value: 0 },
       },
       depthTest: false,
       depthWrite: false,
@@ -228,6 +274,9 @@ class LookRenderer {
     uniforms.uChroma.value = project.lookChroma;
     uniforms.uNoise.value = project.lookNoise;
     uniforms.uFeedback.value = project.lookFeedback;
+    uniforms.uVhsTracking.value = project.vhsTracking ?? 0;
+    uniforms.uVhsSyncDrop.value = project.vhsSyncDrop ?? 0;
+    uniforms.uVhsCurvature.value = project.vhsCurvature ?? 0;
 
     renderer.setRenderTarget(nextTarget);
     renderer.clear();

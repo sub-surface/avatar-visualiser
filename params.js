@@ -92,6 +92,12 @@ function syncControls() {
     LookNoise: 'lookNoise',
     LookFeedback: 'lookFeedback',
     LookCadence: 'lookCadence',
+    ItemSpinSpeed: 'itemSpinSpeed',
+    ItemGlitch: 'itemGlitch',
+    ItemWobble: 'itemWobble',
+    VhsTracking: 'vhsTracking',
+    VhsCurvature: 'vhsCurvature',
+    VhsSyncDrop: 'vhsSyncDrop',
   };
 
   for (const [suffix, key] of Object.entries(bindings)) {

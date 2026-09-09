@@ -1,0 +1,88 @@
+/* ══════════════════════════════════════════════════════════════
+   VCR ON-SCREEN DISPLAY (OSD) HUD
+   Authentic 90s VCR green/white pixel OSD overlay
+   ══════════════════════════════════════════════════════════════ */
+
+#vcrOsd {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  padding: 36px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  color: var(--vcr-green);
+  text-shadow: 0 0 4px rgba(57, 255, 20, 0.6), 2px 2px 0px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.15em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#vcrOsd.visible {
+  opacity: 0.92;
+}
+
+.osd-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.osd-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 1.1rem;
+}
+.osd-play-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.osd-sp {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.osd-hifi {
+  font-size: 0.85rem;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.osd-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.osd-counter {
+  font-size: 1.25rem;
+  letter-spacing: 0.2em;
+}
+.osd-date {
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+/* Tracking noise bar representation in DOM (mirrors shader if enabled) */
+.osd-tracking-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.15) 2px,
+    transparent 4px,
+    transparent 8px
+  );
+  display: none;
+}
+body.vhs-tracking-active .osd-tracking-bar {
+  display: block;
+}

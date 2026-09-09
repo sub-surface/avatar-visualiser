@@ -148,5 +148,36 @@ export function compositeFrame(glCanvas, meta, time, duration, visMode) {
     drawText(pills.join('  ·  '), cx, y, monoTiny, colPills);
   }
 
+  // Authentic VCR OSD HUD overlay if enabled
+  if (meta.vhsOsd) {
+    ctx.save();
+    const osdFontSize = Math.round(Math.max(13, 22 * scale));
+    ctx.font = `bold ${osdFontSize}px "Courier New", monospace`;
+    ctx.fillStyle = '#39ff14';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    ctx.shadowBlur = 4;
+
+    ctx.textAlign = 'left';
+    ctx.fillText('PLAY ▶', w * 0.05, h * 0.08);
+    ctx.font = `bold ${Math.round(osdFontSize * 0.75)}px "Courier New", monospace`;
+    ctx.fillText('SP', w * 0.05, h * 0.08 + osdFontSize * 1.15);
+
+    ctx.textAlign = 'right';
+    ctx.fillText('HI-FI STEREO', w * 0.95, h * 0.08);
+    ctx.fillText('CH 03', w * 0.95, h * 0.08 + osdFontSize * 1.15);
+
+    const s = Math.floor(time || 0);
+    const m = Math.floor(s / 60);
+    const hNum = Math.floor(m / 60);
+    const frames = Math.floor(((time || 0) % 1) * 30);
+    const timecode = `${hNum}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
+    ctx.font = `bold ${Math.round(osdFontSize * 1.1)}px "Courier New", monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText(timecode, w * 0.05, h * 0.94);
+    ctx.restore();
+  }
+
   return _compCanvas;
 }

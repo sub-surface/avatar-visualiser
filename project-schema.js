@@ -81,7 +81,7 @@ export const PARAM_SCHEMA = Object.freeze({
   cameraAudio: number(0.45, 0, 2, { update: 'hot', random: [0, 1.25] }),
   cameraTransition: number(0.8, 0, 4, { update: 'hot' }),
 
-  lookProfile: choice('clean', ['clean', 'ps2-480', 'ps2-240', 'tape', 'ghost']),
+  lookProfile: choice('clean', ['clean', 'ps2-480', 'ps2-240', 'tape', 'ghost', 'vhs-master', 'crt-90s', 'ps1-retro']),
   previewOutput: { type: 'boolean', default: false, update: 'look' },
   lookPixelSnap: number(0, 0, 2, { update: 'look' }),
   lookColorBits: number(8, 3, 8, { integer: true, update: 'look' }),
@@ -98,6 +98,18 @@ export const PARAM_SCHEMA = Object.freeze({
   exportOrientation: choice('horizontal', ['horizontal', 'vertical']),
   exportAspect: choice('16:9', ['16:9', '4:3']),
   fastBoot: { type: 'boolean', default: false, update: 'hot' },
+
+  visualCategory: choice('field', ['field', 'item']),
+  activeItem: choice('cartridge', ['cartridge', 'vinyl', 'cassette', 'floppy', 'custom']),
+  itemSpinSpeed: number(1, -5, 5, { update: 'hot' }),
+  itemSpinBpmSync: { type: 'boolean', default: false, update: 'hot' },
+  itemGlitch: number(0.3, 0, 2, { update: 'hot' }),
+  itemWobble: number(0.5, 0, 2, { update: 'hot' }),
+
+  vhsTracking: number(0, 0, 1, { update: 'look' }),
+  vhsCurvature: number(0, 0, 1, { update: 'look' }),
+  vhsSyncDrop: number(0, 0, 1, { update: 'look' }),
+  vhsOsd: { type: 'boolean', default: false, update: 'look' },
 });
 
 function sanitizeValue(key, value, rule, warnings) {

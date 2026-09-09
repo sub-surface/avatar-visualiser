@@ -69,6 +69,60 @@ export const LOOK_PROFILES = Object.freeze({
     noise: 0.06,
     feedback: 0.82,
   },
+  'vhs-master': {
+    label: 'VHS master',
+    width: 640,
+    height: 480,
+    cadence: '30',
+    pixelSnap: 0.2,
+    colorBits: 6,
+    dither: 0.25,
+    scanlines: 0.35,
+    interlace: 0.45,
+    chroma: 0.75,
+    noise: 0.35,
+    feedback: 0.12,
+    vhsTracking: 0.85,
+    vhsSyncDrop: 0.5,
+    vhsCurvature: 0.15,
+    vhsOsd: true,
+  },
+  'crt-90s': {
+    label: '90s CRT TV',
+    width: 640,
+    height: 480,
+    cadence: '60',
+    pixelSnap: 0.1,
+    colorBits: 7,
+    dither: 0.15,
+    scanlines: 0.45,
+    interlace: 0.1,
+    chroma: 0.25,
+    noise: 0.08,
+    feedback: 0.02,
+    vhsTracking: 0.1,
+    vhsSyncDrop: 0.05,
+    vhsCurvature: 0.6,
+    vhsOsd: false,
+  },
+  'ps1-retro': {
+    label: 'PS1 low-poly',
+    width: 320,
+    height: 240,
+    cadence: '24',
+    pixelSnap: 1.0,
+    colorBits: 5,
+    dither: 0.5,
+    scanlines: 0.2,
+    interlace: 0.15,
+    chroma: 0.1,
+    noise: 0.05,
+    feedback: 0,
+    vhsTracking: 0,
+    vhsSyncDrop: 0,
+    vhsCurvature: 0,
+    vhsOsd: false,
+  },
 });
 
 export function applyLookProfile(project, profileId) {
@@ -83,6 +137,10 @@ export function applyLookProfile(project, profileId) {
   project.lookNoise = profile.noise;
   project.lookFeedback = profile.feedback;
   project.lookCadence = profile.cadence;
+  if (profile.vhsTracking !== undefined) project.vhsTracking = profile.vhsTracking;
+  if (profile.vhsSyncDrop !== undefined) project.vhsSyncDrop = profile.vhsSyncDrop;
+  if (profile.vhsCurvature !== undefined) project.vhsCurvature = profile.vhsCurvature;
+  if (profile.vhsOsd !== undefined) project.vhsOsd = profile.vhsOsd;
   return project;
 }
 

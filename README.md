@@ -69,19 +69,34 @@ The style-seed menu provides editable cross-mode starting points:
 
 The randomizer is schema-driven, so newly registered visual parameters participate automatically. It chooses coherent harmonic colours and one of the eight modes.
 
-## Look Lab
+## 3D Retro Artifacts
 
-Parameters → Look controls the output renderer, independently of the signal field:
+In addition to Signal Fields, AVATAR features interactive 3D retro hardware artifacts with customizable labels and audio-reactive glitch physics:
 
-- Clean Digital
-- PS2 480p
-- PS2 240p
-- Tape Memory
-- Long Exposure
+- **Game Cartridge** — 3D retro 64-bit console cartridge with label recess and side grips
+- **Vinyl Record** — 12" LP with realistic vinyl micro-grooves, spindle hole, and center sticker
+- **Cassette Tape** — compact cassette shell with dual rotating tape spools and sticker label
+- **Floppy Disk** — classic 3.5" diskette with sliding metal shutter and adhesive paper label
+- **Custom 3D Model (.dae)** — import your own 3D Collada models (`.dae`) via the `+ import .dae` button or by dragging and dropping `.dae` files directly onto the app! Custom models are auto-scaled, centered, and participate in the full audio-reactive spin and glitch pipeline.
 
-Selecting a profile enables Exact Output, so the main canvas is rendered through the same internal-resolution and post-processing path used by export. Profiles are starting points; pixel snapping, colour depth, dithering, scanlines, interlacing, chroma offset, deterministic noise, feedback, and cadence remain editable.
+You can upload any custom image (PNG/JPG) to map onto the label, or automatically inherit high-resolution album art imported from SoundCloud. Artifacts support turntable spin (RPM or BPM tempo sync), audio-reactive bass wobble/tilt, and polygonal vertex tear glitches.
 
-For the characteristic PS2 result, begin with **PS2 480p**, keep Exact Output enabled, use a 4:3 export aspect, and then tune colour bits, dither, and scanlines rather than applying an unrelated “retro” overlay after rendering.
+## SoundCloud Import
+
+Click the **☁ SoundCloud** button on the top audio deck to open the importer. Paste any public track link (e.g. `https://soundcloud.com/artist/track-name`) to automatically fetch:
+- Track title and artist metadata
+- 500×500 high-resolution album artwork (mapped directly to the active 3D asset)
+
+## Expanded VHS & Retro Hardware Emulation
+
+The Look console provides authentic analog tape and retro-display emulation:
+
+- **VHS Master** — helical head-switching tracking noise band at the bottom of the frame, horizontal sync line-tearing jitter on bass transients, NTSC composite chroma smear, and magnetic tape dropouts
+- **90s CRT TV** — barrel glass screen curvature, phosphor aperture grille scanlines, and edge vignette
+- **PS1 Low-Poly** — screen-space vertex coordinate quantization, 5-bit color banding, and Bayer dithering
+- **VCR OSD HUD** — authentic green/white pixel on-screen display with `PLAY ▶`, `SP`, `HI-FI STEREO`, and running timecode counter (available in live preview and baked into MP4 exports)
+- **PS2 480p / 240p** — 6th-gen console line rasterization
+- **Tape Memory** & **Long Exposure** (ghost phosphor feedback)
 
 ## Audio and tempo
 

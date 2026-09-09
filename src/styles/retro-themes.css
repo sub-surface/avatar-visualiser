@@ -1,0 +1,111 @@
+/* ══════════════════════════════════════════════════════════════
+   RETRO THEMES & COLORWAYS
+   Hardware-inspired palette system for AVATAR Studio Deck
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --ui-accent:      #a2b6c0; /* Slate Default */
+  --ui-secondary:   #6a8a99;
+  --ui-tertiary:    #d1c2d9;
+  --ui-accent-rgb:  162, 182, 192;
+  
+  --s-hi:    rgba(var(--ui-accent-rgb), 0.98);
+  --s-mid:   rgba(var(--ui-accent-rgb), 0.70);
+  --s-lo:    rgba(var(--ui-accent-rgb), 0.25);
+  --s-rule:  var(--ui-secondary);
+
+  --m-hi:    var(--ui-accent);
+  --m-mid:   var(--ui-secondary);
+  --m-lo:    rgba(var(--ui-accent-rgb), 0.15);
+  --m-rule:  var(--ui-tertiary);
+
+  --bg:           #090a0d;
+  --panel-bg:     rgba(13, 16, 20, 0.82);
+  --panel-border: rgba(162, 182, 192, 0.18);
+  --panel-shd:    rgba(0, 0, 0, 0.65);
+  
+  --btn-hi-txt:   #ffffff;
+  --btn-active-bg:#ffffff;
+  --btn-active-fg:#090a0d;
+  --option-bg:    #111418;
+
+  --serif: 'DM Serif Display', Georgia, serif;
+  --mono:  'DM Mono', 'Courier New', monospace;
+  --vcr:   'Courier New', monospace;
+
+  /* Studio deck specific variables */
+  --deck-surface: rgba(16, 20, 26, 0.88);
+  --deck-glow:    rgba(var(--ui-accent-rgb), 0.15);
+  --deck-active:  var(--ui-accent);
+  --vcr-green:    #39ff14;
+  --rec-red:      #ff3344;
+}
+
+/* ── Hardware Palettes ───────────────────────────────────────── */
+body[data-palette="red"] { 
+  --ui-accent: #ff4d4d; --ui-secondary: #cc0000; --ui-tertiary: #ff9999; --ui-accent-rgb: 255, 77, 77; 
+}
+body[data-palette="orange"] { 
+  --ui-accent: #ff944d; --ui-secondary: #e65c00; --ui-tertiary: #ffc299; --ui-accent-rgb: 255, 148, 77; 
+}
+body[data-palette="yellow"] { 
+  --ui-accent: #ffdb4d; --ui-secondary: #e6b800; --ui-tertiary: #fff0b3; --ui-accent-rgb: 255, 219, 77; 
+}
+body[data-palette="green"] { 
+  --ui-accent: #4dff88; --ui-secondary: #00cc44; --ui-tertiary: #b3ffd1; --ui-accent-rgb: 77, 255, 136; 
+}
+body[data-palette="blue"] { 
+  --ui-accent: #4da6ff; --ui-secondary: #0073e6; --ui-tertiary: #b3d9ff; --ui-accent-rgb: 77, 166, 255; 
+}
+body[data-palette="indigo"] { 
+  --ui-accent: #8c4dff; --ui-secondary: #5900e6; --ui-tertiary: #ccb3ff; --ui-accent-rgb: 140, 77, 255; 
+}
+body[data-palette="violet"] { 
+  --ui-accent: #ff4dff; --ui-secondary: #e600e6; --ui-tertiary: #ffb3ff; --ui-accent-rgb: 255, 77, 255; 
+}
+
+/* Retro Console Colorways */
+body[data-palette="trinitron"] {
+  --ui-accent: #00ffcc; --ui-secondary: #008877; --ui-tertiary: #aaffea; --ui-accent-rgb: 0, 255, 204;
+}
+body[data-palette="gameboy"] {
+  --ui-accent: #9bbc0f; --ui-secondary: #8bac0f; --ui-tertiary: #306230; --ui-accent-rgb: 155, 188, 15;
+}
+body[data-palette="amber"] {
+  --ui-accent: #ffb000; --ui-secondary: #cc8800; --ui-tertiary: #ffe4a0; --ui-accent-rgb: 255, 176, 0;
+}
+
+/* Reapply accent values */
+:root, body {
+  --s-hi:   rgba(var(--ui-accent-rgb), 0.90);
+  --s-mid:  rgba(var(--ui-accent-rgb), 0.50);
+  --s-lo:   rgba(var(--ui-accent-rgb), 0.20);
+  --s-rule: var(--ui-secondary);
+
+  --m-hi:   var(--ui-accent);
+  --m-mid:  var(--ui-secondary);
+  --m-lo:   rgba(var(--ui-accent-rgb), 0.15);
+  --m-rule: var(--ui-tertiary);
+}
+
+body.light-mode {
+  --bg:           #ebebeb;
+  --panel-bg:     rgba(245, 245, 245, 0.85);
+  --panel-border: rgba(0, 0, 0, 0.12);
+  --panel-shd:    rgba(0, 0, 0, 0.15);
+  --btn-hi-txt:   #f4f4f4;
+  --btn-active-bg:#0d0d0d;
+  --btn-active-fg:#f4f4f4;
+  --option-bg:    #ffffff;
+
+  --s-hi:   rgba(0, 0, 0, 0.88);
+  --s-mid:  rgba(0, 0, 0, 0.55);
+  --s-lo:   rgba(0, 0, 0, 0.22);
+  --s-rule: rgba(0, 0, 0, 0.12);
+
+  --m-hi:   var(--ui-accent);
+  --m-mid:  rgba(var(--ui-accent-rgb), 0.65);
+  --m-lo:   rgba(var(--ui-accent-rgb), 0.35);
+  --m-rule: rgba(var(--ui-accent-rgb), 0.15);
+  --deck-surface: rgba(255, 255, 255, 0.90);
+}

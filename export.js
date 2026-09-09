@@ -21,6 +21,7 @@ import {
 import { createSeededRandom } from './signal.js';
 import { RenderSession } from './render-session.js';
 import { signalField, FIELD_MODES } from './vis/field.js';
+import { getOrCreateItemScene } from './src/objects/item-scene.js';
 import { lookRenderer } from './look.js';
 import { initOverlayCanvas, freeOverlayCanvas, compositeFrame } from './overlay.js';
 
@@ -133,6 +134,18 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
   signalField.resetHistory(project.rows);
   lookRenderer.clearFeedback();
   lookRenderer.resetCadence();
+
+  const itemScene = getOrCreateItemScene(scene);
+  const isItemMode = project.visualCategory === 'item';
+  if (isItemMode && itemScene) {
+    itemScene.setVisible(true);
+    signalField.mesh.visible = false;
+    itemScene.setActiveItem(project.activeItem || 'cartridge');
+  } else if (itemScene) {
+    itemScene.setVisible(false);
+    signalField.mesh.visible = true;
+  }
+
   logStatus(`Timeline: ${triggers.length} deterministic energy cue${triggers.length === 1 ? '' : 's'}`);
 
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
@@ -165,6 +178,11 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
         sampleRate: audioBuffer.sampleRate,
       },
     );
+
+    if (isItemMode) {
+      itemScene.update(1 / fps, time, signalFrame, project);
+    }
+
     const cameraPose = proceduralCameraPose(project, currentMode, time, signalFrame, shots[shotIndex]);
     camera.position.set(
       cameraPose.position.x,
@@ -180,7 +198,7 @@ async function runExport(encoder, audioBuffer, fps, duration, initialMode, proje
     setTimeDisplay(time, duration);
     const frameCanvas = compositeFrame(
       renderer.domElement,
-      getTrackMeta(),
+      { ...getTrackMeta(), vhsOsd: project.vhsOsd },
       time,
       duration,
       currentMode,
@@ -322,6 +340,8 @@ export async function startExport(audioFile, visualMode) {
     topRenderButton.disabled = false;
     topLoadButton.disabled = false;
     setTimeDisplay(0, 0);
+    getOrCreateItemScene(scene)?.setVisible(P.visualCategory === 'item');
+    signalField.mesh.visible = P.visualCategory !== 'item';
     window.dispatchEvent(new CustomEvent('avatar-rebuild-vis'));
   }
 }
