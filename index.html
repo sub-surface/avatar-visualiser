@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https: blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob: data:;">
   <title>AVATAR — Audio Visualiser & Hardware Instrument</title>
 
   <!-- Open Graph / Social Preview -->
@@ -123,10 +122,9 @@
       <button class="chrome btn-soundcloud" id="btnSoundCloud" title="Import track & artwork directly from SoundCloud">☁ soundcloud</button>
     </div>
 
-    <!-- Island Right: Mode & Clean Screen -->
+    <!-- Island Right: Live Status -->
     <div class="deck-island">
       <span style="font-size:0.58rem; color:var(--s-mid);" id="deckStatusMsg">ready</span>
-      <button class="chrome" id="btnCleanMode" title="Hide all UI chrome (Press ESC to restore)">clean</button>
     </div>
   </header>
 
@@ -458,6 +456,30 @@
       <button class="chrome" id="btnDirectorShortcut" title="Quick open Camera Director (Hotkey: D)">director</button>
       <button class="chrome" id="btnToggleConsole">console</button>
     </div>
+  </div>
+
+  <!-- ── BOTTOM-LEFT: Branding & Minimal Workstation Controls ── -->
+  <div id="bottomLeft">
+    <a class="chrome" href="https://subsurfaces.net" target="_blank">subsurfaces.net</a>
+    <span class="mode-sep">·</span>
+    <button class="chrome" id="btnObs" title="Hide all UI chrome (Hotkey: ESC or C)">hide ui</button>
+    <span class="mode-sep">·</span>
+    <div id="paletteWrap">
+      <button id="btnCycle" title="Cycle UI & signal palette"><span id="paletteDot"></span></button>
+      <svg id="paletteSafeZone"><path d=""></path></svg>
+      <div id="palettePop">
+        <button class="pal-dot" data-pal="default" style="--dot-color:#a2b6c0" title="default"></button>
+        <button class="pal-dot" data-pal="red" style="--dot-color:#ff4d4d" title="red"></button>
+        <button class="pal-dot" data-pal="orange" style="--dot-color:#ff944d" title="orange"></button>
+        <button class="pal-dot" data-pal="yellow" style="--dot-color:#ffdb4d" title="yellow"></button>
+        <button class="pal-dot" data-pal="green" style="--dot-color:#4dff88" title="green"></button>
+        <button class="pal-dot" data-pal="blue" style="--dot-color:#4da6ff" title="blue"></button>
+        <button class="pal-dot" data-pal="indigo" style="--dot-color:#8c4dff" title="indigo"></button>
+        <button class="pal-dot" data-pal="violet" style="--dot-color:#ff4dff" title="violet"></button>
+      </div>
+    </div>
+    <span class="mode-sep">·</span>
+    <button class="chrome" id="btnTheme" style="font-weight:bold; font-size:0.85rem; padding:0 2px;" title="Toggle Light / Dark Mode"><span id="themeIcon">☾</span></button>
   </div>
 
   <!-- ── MODAL: Export Scene Sequence ───────────────────────── -->

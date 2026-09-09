@@ -947,9 +947,108 @@ export function initApp() {
     }
   });
 
-  // Clean Mode Toggle (Escape / Hotkey)
-  document.getElementById('btnCleanMode')?.addEventListener('click', () => {
-    document.body.classList.toggle('clean-mode');
+  // ── Bottom-Left Controls: Palette, Theme, Clean Mode ──────
+  const palettes = ['default', 'red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
+  const paletteColors = {
+    default: '#a2b6c0',
+    red: '#ff4d4d',
+    orange: '#ff944d',
+    yellow: '#ffdb4d',
+    green: '#4dff88',
+    blue: '#4da6ff',
+    indigo: '#8c4dff',
+    violet: '#ff4dff',
+  };
+
+  const updatePalActive = () => {
+    const curPal = P.uiPalette || 'default';
+    document.querySelectorAll('.pal-dot').forEach((d) => {
+      d.classList.toggle('active', d.dataset.pal === curPal);
+    });
+    const dot = document.getElementById('paletteDot');
+    if (dot) {
+      dot.style.background = paletteColors[curPal] || '#a2b6c0';
+    }
+  };
+
+  document.getElementById('btnCycle')?.addEventListener('click', () => {
+    let idx = palettes.indexOf(P.uiPalette || 'default');
+    idx = (idx + 1) % palettes.length;
+    P.uiPalette = palettes[idx];
+    document.body.setAttribute('data-palette', P.uiPalette);
+    saveParams();
+    updatePalActive();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: `UI palette: ${P.uiPalette}` }));
+  });
+
+  document.querySelectorAll('.pal-dot').forEach((dot) => {
+    dot.addEventListener('click', () => {
+      P.uiPalette = dot.dataset.pal;
+      document.body.setAttribute('data-palette', P.uiPalette);
+      saveParams();
+      updatePalActive();
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: `UI palette: ${P.uiPalette}` }));
+    });
+  });
+
+  // Magic Triangle for palette popover
+  const paletteWrap = document.getElementById('paletteWrap');
+  const palettePop = document.getElementById('palettePop');
+  const safeZone = document.getElementById('paletteSafeZone');
+  const safePath = safeZone?.querySelector('path');
+  if (paletteWrap && palettePop && safePath) {
+    paletteWrap.addEventListener('mousemove', (e) => {
+      const rect = palettePop.getBoundingClientRect();
+      const wrapRect = paletteWrap.getBoundingClientRect();
+      const mx = e.clientX - (wrapRect.left + wrapRect.width / 2) + 200;
+      const my = e.clientY - wrapRect.bottom + 400;
+      const x1 = rect.left - (wrapRect.left + wrapRect.width / 2) + 200;
+      const x2 = rect.right - (wrapRect.left + wrapRect.width / 2) + 200;
+      const y = rect.top - wrapRect.bottom + 400;
+      safePath.setAttribute('d', `M ${mx} ${my} L ${x1} ${y} L ${x2} ${y} Z`);
+    });
+  }
+
+  // Theme toggle (Light / Dark)
+  const themeBtn = document.getElementById('btnTheme');
+  const themeIcon = document.getElementById('themeIcon');
+  const updateThemeUI = (isLight) => {
+    if (themeIcon) themeIcon.textContent = isLight ? '☀' : '☾';
+  };
+
+  themeBtn?.addEventListener('click', () => {
+    const isLight = document.body.classList.toggle('light-mode');
+    setTheme(isLight);
+    P.isLight = isLight;
+    updateThemeUI(isLight);
+    saveParams();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Theme: ${isLight ? 'Light' : 'Dark'}` }));
+  });
+
+  // Initial theme and palette setup
+  if (P.uiPalette) {
+    document.body.setAttribute('data-palette', P.uiPalette);
+  }
+  const isLight = document.body.classList.contains('light-mode') || Boolean(P.isLight);
+  if (isLight) {
+    document.body.classList.add('light-mode');
+    setTheme(true);
+  }
+  updateThemeUI(isLight);
+  updatePalActive();
+
+  // Clean Mode (Hide UI) Toggle
+  const btnObs = document.getElementById('btnObs');
+  const updateCleanUI = (active) => {
+    if (btnObs) btnObs.textContent = active ? 'show ui' : 'hide ui';
+  };
+
+  btnObs?.addEventListener('click', () => {
+    const active = document.body.classList.toggle('clean-mode');
+    updateCleanUI(active);
+    window.dispatchEvent(new CustomEvent('avatar-status', {
+      detail: active ? 'UI hidden (Press ESC or move to bottom-left to restore)' : 'UI restored'
+    }));
   });
 
   // Keyboard Shortcuts
@@ -960,9 +1059,11 @@ export function initApp() {
       togglePreview();
     } else if (e.key === 'Escape') {
       document.body.classList.remove('clean-mode');
+      updateCleanUI(false);
       soundcloudModal.close();
     } else if (e.key === 'c' || e.key === 'C') {
-      document.body.classList.toggle('clean-mode');
+      const active = document.body.classList.toggle('clean-mode');
+      updateCleanUI(active);
     } else if (e.key === 'p' || e.key === 'P') {
       consolePanel?.classList.toggle('open');
     } else if (e.key === 'd' || e.key === 'D') {

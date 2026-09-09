@@ -55,22 +55,22 @@ export const CAMERA_MOTIONS = Object.freeze([
 ]);
 
 const MODE_HERO = Object.freeze({
-  bowl: { az: 0, el: 31, dist: 10.7, lookY: -0.5 },
-  polar: { az: 0, el: 78, dist: 10, lookY: 0 },
-  sphere: { az: 0, el: 0, dist: 12, lookY: 0 },
-  wave: { az: 0, el: 8, dist: 11, lookY: 0 },
-  topology: { az: 24, el: 14, dist: 11.5, lookY: 0 },
-  cathedral: { az: 0, el: 18, dist: 12.5, lookY: 1.2 },
-  ribbon: { az: 12, el: 10, dist: 11, lookY: 0 },
-  tunnel: { az: 0, el: 0, dist: 9.5, lookY: 0 },
+  bowl: { az: 0, el: 31, dist: 14.5, lookY: -0.5 },
+  polar: { az: 0, el: 78, dist: 14.0, lookY: 0 },
+  sphere: { az: 0, el: 0, dist: 16.0, lookY: 0 },
+  wave: { az: 0, el: 8, dist: 15.0, lookY: 0 },
+  topology: { az: 24, el: 14, dist: 15.5, lookY: 0 },
+  cathedral: { az: 0, el: 18, dist: 16.5, lookY: 1.2 },
+  ribbon: { az: 12, el: 10, dist: 15.0, lookY: 0 },
+  tunnel: { az: 0, el: 0, dist: 13.5, lookY: 0 },
 });
 
 const ITEM_HERO = Object.freeze({
-  cartridge: { az: 28, el: 18, dist: 7.5, lookY: 0.2 },
-  vinyl: { az: 20, el: 45, dist: 8.0, lookY: 0.1 },
-  cassette: { az: 32, el: 16, dist: 7.0, lookY: 0.15 },
-  floppy: { az: 25, el: 22, dist: 6.8, lookY: 0.15 },
-  custom: { az: 30, el: 20, dist: 8.5, lookY: 0.2 },
+  cartridge: { az: 28, el: 18, dist: 9.8, lookY: 0.2 },
+  vinyl: { az: 20, el: 45, dist: 9.8, lookY: 0.1 },
+  cassette: { az: 32, el: 16, dist: 9.6, lookY: 0.15 },
+  floppy: { az: 25, el: 22, dist: 9.5, lookY: 0.15 },
+  custom: { az: 30, el: 20, dist: 9.8, lookY: 0.2 },
 });
 
 export function shotPose(shot, mode, manualAnchor, isItem = false) {
@@ -80,21 +80,21 @@ export function shotPose(shot, mode, manualAnchor, isItem = false) {
   if (isArtifact) {
     const hero = ITEM_HERO[mode] ?? ITEM_HERO.cartridge;
     if (shot === 'auto' || shot === 'hero') return { ...hero };
-    if (shot === 'overhead') return { az: hero.az, el: 85, dist: 8.5, lookY: 0 };
-    if (shot === 'horizon') return { az: hero.az, el: 4, dist: 6.8, lookY: 0.2 };
-    if (shot === 'side') return { az: 90, el: 10, dist: 7.8, lookY: 0.1 };
-    if (shot === 'macro') return { az: 22, el: 14, dist: 3.8, lookY: 0.2 };
-    if (shot === 'underslung') return { az: 15, el: -22, dist: 6.5, lookY: 0.5 };
+    if (shot === 'overhead') return { az: hero.az, el: 85, dist: 14.5, lookY: 0 };
+    if (shot === 'horizon') return { az: hero.az, el: 4, dist: 11.5, lookY: 0.2 };
+    if (shot === 'side') return { az: 90, el: 10, dist: 12.5, lookY: 0.1 };
+    if (shot === 'macro') return { az: 22, el: 14, dist: 6.5, lookY: 0.2 };
+    if (shot === 'underslung') return { az: 15, el: -22, dist: 11.0, lookY: 0.5 };
     return { ...hero };
   }
 
   const hero = MODE_HERO[mode] ?? MODE_HERO.sphere;
   if (shot === 'auto' || shot === 'hero') return { ...hero };
-  if (shot === 'overhead') return { az: hero.az, el: 82, dist: 14, lookY: 0 };
-  if (shot === 'horizon') return { az: hero.az, el: 4, dist: 12, lookY: 0 };
-  if (shot === 'side') return { az: 90, el: 12, dist: 12.5, lookY: hero.lookY };
-  if (shot === 'macro') return { az: 28, el: 18, dist: 5.6, lookY: hero.lookY };
-  if (shot === 'underslung') return { az: 12, el: -24, dist: 9, lookY: 1.2 };
+  if (shot === 'overhead') return { az: hero.az, el: 82, dist: 18.0, lookY: 0 };
+  if (shot === 'horizon') return { az: hero.az, el: 4, dist: 16.0, lookY: 0 };
+  if (shot === 'side') return { az: 90, el: 12, dist: 16.5, lookY: hero.lookY };
+  if (shot === 'macro') return { az: 28, el: 18, dist: 8.5, lookY: hero.lookY };
+  if (shot === 'underslung') return { az: 12, el: -24, dist: 13.5, lookY: 1.2 };
   return { ...hero };
 }
 
@@ -163,8 +163,8 @@ export class CameraRig {
     this.dragging = false;
 
     // Base coordinates
-    this.currentPose = { az: 0, el: 15, dist: 12, lookY: 0 };
-    this.targetPose = { az: 0, el: 15, dist: 12, lookY: 0 };
+    this.currentPose = { az: 0, el: 15, dist: 16.0, lookY: 0 };
+    this.targetPose = { az: 0, el: 15, dist: 16.0, lookY: 0 };
 
     this.transition = null;
     this.audioPulse = 0;
@@ -180,16 +180,56 @@ export class CameraRig {
     this._vTargetLook = new THREE.Vector3();
     this._vMotionOffset = new THREE.Vector3();
 
-    // Hook OrbitControls interaction to seamlessly sync manual drag
+    // Hook OrbitControls interaction to seamlessly sync manual drag and zoom
     if (this.controls) {
+      this.controls.enableZoom = true;
+      this.controls.minDistance = 2.0;
+      this.controls.maxDistance = 80.0;
+
       this.controls.addEventListener('start', () => {
         this.dragging = true;
+      });
+      this.controls.addEventListener('change', () => {
+        if (this.dragging) {
+          const relX = this.camera.position.x - (this.controls.target.x || 0);
+          const relY = this.camera.position.y - (this.controls.target.y || 0);
+          const relZ = this.camera.position.z - (this.controls.target.z || 0);
+          const spherical = cartToSpherical(relX, relY, relZ);
+          this.currentPose.az = spherical.az;
+          this.currentPose.el = spherical.el;
+          this.currentPose.dist = spherical.dist;
+          this.targetPose.az = spherical.az;
+          this.targetPose.el = spherical.el;
+          this.targetPose.dist = spherical.dist;
+        }
       });
       this.controls.addEventListener('end', () => {
         this.dragging = false;
         this.captureManual();
       });
+
+      // Handle wheel zoom directly on domElement to ensure responsive zooming
+      if (this.controls.domElement) {
+        this.controls.domElement.addEventListener('wheel', (e) => {
+          const factor = e.deltaY < 0 ? 0.90 : 1.10;
+          this.zoomBy(factor);
+        }, { passive: true });
+      }
     }
+  }
+
+  zoomBy(factor) {
+    if (!this.project) return;
+    const currentDist = this.currentPose.dist;
+    const newDist = Math.max(2.5, Math.min(80.0, currentDist * factor));
+    this.currentPose.dist = newDist;
+    this.targetPose.dist = newDist;
+    this.project.cameraShot = 'manual';
+    if (!this.project.cameraAnchor) {
+      this.project.cameraAnchor = { ...this.currentPose };
+    }
+    this.project.cameraAnchor.dist = newDist;
+    this.transition = null;
   }
 
   beginFrame() {

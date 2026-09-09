@@ -827,3 +827,132 @@ input.c-input:focus {
   border-color: var(--vcr-cyan, #00e5ff) !important;
   background: rgba(0, 229, 255, 0.08) !important;
 }
+
+/* ── Bottom-Left: Branding & Minimal Quick Controls ──────── */
+#bottomLeft {
+  position: fixed;
+  bottom: 22px;
+  left: 24px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+#bottomLeft > * {
+  pointer-events: auto;
+}
+
+#bottomLeft .chrome {
+  border: none !important;
+  background: transparent !important;
+  padding: 2px 4px !important;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: var(--s-lo);
+  box-shadow: none !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  transition: color 0.15s ease;
+}
+#bottomLeft .chrome:hover {
+  color: var(--s-hi) !important;
+}
+
+.mode-sep {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--s-lo);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Palette button + popout */
+#paletteWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+#btnCycle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--s-lo);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, transform 0.15s;
+}
+#btnCycle:hover {
+  border-color: var(--s-hi);
+  transform: scale(1.1);
+}
+#paletteDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ui-accent, #a2b6c0);
+  pointer-events: none;
+}
+#palettePop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  display: flex;
+  gap: 5px;
+  padding: 5px 8px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px var(--panel-shd);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+#paletteWrap:hover #palettePop,
+#palettePop.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Magic Triangle safe zone */
+#paletteSafeZone {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 400px;
+  pointer-events: none;
+  z-index: -1;
+}
+#paletteSafeZone path {
+  pointer-events: auto;
+  fill: transparent;
+}
+#paletteWrap:not(:hover) #paletteSafeZone path {
+  pointer-events: none;
+}
+
+.pal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  background: var(--dot-color);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.pal-dot:hover {
+  transform: scale(1.35);
+}
+.pal-dot.active {
+  border-color: #fff;
+  box-shadow: 0 0 6px var(--dot-color);
+}

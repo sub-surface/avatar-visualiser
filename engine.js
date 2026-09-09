@@ -12,7 +12,7 @@ export const GRID_D      = 10;
 export const LINE_COLOR  = 0xe8d5b0;   // warm gold (base)
 export const LINE_COLOR2 = 0xb090c8;   // cool mauve (peak mids)
 export const BG_COLOR    = 0x0d0d0d;
-export const CAM_BASE    = { y: 5.5, z: 9.0 };
+export const CAM_BASE    = { y: 5.5, z: 14.5 };
 
 /* ── Renderer ──────────────────────────────────────────────── */
 export const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });

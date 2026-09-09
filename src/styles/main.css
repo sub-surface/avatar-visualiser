@@ -151,18 +151,23 @@ canvas#glCanvas, canvas {
   font-weight: 500;
 }
 
-/* ── Clean mode (OBS / minimal screen) ──────────────────── */
+/* ── Clean mode (Hide UI / OBS minimal screen) ───────────── */
 body.clean-mode #studioTopDeck,
+body.clean-mode #modeDock,
 body.clean-mode #studioConsole,
 body.clean-mode #cameraPanel,
-body.clean-mode #statusStream,
-body.clean-mode #modeStrip {
-  opacity: 0;
-  pointer-events: none;
+body.clean-mode #statusStream {
+  opacity: 0 !important;
+  pointer-events: none !important;
   transition: opacity 0.25s ease;
 }
-body.clean-mode:hover #studioTopDeck,
-body.clean-mode:hover #studioConsole {
+
+body.clean-mode #bottomLeft {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+body.clean-mode #bottomLeft:hover {
   opacity: 1;
   pointer-events: auto;
 }
