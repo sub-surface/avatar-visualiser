@@ -11,7 +11,7 @@ import { lookRenderer } from '../look.js';
 import { applyLookProfile } from '../look-profiles.js';
 import { compositeFrame, initOverlayCanvas, freeOverlayCanvas } from '../overlay.js';
 import { startExport, isExporting } from '../export.js';
-import { CameraRig } from '../cam.js';
+import { CameraRig, CameraDirector, shotPose, CAMERA_SHOTS, CAMERA_MOTIONS } from '../cam.js';
 import { getOrCreateItemScene, RETRO_ITEMS } from './objects/item-scene.js';
 import { SoundCloudImporter } from './ui/soundcloud-modal.js';
 import { vcrOsd } from './vhs/vcr-osd.js';
@@ -32,8 +32,15 @@ controls.maxAzimuthAngle = Infinity;
 controls.target.set(0, -0.5, 0);
 controls.update();
 
-const cameraRig = new CameraRig(camera, controls, P);
+export const cameraRig = new CameraRig(camera, controls, P);
 export const itemScene = getOrCreateItemScene(scene);
+
+// Global debug & window fallback
+if (typeof window !== 'undefined') {
+  window.cameraRig = cameraRig;
+  window.CameraRig = CameraRig;
+  window.CameraDirector = CameraDirector;
+}
 
 /* ── Visual Mode & Category Management ───────────────────── */
 let visMode = 'sphere';
@@ -77,10 +84,11 @@ export async function setFieldMode(mode) {
   signalField.rebuild(P.rows, getCols());
 
   if (P.cameraShot === 'auto' || P.cameraShot === 'hero') {
-    cameraRig.selectShot(P.cameraShot, mode);
+    cameraRig.selectShot(P.cameraShot, mode, P.cameraTransition, false);
   }
 
   updateActiveChips();
+  updateCameraUI();
   fadeIn();
 }
 
@@ -94,10 +102,11 @@ export async function setRetroItem(itemId) {
   itemScene.setActiveItem(itemId);
 
   if (P.cameraShot === 'auto' || P.cameraShot === 'hero') {
-    cameraRig.selectShot('hero', 'sphere');
+    cameraRig.selectShot(P.cameraShot, itemId, P.cameraTransition, true);
   }
 
   updateActiveChips();
+  updateCameraUI();
   saveParams();
 }
 
@@ -408,7 +417,16 @@ function animate(timestamp) {
     signalField.advanceTransition(dt);
   }
 
-  cameraRig.update(dt, signalTime, signalFrame, visMode);
+  const activeModeOrItem = visCategory === 'item' ? P.activeItem : visMode;
+  cameraRig.update(dt, signalTime, signalFrame, activeModeOrItem, visCategory === 'item');
+
+  if (visualFrameIndex % 4 === 0) {
+    const telem = cameraRig.getTelemetry();
+    const telemCoords = document.getElementById('telemCoords');
+    if (telemCoords) {
+      telemCoords.textContent = `AZ ${telem.az}° · EL ${telem.el}° · DIST ${telem.dist}`;
+    }
+  }
 
   if (!P.previewOutput || lookRenderer.shouldRender(P, signalTime)) {
     lookRenderer.render(scene, camera, P, { frameIndex: visualFrameIndex++ });
@@ -500,6 +518,58 @@ export function initApp() {
   bindRange('pChroma', 'vChroma', 'lookChroma');
   bindRange('pNoise', 'vNoise', 'lookNoise');
 
+  // Camera Director Controls & Telemetry
+  document.querySelectorAll('.cam-shot-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = visCategory === 'item' ? P.activeItem : visMode;
+      cameraRig.selectShot(btn.dataset.shot, mode, P.cameraTransition, visCategory === 'item');
+      saveParams();
+      updateCameraUI();
+    });
+  });
+
+  bindSelect('pCameraMotion', null, 'cameraMotion', () => {
+    cameraRig.setMotion(P.cameraMotion);
+    updateCameraUI();
+  });
+
+  bindRange('pCameraAmount', 'vCameraAmount', 'cameraAmount');
+  bindRange('pCameraSpeed', 'vCameraSpeed', 'cameraSpeed');
+  bindRange('pCameraAudio', 'vCameraAudio', 'cameraAudio');
+  bindRange('pCameraTransition', 'vCameraTransition', 'cameraTransition');
+
+  document.getElementById('btnCamAutoFrame')?.addEventListener('click', () => {
+    const mode = visCategory === 'item' ? P.activeItem : visMode;
+    cameraRig.resetToAuto(mode, visCategory === 'item');
+    saveParams();
+    updateCameraUI();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Camera auto-framed (${mode})` }));
+  });
+
+  document.getElementById('btnCamCapture')?.addEventListener('click', () => {
+    cameraRig.captureManual();
+    saveParams();
+    updateCameraUI();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Manual camera orbit locked' }));
+  });
+
+  const btnAutoDirector = document.getElementById('btnAutoDirector');
+  btnAutoDirector?.addEventListener('click', () => {
+    const active = cameraRig.toggleAutoDirector();
+    btnAutoDirector.classList.toggle('active', active);
+    btnAutoDirector.textContent = active ? 'ON' : 'OFF';
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Auto-Director ${active ? 'Enabled' : 'Disabled'}` }));
+  });
+
+  const btnDirectorShortcut = document.getElementById('btnDirectorShortcut');
+  btnDirectorShortcut?.addEventListener('click', () => {
+    consolePanel?.classList.add('open');
+    consoleToggle?.classList.add('btn-active-highlight');
+    document.querySelectorAll('.console-tab, .console-body').forEach(el => el.classList.remove('active'));
+    document.querySelector('.console-tab[data-target="cTabCam"]')?.classList.add('active');
+    document.getElementById('cTabCam')?.classList.add('active');
+  });
+
   // VCR OSD Checkbox
   document.getElementById('pVhsOsd')?.addEventListener('change', (e) => {
     P.vhsOsd = e.target.checked;
@@ -533,6 +603,14 @@ export function initApp() {
       document.body.classList.toggle('clean-mode');
     } else if (e.key === 'p' || e.key === 'P') {
       consolePanel?.classList.toggle('open');
+    } else if (e.key === 'd' || e.key === 'D') {
+      const open = consolePanel?.classList.toggle('open');
+      consoleToggle?.classList.toggle('btn-active-highlight', open);
+      if (open) {
+        document.querySelectorAll('.console-tab, .console-body').forEach(el => el.classList.remove('active'));
+        document.querySelector('.console-tab[data-target="cTabCam"]')?.classList.add('active');
+        document.getElementById('cTabCam')?.classList.add('active');
+      }
     }
   });
 
@@ -542,8 +620,28 @@ export function initApp() {
     if (el) el.textContent = e.detail;
   });
 
+  cameraRig.selectShot(P.cameraShot, visCategory === 'item' ? P.activeItem : visMode, 0.01, visCategory === 'item');
+  updateCameraUI();
   animate(0);
   window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'System ready.' }));
+}
+
+export function updateCameraUI() {
+  document.querySelectorAll('.cam-shot-btn').forEach((button) => {
+    button.classList.toggle('active', button.dataset.shot === P.cameraShot);
+  });
+  const motionSelect = document.getElementById('pCameraMotion');
+  if (motionSelect) motionSelect.value = P.cameraMotion;
+
+  const telemetry = cameraRig.getTelemetry();
+  const telemShot = document.getElementById('telemShot');
+  if (telemShot) telemShot.textContent = telemetry.shot.toUpperCase();
+  const telemMotion = document.getElementById('telemMotion');
+  if (telemMotion) telemMotion.textContent = telemetry.motion.toUpperCase();
+  const telemCoords = document.getElementById('telemCoords');
+  if (telemCoords) {
+    telemCoords.textContent = `AZ ${telemetry.az}° · EL ${telemetry.el}° · DIST ${telemetry.dist}`;
+  }
 }
 
 // Auto-boot sequence

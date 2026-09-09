@@ -4,6 +4,8 @@ import {
   proceduralCameraPose,
   shotPose,
   sphericalToCart,
+  CameraRig,
+  CameraDirector,
 } from '../cam.js';
 import { createDefaultProject } from '../project-schema.js';
 
@@ -45,5 +47,34 @@ describe('camera intelligence', () => {
     expect(result.position.y).toBeCloseTo(0, 5);
     expect(result.position.z).toBeCloseTo(0, 5);
     expect(result.lookY).toBe(1.5);
+  });
+
+  it('frames 3D centerpiece physical artifacts with artifact-specific beauty angles', () => {
+    const cartridgeHero = shotPose('hero', 'cartridge', null, true);
+    expect(cartridgeHero.dist).toBeLessThan(10);
+    expect(cartridgeHero.lookY).toBeGreaterThan(0);
+
+    const vinylOverhead = shotPose('overhead', 'vinyl', null, true);
+    expect(vinylOverhead.el).toBe(85);
+  });
+
+  it('instantiates CameraDirector, reports telemetry, and toggles auto-director', () => {
+    const mockCamera = { position: { x: 0, y: 0, z: 12, sub: () => {}, copy: () => {} }, lookAt: () => {} };
+    const mockControls = {
+      target: { x: 0, y: 0, z: 0, sub: () => {}, copy: () => {} },
+      addEventListener: () => {},
+    };
+    const project = createDefaultProject();
+    const director = new CameraRig(mockCamera, mockControls, project);
+    
+    expect(director.autoDirector).toBe(false);
+    director.toggleAutoDirector();
+    expect(director.autoDirector).toBe(true);
+
+    const telem = director.getTelemetry();
+    expect(telem.shot).toBe('auto');
+    expect(telem.autoDirector).toBe(true);
+    expect(telem.az).toBeDefined();
+    expect(telem.dist).toBeGreaterThan(0);
   });
 });

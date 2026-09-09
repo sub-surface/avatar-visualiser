@@ -366,6 +366,84 @@ select.c-select option {
   color: var(--s-mid);
 }
 
+/* Camera Director Controls */
+.cam-telemetry-box {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--mono);
+}
+.cam-telem-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.58rem;
+}
+.cam-telem-lbl {
+  color: var(--s-lo);
+  letter-spacing: 0.1em;
+}
+.cam-telem-val {
+  color: var(--s-hi);
+  font-weight: 500;
+}
+.cam-shot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+.cam-shot-btn {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--panel-border);
+  color: var(--s-mid);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  padding: 5px 6px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+.cam-shot-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--s-hi);
+  border-color: var(--m-hi);
+}
+.cam-shot-btn.active {
+  background: rgba(162, 182, 192, 0.15);
+  border-color: var(--m-hi);
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 0 8px rgba(162, 182, 192, 0.3);
+}
+.cam-action-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.cam-action-row button {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 0.58rem;
+}
+.btn-pill {
+  padding: 2px 10px;
+  font-size: 0.55rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-pill.active {
+  background: rgba(30, 180, 80, 0.25) !important;
+  color: #55ff88 !important;
+  border-color: #33cc66 !important;
+  box-shadow: 0 0 8px rgba(50, 200, 100, 0.4);
+}
+
 /* Master Action Strip */
 .console-action-bar {
   display: flex;

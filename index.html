@@ -165,6 +165,7 @@
       <div class="console-tabs">
         <button class="console-tab active" data-target="cTabLook">VCR & Look</button>
         <button class="console-tab" data-target="cTabItem">3D Asset</button>
+        <button class="console-tab" data-target="cTabCam">Camera Director</button>
         <button class="console-tab" data-target="cTabMaster">Export</button>
       </div>
 
@@ -247,7 +248,76 @@
         </div>
       </div>
 
-      <!-- Tab 3: Export & Video Format -->
+      <!-- Tab: Camera Director -->
+      <div class="console-body" id="cTabCam">
+        <div class="section-tag">Director Telemetry</div>
+        <div class="cam-telemetry-box" id="camTelemetry">
+          <div class="cam-telem-line">
+            <span class="cam-telem-lbl">SHOT:</span> <span class="cam-telem-val" id="telemShot">HERO 3/4</span>
+            <span class="cam-telem-lbl" style="margin-left:auto;">MOTION:</span> <span class="cam-telem-val" id="telemMotion">STILL</span>
+          </div>
+          <div class="cam-telem-line" style="font-size:0.52rem; opacity:0.8;">
+            <span id="telemCoords">AZ 0.0° · EL 15.0° · DIST 12.00</span>
+          </div>
+        </div>
+
+        <div class="section-tag">Cinematic Shot Angle</div>
+        <div class="cam-shot-grid">
+          <button class="cam-shot-btn active" data-shot="hero" title="Hero 3/4 Angle">hero 3/4</button>
+          <button class="cam-shot-btn" data-shot="auto" title="Automatic Frame for Mode">auto</button>
+          <button class="cam-shot-btn" data-shot="overhead" title="Top-Down Bird's Eye">overhead</button>
+          <button class="cam-shot-btn" data-shot="horizon" title="Horizon Eye-Level">horizon</button>
+          <button class="cam-shot-btn" data-shot="side" title="Side Profile 90°">side</button>
+          <button class="cam-shot-btn" data-shot="macro" title="Extreme Macro Close-Up">macro</button>
+          <button class="cam-shot-btn" data-shot="underslung" title="Low Angle Underslung">low angle</button>
+          <button class="cam-shot-btn" data-shot="manual" title="Free Orbit View">free orbit</button>
+        </div>
+
+        <div class="section-tag">Camera Motion Grammar</div>
+        <div class="c-row">
+          <label title="Procedural motion choreography">movement</label>
+          <select class="c-select" id="pCameraMotion">
+            <option value="still" selected>locked still</option>
+            <option value="drift">cinematic drift</option>
+            <option value="orbit">turntable orbit</option>
+            <option value="pendulum">pendulum arc</option>
+            <option value="rail">tracking rail</option>
+            <option value="handheld">handheld organic</option>
+          </select>
+        </div>
+        <div class="c-row">
+          <label title="Motion sway intensity">amount</label>
+          <input type="range" id="pCameraAmount" min="0" max="2" step="0.05" value="0.35">
+          <span class="c-val" id="vCameraAmount">0.35</span>
+        </div>
+        <div class="c-row">
+          <label title="Motion oscillation speed">speed</label>
+          <input type="range" id="pCameraSpeed" min="0" max="3" step="0.05" value="0.35">
+          <span class="c-val" id="vCameraSpeed">0.35</span>
+        </div>
+        <div class="c-row">
+          <label title="Bass kick zoom punch & transient shake">audio punch</label>
+          <input type="range" id="pCameraAudio" min="0" max="2" step="0.05" value="0.45">
+          <span class="c-val" id="vCameraAudio">0.45</span>
+        </div>
+        <div class="c-row">
+          <label title="Easing duration between shot changes">cut smooth</label>
+          <input type="range" id="pCameraTransition" min="0.05" max="3" step="0.05" value="0.8">
+          <span class="c-val" id="vCameraTransition">0.80</span>
+        </div>
+
+        <div class="section-tag">Director Operations</div>
+        <div class="cam-action-row">
+          <button class="chrome" id="btnCamAutoFrame" title="Auto-align camera to active scene">⟲ auto frame</button>
+          <button class="chrome" id="btnCamCapture" title="Save current mouse angle as manual anchor">💾 lock orbit</button>
+        </div>
+        <div class="c-row" style="margin-top:6px;">
+          <label title="Automatically cycle cinematic shots on musical phrases">auto director</label>
+          <button class="chrome btn-pill" id="btnAutoDirector">OFF</button>
+        </div>
+      </div>
+
+      <!-- Tab 4: Export & Video Format -->
       <div class="console-body" id="cTabMaster">
         <div class="section-tag">Aspect Ratio</div>
         <div class="c-row">
@@ -280,8 +350,9 @@
       </div>
     </div>
 
-    <!-- Toggle Button -->
+    <!-- Toggle Buttons -->
     <div class="console-action-bar">
+      <button class="chrome" id="btnDirectorShortcut" title="Quick open Camera Director (Hotkey: D)">director</button>
       <button class="chrome" id="btnToggleConsole">console</button>
     </div>
   </div>
