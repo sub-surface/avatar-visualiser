@@ -11,6 +11,7 @@ import { lookRenderer } from '../look.js';
 import { applyLookProfile } from '../look-profiles.js';
 import { compositeFrame, initOverlayCanvas, freeOverlayCanvas } from '../overlay.js';
 import { startExport, isExporting } from '../export.js';
+import { CameraRig } from '../cam.js';
 import { getOrCreateItemScene, RETRO_ITEMS } from './objects/item-scene.js';
 import { SoundCloudImporter } from './ui/soundcloud-modal.js';
 import { vcrOsd } from './vhs/vcr-osd.js';
