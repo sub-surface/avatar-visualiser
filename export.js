@@ -220,6 +220,9 @@ async function encodeAudio(encoder, buffer, offsetTimestampUs = 0) {
   const fullPlanar = new Float32Array(chunkSize * channelCount);
 
   for (let offset = 0; offset < buffer.length; offset += chunkSize) {
+    if (encoder.encodeQueueSize > 24) {
+      await new Promise((resolve) => setTimeout(resolve, 4));
+    }
     const frameCount = Math.min(chunkSize, buffer.length - offset);
     const planar = frameCount === chunkSize ? fullPlanar : new Float32Array(frameCount * channelCount);
     for (let channel = 0; channel < channelCount; channel++) {
@@ -233,8 +236,11 @@ async function encodeAudio(encoder, buffer, offsetTimestampUs = 0) {
       timestamp: Math.round((offset / sampleRate) * 1e6) + offsetTimestampUs,
       data: planar,
     });
-    encoder.encode(audioData);
-    audioData.close();
+    try {
+      encoder.encode(audioData);
+    } finally {
+      audioData.close();
+    }
   }
 }
 
@@ -328,14 +334,22 @@ async function runExport(
         const finish = () => {
           if (!done) {
             done = true;
-            encoder.removeEventListener?.('dequeue', onDequeue);
+            if (typeof encoder.removeEventListener === 'function') {
+              encoder.removeEventListener('dequeue', onDequeue);
+            } else if (encoder.ondequeue === onDequeue) {
+              encoder.ondequeue = null;
+            }
             resolve();
           }
         };
         const onDequeue = () => {
           if (encoder.encodeQueueSize <= 4) finish();
         };
-        encoder.addEventListener?.('dequeue', onDequeue);
+        if (typeof encoder.addEventListener === 'function') {
+          encoder.addEventListener('dequeue', onDequeue);
+        } else {
+          encoder.ondequeue = onDequeue;
+        }
         if (encoder.encodeQueueSize <= 4) {
           finish();
         } else {
@@ -446,8 +460,11 @@ async function runExport(
       timestamp,
       duration: Math.round(1e6 / fps),
     });
-    encoder.encode(videoFrame, { keyFrame: (globalFrameOffset + frameIndex) % (fps * 2) === 0 });
-    videoFrame.close();
+    try {
+      encoder.encode(videoFrame, { keyFrame: (globalFrameOffset + frameIndex) % (fps * 2) === 0 });
+    } finally {
+      videoFrame.close();
+    }
 
     // Time-based cooperative yield (every ~40ms) keeps UI responsive without stalling fast GPUs
     const now = performance.now();
@@ -477,6 +494,56 @@ function setProgressText(text) {
 
 export let isExporting = false;
 
+/**
+ * Wraps a FileSystemWritableFileStream to ensure all writes are strictly sequenced
+ * in a FIFO promise chain without overlapping write operations, and catches any
+ * asynchronous write rejections to prevent unhandled promise exceptions in the browser.
+ */
+class AsyncQueueFileWriter {
+  constructor(writable) {
+    this.writable = writable;
+    this.chain = Promise.resolve();
+    this.writeError = null;
+  }
+
+  write(data, position) {
+    if (this.writeError) return;
+    this.chain = this.chain
+      .then(async () => {
+        try {
+          await this.writable.write({ type: 'write', data, position });
+        } catch (err) {
+          this.writeError = err;
+          console.error('File write failed:', err);
+        }
+      })
+      .catch((err) => {
+        this.writeError = err;
+      });
+  }
+
+  async flush() {
+    await this.chain;
+    if (this.writeError) {
+      throw this.writeError;
+    }
+  }
+
+  async close() {
+    await this.flush();
+    await this.writable.close();
+  }
+
+  async abort() {
+    try {
+      await this.chain;
+    } catch {}
+    try {
+      await this.writable.abort();
+    } catch {}
+  }
+}
+
 export async function startExport(audioFile, visualMode) {
   if (isExporting) return;
 
@@ -501,6 +568,7 @@ export async function startExport(audioFile, visualMode) {
   const [width, height] = exportDimensions(project);
   const fps = project.exportPreset === 'high' || project.exportPreset === 'lossless' ? 60 : 30;
   let writable = null;
+  let fileWriter = null;
   isExporting = true;
   setExportButtonsDisabled(true);
 
@@ -516,10 +584,13 @@ export async function startExport(audioFile, visualMode) {
     initOverlayCanvas(width, height);
     beginExportResize(width, height);
     writable = await fileHandle.createWritable();
+    fileWriter = new AsyncQueueFileWriter(writable);
 
     const muxer = new Muxer({
       target: new StreamTarget({
-        onData: (data, position) => writable.write({ type: 'write', data, position }),
+        chunked: true,
+        chunkSize: 4 * 1024 * 1024,
+        onData: (data, position) => fileWriter.write(data, position),
       }),
       video: { codec: 'avc', width, height },
       audio: {
@@ -561,9 +632,6 @@ export async function startExport(audioFile, visualMode) {
     logStatus(`Exporting ${duration.toFixed(1)}s at ${width}×${height} · ${fps} fps`);
     setProgressText('0%');
 
-    // Run audio encoding concurrently with video rendering
-    const audioEncodePromise = encodeAudio(audioEncoder, audioBuffer);
-
     await runExport(
       videoEncoder,
       audioBuffer,
@@ -574,17 +642,22 @@ export async function startExport(audioFile, visualMode) {
       (progress) => { setProgressText(`${progress}%`); },
     );
 
+    logStatus('Encoding audio stream...');
+    setProgressText('audio...');
+    await encodeAudio(audioEncoder, audioBuffer);
+
     logStatus('Finalizing media stream...');
-    await audioEncodePromise;
+    setProgressText('muxing...');
     await videoEncoder.flush();
     await audioEncoder.flush();
     muxer.finalize();
-    await writable.close();
+    await fileWriter.close();
     setProgressText('done.');
     logStatus('Export complete');
   } catch (error) {
     logStatus(`Export failed: ${error.message ?? error}`);
     setProgressText(`err: ${error.message ?? error}`);
+    try { await fileWriter?.abort(); } catch {}
     try { await writable?.abort(); } catch {}
   } finally {
     freeOverlayCanvas();
@@ -645,6 +718,7 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
   const [width, height] = exportDimensions(primaryProject);
   const fps = primaryProject.exportPreset === 'high' || primaryProject.exportPreset === 'lossless' ? 60 : 30;
   let writable = null;
+  let fileWriter = null;
   isExporting = true;
   setExportButtonsDisabled(true);
 
@@ -653,6 +727,7 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
     initOverlayCanvas(width, height);
     beginExportResize(width, height);
     writable = await fileHandle.createWritable();
+    fileWriter = new AsyncQueueFileWriter(writable);
 
     // Standardized audio profile across all tracks: 44.1kHz Stereo
     const sampleRate = 44100;
@@ -660,7 +735,9 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
 
     const muxer = new Muxer({
       target: new StreamTarget({
-        onData: (data, position) => writable.write({ type: 'write', data, position }),
+        chunked: true,
+        chunkSize: 4 * 1024 * 1024,
+        onData: (data, position) => fileWriter.write(data, position),
       }),
       video: { codec: 'avc', width, height },
       audio: {
@@ -745,9 +822,6 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
 
       const trackFrames = Math.ceil(trackDuration * fps);
 
-      // Concurrently encode audio stream in background while GPU renders video frames
-      const audioEncodePromise = encodeAudio(audioEncoder, audioBuffer, globalAudioOffsetUs);
-
       await runExport(
         videoEncoder,
         audioBuffer,
@@ -767,8 +841,8 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
         },
       );
 
-      // Await concurrent audio encoding to complete
-      await audioEncodePromise;
+      logStatus(`[${i + 1}/${totalTracks}] Encoding audio stream...`);
+      await encodeAudio(audioEncoder, audioBuffer, globalAudioOffsetUs);
 
       globalFrameOffset += trackFrames;
       globalAudioOffsetUs += Math.round((audioBuffer.length / audioBuffer.sampleRate) * 1e6);
@@ -785,12 +859,13 @@ export async function startAlbumExport(albumManager, visualMode = 'sphere') {
     await videoEncoder.flush();
     await audioEncoder.flush();
     muxer.finalize();
-    await writable.close();
+    await fileWriter.close();
     setProgressText('done.');
     logStatus(`Album export complete: ${totalTracks} tracks`);
   } catch (error) {
     logStatus(`Album export failed: ${error.message ?? error}`);
     setProgressText(`err: ${error.message ?? error}`);
+    try { await fileWriter?.abort(); } catch {}
     try { await writable?.abort(); } catch {}
   } finally {
     freeOverlayCanvas();
