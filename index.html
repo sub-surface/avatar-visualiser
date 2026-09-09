@@ -118,6 +118,13 @@
     <div class="deck-island deck-playback">
       <button class="chrome" id="btnPlayPause">play</button>
       <input type="range" class="deck-scrub" id="previewScrub" min="0" max="1" step="0.001" value="0" title="Scrub audio track">
+      <div class="deck-vu" id="deckVuMeter" title="Audio peak signal level">
+        <span class="vu-led g" id="vu0"></span>
+        <span class="vu-led g" id="vu1"></span>
+        <span class="vu-led g" id="vu2"></span>
+        <span class="vu-led y" id="vu3"></span>
+        <span class="vu-led r" id="vu4"></span>
+      </div>
       <button class="chrome" id="btnLoadFile" title="Drop or load local audio file">drop / load</button>
       <button class="chrome btn-soundcloud" id="btnSoundCloud" title="Import track & artwork directly from SoundCloud">☁ soundcloud</button>
     </div>
@@ -481,6 +488,10 @@
     <span class="mode-sep">·</span>
     <button class="chrome" id="btnObs" title="Hide all UI chrome (Hotkey: ESC or C)">hide ui</button>
     <span class="mode-sep">·</span>
+    <button class="chrome" id="btnFullscreen" title="Toggle Fullscreen (Hotkey: F)">fullscreen</button>
+    <span class="mode-sep">·</span>
+    <button class="chrome" id="btnShortcuts" title="Keyboard Shortcuts (Hotkey: ? or H)" style="font-weight:600; padding:0 4px;">?</button>
+    <span class="mode-sep">·</span>
     <div id="paletteWrap">
       <button id="btnCycle" title="Cycle UI & signal palette"><span id="paletteDot"></span></button>
       <svg id="paletteSafeZone"><path d=""></path></svg>
@@ -520,6 +531,28 @@
       </div>
       <div class="modal-actions" style="margin-top:12px;">
         <button class="chrome btn-active-highlight" id="seqBtnDone" style="width:100%;">done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Keyboard Shortcuts ──────────────────────────── -->
+  <div class="modal-scrim" id="shortcutsModal" style="display:none;">
+    <div class="modal-box" style="max-width:380px;">
+      <div class="modal-head">
+        <div class="modal-title">Keyboard Shortcuts</div>
+        <button class="chrome" id="shortcutsBtnClose">✕</button>
+      </div>
+      <div class="shortcuts-grid">
+        <div class="sc-row"><kbd>SPACE</kbd><span>Play / Pause Audio</span></div>
+        <div class="sc-row"><kbd>F</kbd><span>Toggle Edge-to-Edge Fullscreen</span></div>
+        <div class="sc-row"><kbd>C</kbd> / <kbd>ESC</kbd><span>Hide / Show UI (Clean View)</span></div>
+        <div class="sc-row"><kbd>TAB</kbd><span>Toggle Fields ↔ 3D Artifacts</span></div>
+        <div class="sc-row"><kbd>1</kbd> – <kbd>8</kbd><span>Direct Scene Selector</span></div>
+        <div class="sc-row"><kbd>R</kbd><span>Roll Random Generative Look</span></div>
+        <div class="sc-row"><kbd>D</kbd><span>Open Camera Director</span></div>
+        <div class="sc-row"><kbd>P</kbd><span>Toggle Hardware Console</span></div>
+        <div class="sc-row"><kbd>DRAG</kbd><span>3D Orbit View</span></div>
+        <div class="sc-row"><kbd>SCROLL</kbd><span>Smooth Camera Zoom</span></div>
       </div>
     </div>
   </div>

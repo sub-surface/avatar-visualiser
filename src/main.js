@@ -394,6 +394,7 @@ const _uiColA = new THREE.Color();
 const _uiColB = new THREE.Color();
 const _uiColResult = new THREE.Color();
 let _lastUiStyle = '';
+let _vu0 = null, _vu1 = null, _vu2 = null, _vu3 = null, _vu4 = null;
 
 function animate(timestamp) {
   requestAnimationFrame(animate);
@@ -463,6 +464,30 @@ function animate(timestamp) {
         document.documentElement.style.setProperty('--m-hi', style);
       }
     }
+
+    // Update hardware VU peak meter LEDs
+    if (_vu0 || document.getElementById('vu0')) {
+      if (!_vu0) {
+        _vu0 = document.getElementById('vu0');
+        _vu1 = document.getElementById('vu1');
+        _vu2 = document.getElementById('vu2');
+        _vu3 = document.getElementById('vu3');
+        _vu4 = document.getElementById('vu4');
+      }
+      const rms = signalFrame?.env?.rms ?? 0;
+      const kick = signalFrame?.env?.kick ?? 0;
+      _vu0?.classList.toggle('lit', rms > 0.04);
+      _vu1?.classList.toggle('lit', rms > 0.16);
+      _vu2?.classList.toggle('lit', rms > 0.32);
+      _vu3?.classList.toggle('lit', rms > 0.52);
+      _vu4?.classList.toggle('lit', rms > 0.74 || kick > 0.78);
+    }
+  } else if (_vu0) {
+    _vu0.classList.remove('lit');
+    _vu1.classList.remove('lit');
+    _vu2.classList.remove('lit');
+    _vu3.classList.remove('lit');
+    _vu4.classList.remove('lit');
   }
 
   // Update 3D centerpiece asset
@@ -1059,6 +1084,44 @@ export function initApp() {
     }));
   });
 
+  // Fullscreen & Shortcuts modal helpers
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  const shortcutsModal = document.getElementById('shortcutsModal');
+  const toggleShortcutsModal = (force) => {
+    if (!shortcutsModal) return;
+    const show = typeof force === 'boolean' ? force : shortcutsModal.style.display === 'none';
+    shortcutsModal.style.display = show ? 'flex' : 'none';
+  };
+
+  const randomiseSnapshot = () => {
+    const rand = Math.random;
+    for (const [key, rule] of Object.entries(PARAM_SCHEMA)) {
+      if (!rule.random || rule.update === 'geometry') continue;
+      const [minimum, maximum] = rule.random;
+      let value = minimum + rand() * (maximum - minimum);
+      if (rule.integer) value = Math.round(value);
+      P[key] = value;
+    }
+    syncControls();
+    setColors(P.colorA, P.colorB);
+    saveParams();
+    window.dispatchEvent(new CustomEvent('avatar-status', { detail: 'Rolled random generative snapshot' }));
+  };
+
+  document.getElementById('btnFullscreen')?.addEventListener('click', toggleFullscreen);
+  document.getElementById('btnShortcuts')?.addEventListener('click', () => toggleShortcutsModal());
+  document.getElementById('shortcutsBtnClose')?.addEventListener('click', () => toggleShortcutsModal(false));
+  shortcutsModal?.addEventListener('click', (e) => {
+    if (e.target === shortcutsModal) toggleShortcutsModal(false);
+  });
+
   // Keyboard Shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -1066,12 +1129,35 @@ export function initApp() {
       e.preventDefault();
       togglePreview();
     } else if (e.key === 'Escape') {
+      if (shortcutsModal && shortcutsModal.style.display !== 'none') {
+        toggleShortcutsModal(false);
+        return;
+      }
       document.body.classList.remove('clean-mode');
       updateCleanUI(false);
       soundcloudModal.close();
+      sequenceModal.close();
     } else if (e.key === 'c' || e.key === 'C') {
       const active = document.body.classList.toggle('clean-mode');
       updateCleanUI(active);
+    } else if (e.key === 'f' || e.key === 'F') {
+      toggleFullscreen();
+    } else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+      toggleShortcutsModal();
+    } else if (e.key === 'r' || e.key === 'R') {
+      randomiseSnapshot();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      setCategory(visCategory === 'field' ? 'item' : 'field');
+    } else if (e.key >= '1' && e.key <= '8') {
+      const idx = parseInt(e.key, 10) - 1;
+      if (visCategory === 'field') {
+        const fieldModes = ['sphere', 'wave', 'bowl', 'polar', 'topology', 'cathedral', 'ribbon', 'tunnel'];
+        if (fieldModes[idx]) setFieldMode(fieldModes[idx]);
+      } else {
+        const itemModes = ['cartridge', 'vinyl', 'cassette', 'floppy', 'custom'];
+        if (itemModes[idx]) setRetroItem(itemModes[idx]);
+      }
     } else if (e.key === 'p' || e.key === 'P') {
       consolePanel?.classList.toggle('open');
     } else if (e.key === 'd' || e.key === 'D') {

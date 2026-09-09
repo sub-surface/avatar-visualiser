@@ -100,6 +100,77 @@ body:not(.light-mode) .track-sub {
   cursor: pointer;
 }
 
+/* Retro Hardware VU Peak Meter */
+.deck-vu {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 14px;
+  padding: 0 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+body.light-mode .deck-vu {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+.vu-led {
+  width: 3px;
+  height: 8px;
+  border-radius: 1px;
+  transition: opacity 0.05s ease, transform 0.05s ease;
+  opacity: 0.18;
+}
+.vu-led.g { background: #22c55e; }
+.vu-led.y { background: #eab308; }
+.vu-led.r { background: #ef4444; }
+.vu-led.lit {
+  opacity: 1;
+  transform: scaleY(1.25);
+}
+.vu-led.g.lit { box-shadow: 0 0 5px #22c55e; }
+.vu-led.y.lit { box-shadow: 0 0 5px #eab308; }
+.vu-led.r.lit { box-shadow: 0 0 6px #ef4444; }
+
+/* Keyboard Shortcuts Modal */
+.shortcuts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+}
+.sc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+body.light-mode .sc-row {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+.sc-row kbd {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--s-hi);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+body.light-mode .sc-row kbd {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: var(--s-hi);
+}
+.sc-row span {
+  color: var(--s-mid);
+}
+
 /* Audio Action Buttons */
 .audio-actions {
   display: flex;
