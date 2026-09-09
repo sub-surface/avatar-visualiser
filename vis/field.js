@@ -160,7 +160,9 @@ const vertexShader = `
     float blend = uModeMix * uModeMix * (3.0 - 2.0 * uModeMix);
     vec3 p = mix(fromPosition, toPosition, blend);
     vEnergy = energy;
-    vColor = mix(uColorA, uColorB, clamp(energy * 1.8 + abs(stereo) * 0.5, 0.0, 1.0));
+    float dispFactor = clamp(abs(displacement) * 0.45 + energy * 0.75 + abs(stereo) * 0.35, 0.0, 1.0);
+    float tColor = smoothstep(0.04, 0.88, dispFactor);
+    vColor = mix(uColorA, uColorB, tColor);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   }
 `;

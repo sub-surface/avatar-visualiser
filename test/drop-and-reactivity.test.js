@@ -112,4 +112,26 @@ describe('field audio reactivity setting', () => {
     // High reactivity should produce significantly higher displacement on incoming audio
     expect(dispHighReactivity).toBeGreaterThan(dispStandard * 2.0);
   });
+
+  it('updates uniforms.uColorA and uniforms.uColorB from project colors', () => {
+    const project = createDefaultProject();
+    project.colorA = '#00f0ff';
+    project.colorB = '#ff0055';
+
+    const frame = {
+      dt: 0.016,
+      time: 1.0,
+      sampleRate: 44100,
+      freqL: new Uint8Array(128).fill(50),
+      freqR: new Uint8Array(128).fill(50),
+      env: { sub: 0.1, kick: 0.2, trans: 0.1, high: 0.1 },
+      lfo1: 0,
+    };
+
+    signalField.update(frame, project);
+    const hexA = '#' + signalField.material.uniforms.uColorA.value.getHexString();
+    const hexB = '#' + signalField.material.uniforms.uColorB.value.getHexString();
+    expect(hexA.toLowerCase()).toBe('#00f0ff');
+    expect(hexB.toLowerCase()).toBe('#ff0055');
+  });
 });

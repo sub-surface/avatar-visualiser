@@ -134,6 +134,8 @@ export function syncControls() {
 
   setInput('pColorA', P.colorA);
   setInput('pColorB', P.colorB);
+  setLabel('vColorA', (P.colorA || '#e8d5b0').toUpperCase());
+  setLabel('vColorB', (P.colorB || '#b090c8').toUpperCase());
   setInput('pTitle', P.title);
   setInput('pArtist', P.artist);
   setInput('pBpm', P.bpm);

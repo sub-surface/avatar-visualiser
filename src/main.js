@@ -606,6 +606,46 @@ export function initApp() {
   // Macro Sliders
   bindRange('pReactivity', 'vReactivity', 'reactivity');
   bindRange('pMaxDisp', 'vMaxDisp', 'maxDisp');
+
+  // Dual-Color Gradient & Color Cycle Controls
+  const pColorA = document.getElementById('pColorA');
+  const pColorB = document.getElementById('pColorB');
+  const vColorA = document.getElementById('vColorA');
+  const vColorB = document.getElementById('vColorB');
+
+  pColorA?.addEventListener('input', (e) => {
+    P.colorA = e.target.value;
+    if (vColorA) vColorA.textContent = e.target.value.toUpperCase();
+    setColors(P.colorA, P.colorB);
+    saveParams();
+  });
+
+  pColorB?.addEventListener('input', (e) => {
+    P.colorB = e.target.value;
+    if (vColorB) vColorB.textContent = e.target.value.toUpperCase();
+    setColors(P.colorA, P.colorB);
+    saveParams();
+  });
+
+  bindRange('pColorCycle', 'vColorCycle', 'colorCycle');
+
+  document.querySelectorAll('.color-pair-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const ca = btn.dataset.ca;
+      const cb = btn.dataset.cb;
+      if (ca && cb) {
+        P.colorA = ca;
+        P.colorB = cb;
+        if (pColorA) pColorA.value = ca;
+        if (pColorB) pColorB.value = cb;
+        if (vColorA) vColorA.textContent = ca.toUpperCase();
+        if (vColorB) vColorB.textContent = cb.toUpperCase();
+        setColors(P.colorA, P.colorB);
+        saveParams();
+        window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Palette preset: ${btn.textContent}` }));
+      }
+    });
+  });
   bindRange('pTapeTracking', 'vTapeTracking', 'vhsTracking');
   bindRange('pTapeSyncDrop', 'vTapeSyncDrop', 'vhsSyncDrop');
   bindRange('pCrtCurvature', 'vCrtCurvature', 'vhsCurvature');

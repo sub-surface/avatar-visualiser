@@ -189,6 +189,33 @@
           <span class="c-val" id="vMaxDisp">2.2</span>
         </div>
 
+        <div class="section-tag">Signal Field Colors</div>
+        <div class="c-row" style="align-items:center;">
+          <label for="pColorA" title="Base / low-energy line color">base color (a)</label>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="color" id="pColorA" value="#e8d5b0" class="c-color-input">
+            <span class="c-val" id="vColorA" style="font-family:monospace; text-transform:uppercase;">#E8D5B0</span>
+          </div>
+        </div>
+        <div class="c-row" style="align-items:center;">
+          <label for="pColorB" title="Peak / audio displacement reactive color">peak color (b)</label>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="color" id="pColorB" value="#b090c8" class="c-color-input">
+            <span class="c-val" id="vColorB" style="font-family:monospace; text-transform:uppercase;">#B090C8</span>
+          </div>
+        </div>
+        <div class="c-row">
+          <label for="pColorCycle" title="LFO color cycling rate">color cycle</label>
+          <input type="range" id="pColorCycle" min="0" max="1" step="0.05" value="0">
+          <span class="c-val" id="vColorCycle">0.00</span>
+        </div>
+        <div class="color-presets-row" style="display:flex; gap:4px; margin-top:4px;">
+          <button class="chrome color-pair-btn" data-ca="#e8d5b0" data-cb="#b090c8" title="Amber & Amethyst" style="flex:1; font-size:0.52rem; padding:3px 2px;">amber / lilac</button>
+          <button class="chrome color-pair-btn" data-ca="#00f0ff" data-cb="#ff0055" title="Cyberpunk Neon" style="flex:1; font-size:0.52rem; padding:3px 2px;">cyber neon</button>
+          <button class="chrome color-pair-btn" data-ca="#39ff14" data-cb="#ffdd00" title="CRT Phosphor Matrix" style="flex:1; font-size:0.52rem; padding:3px 2px;">phosphor</button>
+          <button class="chrome color-pair-btn" data-ca="#ffffff" data-cb="#ff4444" title="Monochrome & Crimson" style="flex:1; font-size:0.52rem; padding:3px 2px;">mono / red</button>
+        </div>
+
         <div class="section-tag">Hardware Profile</div>
         <div class="c-row">
           <label for="pLookProfile">profile</label>

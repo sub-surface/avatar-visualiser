@@ -391,6 +391,36 @@ body.light-mode .console-tabs {
   flex-shrink: 0;
 }
 
+.c-color-input {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid var(--s-line);
+  width: 26px;
+  height: 18px;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  vertical-align: middle;
+}
+.c-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.c-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+.color-pair-btn {
+  font-family: var(--font-mono);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.color-pair-btn:hover {
+  background: var(--island-bg);
+  border-color: var(--m-hi);
+  color: var(--s-hi);
+}
+
 /* Custom Styled Range Sliders */
 input[type="range"] {
   -webkit-appearance: none;
