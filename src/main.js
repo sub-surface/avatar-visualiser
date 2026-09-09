@@ -479,7 +479,7 @@ function animate(timestamp) {
     const telem = cameraRig.getTelemetry();
     const telemCoords = document.getElementById('telemCoords');
     if (telemCoords) {
-      telemCoords.textContent = `AZ ${telem.az}° · EL ${telem.el}° · DIST ${telem.dist}`;
+      telemCoords.textContent = `AZ ${telem.az}° · EL ${telem.el}° · DIST ${telem.dist} · FOV ${telem.fov}°`;
     }
   }
 
@@ -798,6 +798,9 @@ export function initApp() {
   bindRange('pCameraSpeed', 'vCameraSpeed', 'cameraSpeed');
   bindRange('pCameraAudio', 'vCameraAudio', 'cameraAudio');
   bindRange('pCameraTransition', 'vCameraTransition', 'cameraTransition');
+  bindRange('pCameraFov', 'vCameraFov', 'cameraFov', (fov) => {
+    cameraRig.setFov(fov);
+  });
 
   document.getElementById('btnCamAutoFrame')?.addEventListener('click', () => {
     const mode = visCategory === 'item' ? P.activeItem : visMode;
@@ -1083,6 +1086,7 @@ export function initApp() {
     if (el) el.textContent = e.detail;
   });
 
+  cameraRig.setFov(P.cameraFov || 45);
   cameraRig.selectShot(P.cameraShot, visCategory === 'item' ? P.activeItem : visMode, 0.01, visCategory === 'item');
   updateCameraUI();
   animate(0);
@@ -1103,7 +1107,7 @@ export function updateCameraUI() {
   if (telemMotion) telemMotion.textContent = telemetry.motion.toUpperCase();
   const telemCoords = document.getElementById('telemCoords');
   if (telemCoords) {
-    telemCoords.textContent = `AZ ${telemetry.az}° · EL ${telemetry.el}° · DIST ${telemetry.dist}`;
+    telemCoords.textContent = `AZ ${telemetry.az}° · EL ${telemetry.el}° · DIST ${telemetry.dist} · FOV ${telemetry.fov}°`;
   }
 }
 

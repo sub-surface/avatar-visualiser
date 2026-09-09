@@ -294,6 +294,13 @@ export class CameraRig {
     return this.autoDirector;
   }
 
+  setFov(fov) {
+    if (this.camera && Number.isFinite(fov)) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+
   getTelemetry() {
     return {
       shot: this.project?.cameraShot ?? 'auto',
@@ -301,6 +308,7 @@ export class CameraRig {
       az: +this.currentPose.az.toFixed(1),
       el: +this.currentPose.el.toFixed(1),
       dist: +this.currentPose.dist.toFixed(2),
+      fov: Math.round(this.camera?.fov ?? this.project?.cameraFov ?? 45),
       lookY: +this.currentPose.lookY.toFixed(2),
       isTransitioning: !!this.transition,
       autoDirector: this.autoDirector,
@@ -308,6 +316,12 @@ export class CameraRig {
   }
 
   update(dt, time, frame, mode, isItem = false) {
+    // Keep camera lens FOV aligned with project settings
+    if (this.camera && this.project?.cameraFov && Math.abs(this.camera.fov - this.project.cameraFov) > 0.01) {
+      this.camera.fov = this.project.cameraFov;
+      this.camera.updateProjectionMatrix();
+    }
+
     // If user is actively orbiting with mouse, let OrbitControls drive base position
     if (this.dragging) return;
 

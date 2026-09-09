@@ -80,6 +80,7 @@ export const PARAM_SCHEMA = Object.freeze({
   cameraSpeed: number(0.35, 0, 3, { update: 'hot', random: [0.08, 1.5] }),
   cameraAudio: number(0.45, 0, 2, { update: 'hot', random: [0, 1.25] }),
   cameraTransition: number(0.8, 0, 4, { update: 'hot' }),
+  cameraFov: number(45, 15, 120, { integer: true, update: 'hot', random: [35, 65] }),
 
   lookProfile: choice('clean', ['clean', 'ps2-480', 'ps2-240', 'tape', 'ghost', 'vhs-master', 'crt-90s', 'ps1-retro']),
   previewOutput: { type: 'boolean', default: false, update: 'look' },

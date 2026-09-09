@@ -79,6 +79,7 @@ export function syncControls() {
     CameraSpeed: 'cameraSpeed',
     CameraAudio: 'cameraAudio',
     CameraTransition: 'cameraTransition',
+    CameraFov: 'cameraFov',
     ExportPreset: 'exportPreset',
     ExportOrient: 'exportOrientation',
     ExportAspect: 'exportAspect',
@@ -112,7 +113,7 @@ export function syncControls() {
 
   for (const [suffix, key] of Object.entries(bindings)) {
     setInput(`p${suffix}`, P[key]);
-    if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ') {
+    if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ' || key === 'cameraFov') {
       setLabel(`v${suffix}`, `${P[key]}°`);
     } else if (key === 'skyboxLightTone') {
       setLabel(`v${suffix}`, Number(P[key]).toFixed(2));
@@ -199,7 +200,7 @@ export function bindRange(id, valueId, key, onChange) {
     P[key] = value;
     input.value = value;
     if (label) {
-      if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ') {
+      if (key === 'itemRotX' || key === 'itemRotY' || key === 'itemRotZ' || key === 'cameraFov') {
         label.textContent = `${value}°`;
       } else if (key === 'skyboxLightTone') {
         label.textContent = Number(value).toFixed(2);
