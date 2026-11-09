@@ -141,6 +141,10 @@ Exports produce deterministic MP4 video using WebCodecs muxing:
 - **Timeline Scene Sequence** — configure exactly which scenes the video will cycle through on musical cue points using the `🎞 edit scene sequence` popup modal. Select scenes with checkboxes and reorder them via drag-and-drop or up/down arrows. The export dynamically transitions between both wireframe geometric fields and spinning 3D physical artifacts!
 - Deterministic energy cues detected from audio PCM drive shot cuts and scene transitions.
 - Renders with the active skybox environment and atmospheric lighting rig.
+- **Presets** — `standard` (1080p30), `high` (1080p60), `lossless` (1080p60, 25 Mbps) and `lo-fi` (360p/480p). The readout under the selector shows resolution, fps, H.264 profile/level, bitrate, a size ceiling for the loaded track, and whether this browser can encode it (`hw ✓` / `sw ✓` / `✗`). The H.264 level is chosen from resolution × fps, and hardware encoding falls back to software automatically.
+- **Test clip** — `◐ test clip from playhead` renders 5/10/30 s from the current playhead. A one-second pre-roll is rendered (not encoded) first, so the clip matches the same moment of a full render frame for frame.
+- **While exporting** — progress with ETA (also in the tab title), `Esc` or the record button cancels and discards the partial file, the screen is kept awake, and the finish line reports time, speed and file size. Exports keep full speed in a background tab.
+- The export pipeline (`export.js` + `mp4-muxer`) is loaded on demand; `src/export/export-state.js` holds the shared "exporting" flag.
 
 ## Project structure
 
@@ -157,6 +161,7 @@ cam.js                 shot intents, procedural motion, and manual anchor
 audio.js               managed live/preview Web Audio graph
 tempo.js               BPM onset tracking
 export.js              immutable deterministic WebCodecs export
+src/export/            export spec maths (presets, H.264 level, clip ranges) and shared state
 overlay.js             metadata composite
 boot.js                startup sequence
 dsp.js                 pure FFT and mapping primitives

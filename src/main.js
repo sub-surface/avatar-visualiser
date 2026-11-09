@@ -10,7 +10,9 @@ import { RenderSession } from '../render-session.js';
 import { lookRenderer } from '../look.js';
 import { applyLookProfile } from '../look-profiles.js';
 import { compositeFrame, initOverlayCanvas, freeOverlayCanvas } from '../overlay.js';
-import { startExport, startAlbumExport, isExporting } from '../export.js?v=2.0.2';
+import { exportState, cancelExport, loadExporter } from './export/export-state.js';
+import { resolveClipRange, formatClock } from './export/export-spec.js';
+import { initExportPanel } from './ui/export-panel.js';
 import { CameraRig, CameraDirector, shotPose, CAMERA_SHOTS, CAMERA_MOTIONS } from '../cam.js';
 import { getOrCreateItemScene, RETRO_ITEMS } from './objects/item-scene.js';
 import { SoundCloudImporter } from './ui/soundcloud-modal.js';
@@ -143,6 +145,16 @@ const previewScrub = document.getElementById('previewScrub');
 const topPreviewBtn = document.getElementById('btnPlayPause');
 const topLoadBtn = document.getElementById('btnLoadFile');
 const topRenderBtn = document.getElementById('btnExportMp4');
+const clipRenderBtn = document.getElementById('btnExportClip');
+
+/** Current playback position in seconds, whether playing or paused. */
+function getPlayhead() {
+  if (!previewBuffer) return 0;
+  const position = isPreviewPlaying && previewCtx
+    ? previewCtx.currentTime - previewStartedAt
+    : previewPausedAt;
+  return Math.max(0, Math.min(previewBuffer.duration, position || 0));
+}
 const wavInput = document.getElementById('wavInput');
 const trackTitleEl = document.getElementById('deckTrackTitle');
 const trackArtistEl = document.getElementById('deckTrackArtist');
@@ -264,7 +276,11 @@ export async function loadAudioBuffer(fileOrBlob, filename = 'Audio Track') {
     saveParams();
     topRenderBtn.disabled = false;
     topPreviewBtn.disabled = false;
+    if (clipRenderBtn) clipRenderBtn.disabled = false;
     topRenderBtn.classList.add('btn-active-highlight');
+    window.dispatchEvent(new CustomEvent('avatar-track-loaded', { detail: { duration: previewBuffer.duration } }));
+    // Warm the export pipeline chunk in the background so recording starts instantly.
+    loadExporter().catch(() => {});
     window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Loaded: ${filename}` }));
   } catch (err) {
     console.error('Audio load error:', err);
@@ -514,7 +530,7 @@ function updateLiveAlbumTracklist(trackTime, trackDuration) {
 
 function animate(timestamp) {
   requestAnimationFrame(animate);
-  if (document.visibilityState === 'hidden' || isExporting) return;
+  if (document.visibilityState === 'hidden' || exportState.active) return;
 
   const dt = Math.min(clock.getDelta(), 0.25);
   cameraRig.beginFrame();
@@ -1161,12 +1177,33 @@ export function initApp() {
   });
 
   // Export Trigger
-  topRenderBtn?.addEventListener('click', () => {
-    if (selectedWavFile && !isExporting) {
-      stopPreview();
-      startExport(selectedWavFile, visMode);
+  const runExportAction = async (range = null) => {
+    if (exportState.active) {
+      cancelExport();
+      return;
     }
+    if (exportState.busy || !selectedWavFile) return;
+    try {
+      const { startExport } = await loadExporter();
+      await startExport(selectedWavFile, visMode, { audioBuffer: previewBuffer, range });
+    } catch (error) {
+      console.error('Export failed to start:', error);
+      window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Export unavailable: ${error.message}` }));
+    }
+  };
+  topRenderBtn?.addEventListener('click', () => runExportAction());
+  clipRenderBtn?.addEventListener('click', () => {
+    if (!previewBuffer || exportState.active) return;
+    const length = Number(document.getElementById('pExportClipLen')?.value) || 10;
+    const range = resolveClipRange(previewBuffer.duration, getPlayhead(), length);
+    window.dispatchEvent(new CustomEvent('avatar-status', {
+      detail: `Test clip ${formatClock(range.start)}-${formatClock(range.end)}`,
+    }));
+    runExportAction(range);
   });
+  initExportPanel({ getDuration: () => previewBuffer?.duration ?? 0 });
+  // Any export (single or album) silences the live preview first.
+  window.addEventListener('avatar-export-start', () => stopPreview());
 
   // ── Bottom-Left Controls: Palette, Theme, Clean Mode ──────
   const palettes = ['default', 'red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
@@ -1318,6 +1355,8 @@ export function initApp() {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     if (e.key === ' ') {
       e.preventDefault();
+      // Don't start preview playback (or open the file picker) mid-export.
+      if (exportState.busy || exportState.active) return;
       togglePreview();
     } else if (e.key === 'Escape') {
       if (shortcutsModal && shortcutsModal.style.display !== 'none') {

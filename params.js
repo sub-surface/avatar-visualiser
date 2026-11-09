@@ -148,6 +148,9 @@ export function syncControls() {
   if (previewOutput) previewOutput.checked = P.previewOutput;
   const overlayInSignal = element('pLookOverlayInSignal');
   if (overlayInSignal) overlayInSignal.checked = P.lookOverlayInSignal;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('avatar-controls-synced', { detail: P }));
+  }
 }
 
 export function saveParams() {

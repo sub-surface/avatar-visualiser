@@ -484,10 +484,15 @@
         <div class="c-row">
           <label for="pExportPreset">preset</label>
           <select class="c-select" id="pExportPreset">
-            <option value="standard" selected>standard HD</option>
-            <option value="lossless">lossless master</option>
-            <option value="lofi">lo-fi console 480p</option>
+            <option value="standard" selected>standard HD · 30fps</option>
+            <option value="high">high · 60fps</option>
+            <option value="lossless">lossless master · 60fps</option>
+            <option value="lofi">lo-fi console · 360p/480p</option>
           </select>
+        </div>
+        <div class="export-spec" id="exportSpec" aria-live="polite">
+          <span id="exportSpecText">1920×1080 · 30fps · H.264 High 4.0 · 12Mbps</span>
+          <span class="export-spec-badge" id="exportSpecBadge" data-support="checking">…</span>
         </div>
 
         <div class="section-tag">Album Playlist Suite & Continuous Export</div>
@@ -512,6 +517,14 @@
 
         <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
           <button class="chrome btn-rec" id="btnExportMp4" disabled>● RECORD VIDEO (MP4)</button>
+          <div class="export-clip-row">
+            <button class="chrome" id="btnExportClip" disabled title="Render a short clip from the playhead to check the look before a full export">◐ test clip from playhead</button>
+            <select class="c-select" id="pExportClipLen" title="Test clip length">
+              <option value="5">5s</option>
+              <option value="10" selected>10s</option>
+              <option value="30">30s</option>
+            </select>
+          </div>
           <div id="progress" style="font-size:0.58rem; color:var(--s-mid); text-align:center;">load an audio file to record</div>
         </div>
       </div>

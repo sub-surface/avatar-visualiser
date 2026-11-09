@@ -1343,3 +1343,40 @@ body.light-mode .album-track-item {
   font-size: 0.6rem;
 }
 
+
+/* ── Export spec readout & test clip ─────────────────────── */
+.export-spec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 6px;
+  margin: -2px 0 8px;
+  font-size: 0.54rem;
+  color: var(--s-mid);
+  font-variant-numeric: tabular-nums;
+}
+.export-spec-badge {
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.export-spec-badge[data-support="hw"],
+.export-spec-badge[data-support="sw"] {
+  color: var(--vcr-green);
+}
+.export-spec-badge[data-support="unsupported"],
+.export-spec-badge[data-support="none"] {
+  color: var(--rec-red);
+}
+.export-clip-row {
+  display: flex;
+  gap: 6px;
+}
+.export-clip-row > button {
+  flex: 1;
+  font-size: 0.6rem;
+}
+.export-clip-row > select {
+  width: auto;
+  flex: 0 0 auto;
+}

@@ -99,6 +99,20 @@ export function beginExportResize(width, height) {
   renderer.domElement.style.left = '-10000px';
 }
 
+// Keep the viewport matched to the window. During an export the canvas is
+// pinned to the export size, so only remember the new window size for restore.
+if (renderer) {
+  window.addEventListener('resize', () => {
+    if (savedDims) {
+      savedDims = { w: window.innerWidth, h: window.innerHeight };
+      return;
+    }
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  });
+}
+
 export function endExportResize() {
   if (!savedDims) return;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));

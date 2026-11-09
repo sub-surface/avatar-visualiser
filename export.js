@@ -30,6 +30,16 @@ import { skyboxManager } from './src/look/skybox.js';
 import { lookRenderer } from './look.js';
 import { initOverlayCanvas, freeOverlayCanvas, compositeFrame, canBypassComposite } from './overlay.js';
 import { calculateTransitionGlitch } from './src/playlist/album-manager.js';
+import {
+  describeExport,
+  frameWindow,
+  channelSourceMap,
+  formatClock,
+  formatBytes,
+} from './src/export/export-spec.js';
+import { exportState, cancelExport } from './src/export/export-state.js';
+
+export { cancelExport };
 
 function logStatus(message) {
   window.dispatchEvent(new CustomEvent('avatar-status', { detail: message }));
@@ -202,41 +212,135 @@ function randomiseSnapshot(project, random, includeGeometry = false) {
   }
 }
 
-function exportDimensions(project) {
-  const vertical = project.exportOrientation === 'vertical';
-  const fourThree = project.exportAspect === '4:3';
-  if (project.exportPreset === 'lofi') {
-    if (fourThree) return vertical ? [480, 640] : [640, 480];
-    return vertical ? [360, 640] : [640, 360];
-  }
-  if (fourThree) return vertical ? [1080, 1440] : [1440, 1080];
-  return vertical ? [1080, 1920] : [1920, 1080];
+/**
+ * Create a codec whose fatal error is captured so the real cause surfaces
+ * instead of the follow-up "Cannot call 'encode' on a closed codec".
+ */
+function createTrackedEncoder(Ctor, output, label) {
+  const tracked = { error: null, encoder: null };
+  tracked.encoder = new Ctor({
+    output,
+    error: (error) => {
+      tracked.error ??= error;
+      logStatus(`${label} encoder error: ${error.message}`);
+    },
+  });
+  tracked.assertOpen = () => {
+    if (tracked.encoder.state === 'closed') {
+      throw new Error(`${label} encoder failed: ${tracked.error?.message ?? 'codec closed unexpectedly'}`);
+    }
+  };
+  return tracked;
 }
 
-async function encodeAudio(encoder, buffer, offsetTimestampUs = 0) {
+async function configureVideoEncoder(tracked, spec) {
+  const { width, height, fps, bitrate, lofi, codec } = spec;
+  const base = {
+    codec,
+    width,
+    height,
+    framerate: fps,
+    bitrate,
+    latencyMode: lofi ? 'realtime' : 'quality',
+  };
+  for (const hardwareAcceleration of ['prefer-hardware', 'no-preference']) {
+    const config = { ...base, hardwareAcceleration };
+    const { supported } = await VideoEncoder.isConfigSupported(config).catch(() => ({ supported: false }));
+    if (supported) {
+      tracked.encoder.configure(config);
+      return config;
+    }
+  }
+  throw new Error(`No H.264 encoder supports ${width}×${height} @ ${fps}fps (${base.codec})`);
+}
+
+function closeEncoder(tracked) {
+  try {
+    if (tracked?.encoder && tracked.encoder.state !== 'closed') tracked.encoder.close();
+  } catch {}
+}
+
+/**
+ * Wait until the encoder's queue drains below `low` once it exceeds `high`.
+ * Uses the 'dequeue' event, with a short safety timeout per wait.
+ */
+async function waitForQueue(tracked, high, low) {
+  const { encoder } = tracked;
+  while (encoder.encodeQueueSize > high) {
+    tracked.assertOpen();
+    await new Promise((resolve) => {
+      let timer = null;
+      const finish = () => {
+        encoder.removeEventListener?.('dequeue', onDequeue);
+        clearTimeout(timer);
+        resolve();
+      };
+      const onDequeue = () => {
+        if (encoder.encodeQueueSize <= low || encoder.state === 'closed') finish();
+      };
+      encoder.addEventListener?.('dequeue', onDequeue);
+      timer = setTimeout(finish, 50);
+    });
+    if (encoder.encodeQueueSize <= low) break;
+  }
+}
+
+/**
+ * Yield to the event loop without timer clamping. setTimeout(0) is throttled
+ * to >=1s in background tabs, which made exports crawl when the tab was hidden.
+ */
+let yieldChannel = null;
+const yieldQueue = [];
+function yieldToEventLoop() {
+  if (typeof MessageChannel === 'undefined') {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  if (!yieldChannel) {
+    yieldChannel = new MessageChannel();
+    yieldChannel.port1.onmessage = () => yieldQueue.shift()?.();
+  }
+  return new Promise((resolve) => {
+    yieldQueue.push(resolve);
+    yieldChannel.port2.postMessage(0);
+  });
+}
+
+/**
+ * Encode `buffer` samples [startSample, endSample) as AAC. Output timestamps
+ * start at `offsetTimestampUs`, so a clip begins at t=0 in the file.
+ */
+async function encodeAudio(tracked, buffer, {
+  offsetTimestampUs = 0,
+  channelCount = buffer.numberOfChannels,
+  startSample = 0,
+  endSample = buffer.length,
+  job = null,
+} = {}) {
+  const { encoder } = tracked;
   const sampleRate = buffer.sampleRate;
-  const channelCount = buffer.numberOfChannels;
   const chunkSize = 4096;
   const fullPlanar = new Float32Array(chunkSize * channelCount);
+  const sources = channelSourceMap(buffer.numberOfChannels, channelCount)
+    .map((source) => buffer.getChannelData(source));
 
-  for (let offset = 0; offset < buffer.length; offset += chunkSize) {
-    if (encoder.encodeQueueSize > 24) {
-      await new Promise((resolve) => setTimeout(resolve, 4));
-    }
-    const frameCount = Math.min(chunkSize, buffer.length - offset);
+  for (let offset = startSample; offset < endSample; offset += chunkSize) {
+    await waitForQueue(tracked, 24, 12);
+    job?.throwIfCancelled();
+    const frameCount = Math.min(chunkSize, endSample - offset);
     const planar = frameCount === chunkSize ? fullPlanar : new Float32Array(frameCount * channelCount);
     for (let channel = 0; channel < channelCount; channel++) {
-      planar.set(buffer.getChannelData(channel).subarray(offset, offset + frameCount), channel * frameCount);
+      planar.set(sources[channel].subarray(offset, offset + frameCount), channel * frameCount);
     }
     const audioData = new AudioData({
       format: 'f32-planar',
       sampleRate,
       numberOfChannels: channelCount,
       numberOfFrames: frameCount,
-      timestamp: Math.round((offset / sampleRate) * 1e6) + offsetTimestampUs,
+      timestamp: Math.round(((offset - startSample) / sampleRate) * 1e6) + offsetTimestampUs,
       data: planar,
     });
     try {
+      tracked.assertOpen();
       encoder.encode(audioData);
     } finally {
       audioData.close();
@@ -245,7 +349,7 @@ async function encodeAudio(encoder, buffer, offsetTimestampUs = 0) {
 }
 
 async function runExport(
-  encoder,
+  tracked,
   audioBuffer,
   fps,
   duration,
@@ -257,8 +361,12 @@ async function runExport(
     albumState = null,
     isAlbum = false,
     isLastTrack = false,
+    job = null,
+    startTime = 0,
+    endTime = duration,
   } = {},
 ) {
+  const { encoder } = tracked;
   const session = new RenderSession(project, {
     field: signalField,
     mode: initialMode,
@@ -266,7 +374,7 @@ async function runExport(
   });
   const channelL = audioBuffer.getChannelData(0);
   const channelR = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : channelL;
-  const totalFrames = Math.ceil(duration * fps);
+  const { startFrame, endFrame, prerollFrames, encodedFrames } = frameWindow(duration, fps, startTime, endTime);
   const modes = FIELD_MODES.map((mode) => mode.id);
   const shots = CAMERA_SHOTS
     .map((shot) => shot.id)
@@ -326,39 +434,14 @@ async function runExport(
   const baseSyncDrop = project.vhsSyncDrop || 0;
   let lastYieldTime = performance.now();
 
-  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
-    // Zero-overhead hardware encoder backpressure (sub-millisecond wakeup)
-    if (encoder.encodeQueueSize > 8) {
-      await new Promise((resolve) => {
-        let done = false;
-        const finish = () => {
-          if (!done) {
-            done = true;
-            if (typeof encoder.removeEventListener === 'function') {
-              encoder.removeEventListener('dequeue', onDequeue);
-            } else if (encoder.ondequeue === onDequeue) {
-              encoder.ondequeue = null;
-            }
-            resolve();
-          }
-        };
-        const onDequeue = () => {
-          if (encoder.encodeQueueSize <= 4) finish();
-        };
-        if (typeof encoder.addEventListener === 'function') {
-          encoder.addEventListener('dequeue', onDequeue);
-        } else {
-          encoder.ondequeue = onDequeue;
-        }
-        if (encoder.encodeQueueSize <= 4) {
-          finish();
-        } else {
-          setTimeout(finish, 8);
-        }
-      });
-    }
+  // Frames before startFrame (clip pre-roll) are rendered but not encoded, so
+  // signal smoothing, feedback and cadence match a full render at that moment.
+  for (let frameIndex = startFrame - prerollFrames; frameIndex < endFrame; frameIndex++) {
+    await waitForQueue(tracked, 8, 4);
+    job?.throwIfCancelled();
 
     const time = frameIndex / fps;
+    const encodeThis = frameIndex >= startFrame;
 
     // Subtle magnetic tape head switch glitch during album track transitions
     if (isAlbum && !isLastTrack) {
@@ -403,7 +486,7 @@ async function runExport(
       if (['generative', 'random'].includes(project.cycleMode)) {
         randomiseSnapshot(project, random, false);
       }
-      logStatus(`Cue ${triggerIndex}/${triggers.length}: ${currentSceneId} · ${shots[shotIndex]}`);
+      if (encodeThis) logStatus(`Cue ${triggerIndex}/${triggers.length}: ${currentSceneId} · ${shots[shotIndex]}`);
     }
 
     const signalFrame = session.stepPcm(
@@ -432,6 +515,7 @@ async function runExport(
     if (lookRenderer.shouldRender(project, time)) {
       lookRenderer.render(scene, camera, project, { frameIndex, force: true });
     }
+    if (!encodeThis) continue;
 
     const meta = {
       ...getTrackMeta(),
@@ -455,24 +539,26 @@ async function runExport(
           albumState,
         );
 
-    const timestamp = Math.round((globalFrameOffset + frameIndex) * (1e6 / fps));
+    const outputIndex = globalFrameOffset + frameIndex - startFrame;
+    const timestamp = Math.round(outputIndex * (1e6 / fps));
     const videoFrame = new VideoFrame(frameSource, {
       timestamp,
       duration: Math.round(1e6 / fps),
     });
     try {
-      encoder.encode(videoFrame, { keyFrame: (globalFrameOffset + frameIndex) % (fps * 2) === 0 });
+      tracked.assertOpen();
+      encoder.encode(videoFrame, { keyFrame: outputIndex % (fps * 2) === 0 });
     } finally {
       videoFrame.close();
     }
 
     // Time-based cooperative yield (every ~40ms) keeps UI responsive without stalling fast GPUs
     const now = performance.now();
-    if (now - lastYieldTime >= 40 || frameIndex === totalFrames - 1) {
+    if (now - lastYieldTime >= 40 || frameIndex === endFrame - 1) {
       lastYieldTime = now;
       setTimeDisplay(time, duration);
-      onProgress(Math.round((frameIndex / totalFrames) * 100));
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      onProgress(frameIndex - startFrame + 1, encodedFrames);
+      await yieldToEventLoop();
     }
   }
 
@@ -480,19 +566,12 @@ async function runExport(
   project.vhsSyncDrop = baseSyncDrop;
 }
 
-function setExportButtonsDisabled(disabled) {
-  const loadBtn = document.getElementById('btnLoadFile');
-  const exportBtn = document.getElementById('btnExportMp4');
-  if (loadBtn) loadBtn.disabled = Boolean(disabled);
-  if (exportBtn) exportBtn.disabled = Boolean(disabled);
+class ExportCancelled extends Error {
+  constructor() {
+    super('cancelled');
+    this.name = 'ExportCancelled';
+  }
 }
-
-function setProgressText(text) {
-  const el = document.getElementById('progress');
-  if (el) el.textContent = text;
-}
-
-export let isExporting = false;
 
 /**
  * Wraps a FileSystemWritableFileStream to ensure all writes are strictly sequenced
@@ -504,10 +583,12 @@ class AsyncQueueFileWriter {
     this.writable = writable;
     this.chain = Promise.resolve();
     this.writeError = null;
+    this.bytes = 0;
   }
 
   write(data, position) {
     if (this.writeError) return;
+    this.bytes = Math.max(this.bytes, position + data.byteLength);
     this.chain = this.chain
       .then(async () => {
         try {
@@ -544,134 +625,12 @@ class AsyncQueueFileWriter {
   }
 }
 
-export async function startExport(audioFile, visualMode) {
-  if (isExporting) return;
-
-  const meta = getTrackMeta();
-  const stem = meta.title
-    ? `${meta.artist ? `${meta.title} - ${meta.artist}` : meta.title} | Avatar Visualiser`
-    : `${audioFile.name.replace(/\.[^.]+$/, '')} | Avatar Visualiser`;
-
-  let fileHandle;
+async function decodeAudioFile(file, sampleRate) {
+  const decodeCtx = new AudioContext(sampleRate ? { sampleRate } : undefined);
   try {
-    fileHandle = await window.showSaveFilePicker({
-      suggestedName: `${stem}.mp4`,
-      types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
-    });
-  } catch {
-    return;
-  }
-
-  const project = cloneProject(P);
-  const cameraPosition = camera.position.clone();
-  const cameraQuaternion = camera.quaternion.clone();
-  const [width, height] = exportDimensions(project);
-  const fps = project.exportPreset === 'high' || project.exportPreset === 'lossless' ? 60 : 30;
-  let writable = null;
-  let fileWriter = null;
-  isExporting = true;
-  setExportButtonsDisabled(true);
-
-  try {
-    await document.fonts.ready;
-    logStatus(`Decoding ${audioFile.name}`);
-    setProgressText('decoding...');
-    const audioContext = new AudioContext();
-    const audioBuffer = await audioContext.decodeAudioData(await audioFile.arrayBuffer());
-    await audioContext.close();
-    const duration = audioBuffer.length / audioBuffer.sampleRate;
-
-    initOverlayCanvas(width, height);
-    beginExportResize(width, height);
-    writable = await fileHandle.createWritable();
-    fileWriter = new AsyncQueueFileWriter(writable);
-
-    const muxer = new Muxer({
-      target: new StreamTarget({
-        chunked: true,
-        chunkSize: 4 * 1024 * 1024,
-        onData: (data, position) => fileWriter.write(data, position),
-      }),
-      video: { codec: 'avc', width, height },
-      audio: {
-        codec: 'aac',
-        sampleRate: audioBuffer.sampleRate,
-        numberOfChannels: audioBuffer.numberOfChannels,
-      },
-      fastStart: false,
-    });
-
-    const videoEncoder = new VideoEncoder({
-      output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata),
-      error: (error) => logStatus(`Video encoder error: ${error.message}`),
-    });
-    const bitrate = project.exportPreset === 'lossless'
-      ? 25e6
-      : project.exportPreset === 'lofi' ? 2.5e6 : 12e6;
-    videoEncoder.configure({
-      codec: project.exportPreset === 'lofi' ? 'avc1.4D401F' : 'avc1.640028',
-      width,
-      height,
-      framerate: fps,
-      bitrate,
-      hardwareAcceleration: 'prefer-hardware',
-      latencyMode: project.exportPreset === 'lofi' ? 'realtime' : 'quality',
-    });
-
-    const audioEncoder = new AudioEncoder({
-      output: (chunk, metadata) => muxer.addAudioChunk(chunk, metadata),
-      error: (error) => logStatus(`Audio encoder error: ${error.message}`),
-    });
-    audioEncoder.configure({
-      codec: 'mp4a.40.2',
-      sampleRate: audioBuffer.sampleRate,
-      numberOfChannels: audioBuffer.numberOfChannels,
-      bitrate: 192e3,
-    });
-
-    logStatus(`Exporting ${duration.toFixed(1)}s at ${width}×${height} · ${fps} fps`);
-    setProgressText('0%');
-
-    await runExport(
-      videoEncoder,
-      audioBuffer,
-      fps,
-      duration,
-      visualMode,
-      project,
-      (progress) => { setProgressText(`${progress}%`); },
-    );
-
-    logStatus('Encoding audio stream...');
-    setProgressText('audio...');
-    await encodeAudio(audioEncoder, audioBuffer);
-
-    logStatus('Finalizing media stream...');
-    setProgressText('muxing...');
-    await videoEncoder.flush();
-    await audioEncoder.flush();
-    muxer.finalize();
-    await fileWriter.close();
-    setProgressText('done.');
-    logStatus('Export complete');
-  } catch (error) {
-    logStatus(`Export failed: ${error.message ?? error}`);
-    setProgressText(`err: ${error.message ?? error}`);
-    try { await fileWriter?.abort(); } catch {}
-    try { await writable?.abort(); } catch {}
+    return await decodeCtx.decodeAudioData(await file.arrayBuffer());
   } finally {
-    freeOverlayCanvas();
-    endExportResize();
-    camera.position.copy(cameraPosition);
-    camera.quaternion.copy(cameraQuaternion);
-    lookRenderer.clearFeedback();
-    lookRenderer.resetCadence();
-    isExporting = false;
-    setExportButtonsDisabled(false);
-    setTimeDisplay(0, 0);
-    getOrCreateItemScene(scene)?.setVisible(P.visualCategory === 'item');
-    signalField.mesh.visible = P.visualCategory !== 'item';
-    window.dispatchEvent(new CustomEvent('avatar-rebuild-vis'));
+    try { await decodeCtx.close(); } catch {}
   }
 }
 
@@ -679,206 +638,363 @@ async function decodeTrackAudio(track, sampleRate) {
   if (!track || !track.file) {
     throw new Error(`Track (${track?.title || 'Unknown'}) has no audio file attached.`);
   }
-  const decodeCtx = new AudioContext({ sampleRate });
-  try {
-    const arrayBuffer = await track.file.arrayBuffer();
-    const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
-    return audioBuffer;
-  } finally {
-    try { await decodeCtx.close(); } catch {}
-  }
+  return decodeAudioFile(track.file, sampleRate);
 }
 
-export async function startAlbumExport(albumManager, visualMode = 'sphere') {
-  if (isExporting) return;
-  if (!albumManager || !albumManager.hasTracks()) {
-    logStatus('No tracks in album playlist to export');
-    return;
-  }
-
-  const tracks = albumManager.tracks;
-  const totalTracks = tracks.length;
-  const activeTrack = albumManager.getActiveTrack() || tracks[0];
-  const albumTitle = activeTrack.title || 'Album';
-  const stem = `${albumTitle} - Continuous Visualiser`;
-
-  let fileHandle;
+async function pickSaveFile(stem) {
   try {
-    fileHandle = await window.showSaveFilePicker({
+    return await window.showSaveFilePicker({
       suggestedName: `${stem}.mp4`,
       types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }],
     });
   } catch {
-    return;
+    return null;
   }
+}
 
-  const primaryProject = cloneProject(tracks[0].projectConfig || P);
+function setExportButtons(exporting) {
+  const loadBtn = document.getElementById('btnLoadFile');
+  const exportBtn = document.getElementById('btnExportMp4');
+  const clipBtn = document.getElementById('btnExportClip');
+  if (loadBtn) loadBtn.disabled = exporting;
+  if (clipBtn) clipBtn.disabled = exporting;
+  if (exportBtn) {
+    // The record button doubles as a cancel button while exporting.
+    exportBtn.classList.toggle('recording', exporting);
+    if (exporting) {
+      exportBtn.dataset.idleLabel ??= exportBtn.textContent;
+      exportBtn.textContent = '■ CANCEL EXPORT (Esc)';
+    } else if (exportBtn.dataset.idleLabel) {
+      exportBtn.textContent = exportBtn.dataset.idleLabel;
+      delete exportBtn.dataset.idleLabel;
+    }
+  }
+}
+
+function setProgressText(text) {
+  const el = document.getElementById('progress');
+  if (el) el.textContent = text;
+}
+
+/**
+ * Shared export lifecycle for single-track and album exports: UI state, wake
+ * lock, cancellation, muxer + encoders, finalisation, and full scene restore.
+ *
+ * `body(ctx)` renders and encodes. It must call `ctx.open({ sampleRate,
+ * numberOfChannels })` once audio format is known, which creates the muxer and
+ * encoders and returns `{ video, audio }` tracked encoders.
+ */
+async function runExportPipeline({ fileHandle, project, label }, body) {
+  const spec = describeExport(project);
+  const { width, height, fps } = spec;
   const cameraPosition = camera.position.clone();
   const cameraQuaternion = camera.quaternion.clone();
-  const [width, height] = exportDimensions(primaryProject);
-  const fps = primaryProject.exportPreset === 'high' || primaryProject.exportPreset === 'lossless' ? 60 : 30;
+  const originalTitle = document.title;
+  const startedAt = performance.now();
+
+  const job = {
+    cancelled: false,
+    throwIfCancelled() {
+      if (this.cancelled) throw new ExportCancelled();
+    },
+  };
+  exportState.job = job;
+  exportState.active = true;
+  setExportButtons(true);
+  window.dispatchEvent(new CustomEvent('avatar-export-start'));
+
+  const onKeyDown = (event) => {
+    if (event.key === 'Escape') cancelExport();
+  };
+  const onBeforeUnload = (event) => {
+    event.preventDefault();
+    event.returnValue = '';
+  };
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('beforeunload', onBeforeUnload);
+  const wakeLock = await navigator.wakeLock?.request('screen').catch(() => null);
+
   let writable = null;
   let fileWriter = null;
-  isExporting = true;
-  setExportButtonsDisabled(true);
+  let muxer = null;
+  let video = null;
+  let audio = null;
+  let mediaDuration = 0;
+
+  const progress = (fraction, prefix = '') => {
+    const pct = Math.min(100, Math.floor(fraction * 100));
+    const elapsed = (performance.now() - startedAt) / 1000;
+    const eta = fraction > 0.01 ? elapsed * (1 / fraction - 1) : NaN;
+    const etaText = Number.isFinite(eta) ? ` · ~${formatClock(eta)} left` : '';
+    setProgressText(`${prefix}${pct}%${etaText} · Esc to cancel`);
+    document.title = `${pct}% · ${label}`;
+  };
+
+  const ctx = {
+    width,
+    height,
+    fps,
+    job,
+    progress,
+    setMediaDuration(seconds) { mediaDuration = seconds; },
+    async open({ sampleRate, numberOfChannels }) {
+      writable = await fileHandle.createWritable();
+      fileWriter = new AsyncQueueFileWriter(writable);
+      muxer = new Muxer({
+        target: new StreamTarget({
+          chunked: true,
+          chunkSize: 4 * 1024 * 1024,
+          onData: (data, position) => fileWriter.write(data, position),
+        }),
+        video: { codec: 'avc', width, height },
+        audio: { codec: 'aac', sampleRate, numberOfChannels },
+        fastStart: false,
+      });
+
+      video = createTrackedEncoder(VideoEncoder, (chunk, metadata) => muxer.addVideoChunk(chunk, metadata), 'Video');
+      const videoConfig = await configureVideoEncoder(video, spec);
+      console.info('[export] video config', videoConfig);
+
+      audio = createTrackedEncoder(AudioEncoder, (chunk, metadata) => muxer.addAudioChunk(chunk, metadata), 'Audio');
+      audio.encoder.configure({ codec: 'mp4a.40.2', sampleRate, numberOfChannels, bitrate: spec.audioBitrate });
+      return { video, audio };
+    },
+  };
 
   try {
     await document.fonts.ready;
     initOverlayCanvas(width, height);
     beginExportResize(width, height);
-    writable = await fileHandle.createWritable();
-    fileWriter = new AsyncQueueFileWriter(writable);
 
-    // Standardized audio profile across all tracks: 44.1kHz Stereo
-    const sampleRate = 44100;
-    const numberOfChannels = 2;
+    await body(ctx);
+    if (!muxer) throw new Error('export pipeline was never opened');
 
-    const muxer = new Muxer({
-      target: new StreamTarget({
-        chunked: true,
-        chunkSize: 4 * 1024 * 1024,
-        onData: (data, position) => fileWriter.write(data, position),
-      }),
-      video: { codec: 'avc', width, height },
-      audio: {
-        codec: 'aac',
-        sampleRate,
-        numberOfChannels,
-      },
-      fastStart: false,
-    });
-
-    const videoEncoder = new VideoEncoder({
-      output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata),
-      error: (error) => logStatus(`Video encoder error: ${error.message}`),
-    });
-    const bitrate = primaryProject.exportPreset === 'lossless'
-      ? 25e6
-      : primaryProject.exportPreset === 'lofi' ? 2.5e6 : 12e6;
-    videoEncoder.configure({
-      codec: primaryProject.exportPreset === 'lofi' ? 'avc1.4D401F' : 'avc1.640028',
-      width,
-      height,
-      framerate: fps,
-      bitrate,
-      hardwareAcceleration: 'prefer-hardware',
-      latencyMode: primaryProject.exportPreset === 'lofi' ? 'realtime' : 'quality',
-    });
-
-    const audioEncoder = new AudioEncoder({
-      output: (chunk, metadata) => muxer.addAudioChunk(chunk, metadata),
-      error: (error) => logStatus(`Audio encoder error: ${error.message}`),
-    });
-    audioEncoder.configure({
-      codec: 'mp4a.40.2',
-      sampleRate,
-      numberOfChannels,
-      bitrate: 192e3,
-    });
-
-    let globalFrameOffset = 0;
-    let globalAudioOffsetUs = 0;
-    const totalAlbumDuration = albumManager.getTotalDuration();
-
-    logStatus(`Starting album export: ${totalTracks} tracks (${totalAlbumDuration.toFixed(1)}s total)`);
-    setProgressText('0%');
-
-    // Pipeline audio decoding: pre-decode track 0 immediately
-    let currentAudioPromise = decodeTrackAudio(tracks[0], sampleRate);
-
-    // Sequential $O(1)$ memory processing with pipelined pre-decoding & concurrent audio encoding
-    for (let i = 0; i < totalTracks; i++) {
-      const track = tracks[i];
-      const trackProject = cloneProject(track.projectConfig || P);
-
-      logStatus(`[${i + 1}/${totalTracks}] Preparing ${track.title}...`);
-      setProgressText(`T${i + 1} prep`);
-
-      // Await current track's decoded audio (resolves instantly if pre-decoded in background during previous track)
-      let audioBuffer = await currentAudioPromise;
-
-      const trackDuration = audioBuffer.length / audioBuffer.sampleRate;
-      track.duration = trackDuration;
-
-      // Pipeline next track audio decoding in background concurrently with current track GPU rendering!
-      let nextAudioPromise = null;
-      if (i + 1 < totalTracks) {
-        nextAudioPromise = decodeTrackAudio(tracks[i + 1], sampleRate);
-      }
-
-      // Apply bespoke look, skybox and colors for this track
-      if (skyboxManager) {
-        skyboxManager.setTarget(scene, { ambientLight, dirLight, fillLight });
-        skyboxManager.setTheme(Boolean(trackProject.isLight));
-        skyboxManager.applyPreset(trackProject.skyboxPreset || 'void', trackProject.skyboxLightTone || 1.0);
-      }
-      setColors(trackProject.colorA, trackProject.colorB);
-
-      const albumState = {
-        tracks: tracks.map((t) => ({ title: t.title, artist: t.artist, duration: t.duration })),
-        activeIndex: i,
-        style: trackProject.albumTracklistStyle || primaryProject.albumTracklistStyle || 'vcr-osd',
-      };
-
-      const trackFrames = Math.ceil(trackDuration * fps);
-
-      await runExport(
-        videoEncoder,
-        audioBuffer,
-        fps,
-        trackDuration,
-        visualMode,
-        trackProject,
-        (percent) => {
-          const overall = Math.round(((globalFrameOffset + (percent / 100) * trackFrames) / Math.max(1, (totalAlbumDuration * fps))) * 100);
-          setProgressText(`T${i + 1}: ${percent}% (${Math.min(100, overall)}%)`);
-        },
-        {
-          globalFrameOffset,
-          albumState,
-          isAlbum: true,
-          isLastTrack: i === totalTracks - 1,
-        },
-      );
-
-      logStatus(`[${i + 1}/${totalTracks}] Encoding audio stream...`);
-      await encodeAudio(audioEncoder, audioBuffer, globalAudioOffsetUs);
-
-      globalFrameOffset += trackFrames;
-      globalAudioOffsetUs += Math.round((audioBuffer.length / audioBuffer.sampleRate) * 1e6);
-
-      // Dereference current track audio buffer for instant GC reclamation
-      audioBuffer = null;
-
-      // Advance pre-decoded audio promise for next iteration
-      currentAudioPromise = nextAudioPromise;
-    }
-
-    logStatus('Finalizing continuous album MP4...');
+    logStatus('Finalizing media stream...');
     setProgressText('muxing...');
-    await videoEncoder.flush();
-    await audioEncoder.flush();
+    video.assertOpen();
+    audio.assertOpen();
+    await video.encoder.flush();
+    await audio.encoder.flush();
     muxer.finalize();
     await fileWriter.close();
-    setProgressText('done.');
-    logStatus(`Album export complete: ${totalTracks} tracks`);
+
+    const elapsed = (performance.now() - startedAt) / 1000;
+    const speed = mediaDuration > 0 ? ` (${(mediaDuration / elapsed).toFixed(1)}× realtime)` : '';
+    setProgressText(`done · ${formatClock(elapsed)}${speed} · ${formatBytes(fileWriter.bytes)}`);
+    logStatus(`${label} complete in ${formatClock(elapsed)}${speed}`);
   } catch (error) {
-    logStatus(`Album export failed: ${error.message ?? error}`);
-    setProgressText(`err: ${error.message ?? error}`);
+    if (error instanceof ExportCancelled) {
+      setProgressText('cancelled.');
+      logStatus(`${label} cancelled`);
+    } else {
+      logStatus(`${label} failed: ${error.message ?? error}`);
+      setProgressText(`err: ${error.message ?? error}`);
+    }
     try { await fileWriter?.abort(); } catch {}
-    try { await writable?.abort(); } catch {}
+    if (!fileWriter) {
+      try { await writable?.abort(); } catch {}
+    }
   } finally {
+    closeEncoder(video);
+    closeEncoder(audio);
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('beforeunload', onBeforeUnload);
+    try { await wakeLock?.release(); } catch {}
+    document.title = originalTitle;
     freeOverlayCanvas();
     endExportResize();
     camera.position.copy(cameraPosition);
     camera.quaternion.copy(cameraQuaternion);
     lookRenderer.clearFeedback();
     lookRenderer.resetCadence();
-    isExporting = false;
-    setExportButtonsDisabled(false);
+    exportState.job = null;
+    exportState.active = false;
+    setExportButtons(false);
     setTimeDisplay(0, 0);
     getOrCreateItemScene(scene)?.setVisible(P.visualCategory === 'item');
     signalField.mesh.visible = P.visualCategory !== 'item';
     window.dispatchEvent(new CustomEvent('avatar-rebuild-vis'));
   }
+}
+
+/**
+ * Hold the busy flag across the save dialog so a double click can't open two
+ * pickers, then run `fn`. Returns false if an export is already in progress.
+ */
+async function withBusyGuard(fn) {
+  if (exportState.busy) return false;
+  exportState.busy = true;
+  try {
+    await fn();
+    return true;
+  } finally {
+    exportState.busy = false;
+  }
+}
+
+/**
+ * Export a single track.
+ *
+ * @param {File|Blob} audioFile
+ * @param {string} visualMode
+ * @param {object} [options]
+ * @param {AudioBuffer} [options.audioBuffer] already-decoded audio (skips a re-decode)
+ * @param {{start:number,end:number}} [options.range] export only this time range (test clip)
+ */
+export function startExport(audioFile, visualMode, { audioBuffer: decoded = null, range = null } = {}) {
+  return withBusyGuard(async () => {
+    const meta = getTrackMeta();
+    const base = meta.title
+      ? `${meta.artist ? `${meta.title} - ${meta.artist}` : meta.title}`
+      : (audioFile.name || 'Audio Track').replace(/\.[^.]+$/, '');
+    const clipTag = range ? ` (clip ${formatClock(range.start)}-${formatClock(range.end)})` : '';
+    const fileHandle = await pickSaveFile(`${base}${clipTag} | Avatar Visualiser`);
+    if (!fileHandle) return;
+
+    const project = cloneProject(P);
+    const label = range ? 'Clip export' : 'Export';
+    await runExportPipeline({ fileHandle, project, label }, async (ctx) => {
+      let audioBuffer = decoded;
+      if (!audioBuffer) {
+        logStatus(`Decoding ${audioFile.name || 'audio'}`);
+        setProgressText('decoding...');
+        audioBuffer = await decodeAudioFile(audioFile);
+      }
+      const duration = audioBuffer.length / audioBuffer.sampleRate;
+      const startTime = range ? Math.max(0, Math.min(range.start, duration)) : 0;
+      const endTime = range ? Math.max(startTime, Math.min(range.end, duration)) : duration;
+      const numberOfChannels = Math.min(2, audioBuffer.numberOfChannels);
+      ctx.setMediaDuration(endTime - startTime);
+
+      const { video, audio } = await ctx.open({ sampleRate: audioBuffer.sampleRate, numberOfChannels });
+
+      logStatus(range
+        ? `Clip ${formatClock(startTime)}-${formatClock(endTime)} at ${ctx.width}×${ctx.height} · ${ctx.fps} fps`
+        : `Exporting ${duration.toFixed(1)}s at ${ctx.width}×${ctx.height} · ${ctx.fps} fps`);
+      ctx.progress(0);
+
+      await runExport(
+        video,
+        audioBuffer,
+        ctx.fps,
+        duration,
+        visualMode,
+        project,
+        (done, total) => ctx.progress(done / Math.max(1, total)),
+        { job: ctx.job, startTime, endTime },
+      );
+
+      logStatus('Encoding audio stream...');
+      setProgressText('audio...');
+      await encodeAudio(audio, audioBuffer, {
+        channelCount: numberOfChannels,
+        startSample: Math.floor(startTime * audioBuffer.sampleRate),
+        endSample: Math.min(audioBuffer.length, Math.ceil(endTime * audioBuffer.sampleRate)),
+        job: ctx.job,
+      });
+    });
+  });
+}
+
+export function startAlbumExport(albumManager, visualMode = 'sphere') {
+  if (!albumManager || !albumManager.hasTracks()) {
+    logStatus('No tracks in album playlist to export');
+    return Promise.resolve(false);
+  }
+  return withBusyGuard(async () => {
+    const tracks = albumManager.tracks;
+    const totalTracks = tracks.length;
+    const activeTrack = albumManager.getActiveTrack() || tracks[0];
+    const albumTitle = activeTrack.title || 'Album';
+
+    const fileHandle = await pickSaveFile(`${albumTitle} - Continuous Visualiser`);
+    if (!fileHandle) return;
+
+    const primaryProject = cloneProject(tracks[0].projectConfig || P);
+    await runExportPipeline({ fileHandle, project: primaryProject, label: 'Album export' }, async (ctx) => {
+      // Standardized audio profile across all tracks: 44.1kHz Stereo
+      const sampleRate = 44100;
+      const numberOfChannels = 2;
+      const { video, audio } = await ctx.open({ sampleRate, numberOfChannels });
+
+      let globalFrameOffset = 0;
+      let globalAudioOffsetUs = 0;
+      const totalAlbumDuration = albumManager.getTotalDuration();
+      const totalAlbumFrames = Math.max(1, totalAlbumDuration * ctx.fps);
+      ctx.setMediaDuration(totalAlbumDuration);
+
+      logStatus(`Starting album export: ${totalTracks} tracks (${totalAlbumDuration.toFixed(1)}s total)`);
+      ctx.progress(0);
+
+      // Pipeline audio decoding: pre-decode track 0 immediately
+      let currentAudioPromise = decodeTrackAudio(tracks[0], sampleRate);
+
+      for (let i = 0; i < totalTracks; i++) {
+        const track = tracks[i];
+        const trackProject = cloneProject(track.projectConfig || P);
+
+        logStatus(`[${i + 1}/${totalTracks}] Preparing ${track.title}...`);
+        setProgressText(`T${i + 1} prep`);
+
+        let audioBuffer = await currentAudioPromise;
+        const trackDuration = audioBuffer.length / audioBuffer.sampleRate;
+        track.duration = trackDuration;
+
+        // Decode the next track in the background while this one renders. The noop
+        // catch stops an early failure becoming an unhandled rejection; the error
+        // still surfaces when the promise is awaited on the next iteration.
+        const nextAudioPromise = i + 1 < totalTracks ? decodeTrackAudio(tracks[i + 1], sampleRate) : null;
+        nextAudioPromise?.catch(() => {});
+
+        // Apply bespoke look, skybox and colors for this track
+        if (skyboxManager) {
+          skyboxManager.setTarget(scene, { ambientLight, dirLight, fillLight });
+          skyboxManager.setTheme(Boolean(trackProject.isLight));
+          skyboxManager.applyPreset(trackProject.skyboxPreset || 'void', trackProject.skyboxLightTone || 1.0);
+        }
+        setColors(trackProject.colorA, trackProject.colorB);
+
+        const albumState = {
+          tracks: tracks.map((t) => ({ title: t.title, artist: t.artist, duration: t.duration })),
+          activeIndex: i,
+          style: trackProject.albumTracklistStyle || primaryProject.albumTracklistStyle || 'vcr-osd',
+        };
+
+        const trackFrames = Math.ceil(trackDuration * ctx.fps);
+
+        await runExport(
+          video,
+          audioBuffer,
+          ctx.fps,
+          trackDuration,
+          visualMode,
+          trackProject,
+          (done) => ctx.progress((globalFrameOffset + done) / totalAlbumFrames, `T${i + 1}/${totalTracks} · `),
+          {
+            globalFrameOffset,
+            albumState,
+            isAlbum: true,
+            isLastTrack: i === totalTracks - 1,
+            job: ctx.job,
+          },
+        );
+
+        logStatus(`[${i + 1}/${totalTracks}] Encoding audio stream...`);
+        await encodeAudio(audio, audioBuffer, {
+          offsetTimestampUs: globalAudioOffsetUs,
+          channelCount: numberOfChannels,
+          job: ctx.job,
+        });
+
+        // Start each track's audio exactly where its video starts. Video advances
+        // in whole frames, so accumulating exact durations drifted ~1 frame/track.
+        globalFrameOffset += trackFrames;
+        globalAudioOffsetUs = Math.round(globalFrameOffset * (1e6 / ctx.fps));
+
+        // Dereference current track audio buffer for instant GC reclamation
+        audioBuffer = null;
+        currentAudioPromise = nextAudioPromise;
+      }
+    });
+  });
 }

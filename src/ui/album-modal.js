@@ -7,7 +7,7 @@ import { setColors } from '../../engine.js';
 import { skyboxManager } from '../look/skybox.js';
 import { applyLookProfile } from '../../look-profiles.js';
 import { vcrOsd } from '../vhs/vcr-osd.js';
-import { startAlbumExport, isExporting } from '../../export.js';
+import { exportState, loadExporter } from '../export/export-state.js';
 
 export class AlbumModal {
   constructor({ onTrackSelected = null, onStartContinuousPlay = null } = {}) {
@@ -67,8 +67,14 @@ export class AlbumModal {
 
     // Export Continuous MP4 button
     document.getElementById('albumBtnExportMp4')?.addEventListener('click', () => {
+      if (exportState.busy || exportState.active) return;
       this.close();
-      startAlbumExport(albumManager);
+      loadExporter()
+        .then(({ startAlbumExport }) => startAlbumExport(albumManager))
+        .catch((error) => {
+          console.error('Album export failed to start:', error);
+          window.dispatchEvent(new CustomEvent('avatar-status', { detail: `Export unavailable: ${error.message}` }));
+        });
     });
 
     // Drag and drop onto modal dropzone

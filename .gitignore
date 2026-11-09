@@ -3,3 +3,4 @@ dist/
 *.mp4
 *.wav
 !Startup.wav
+.playwright-mcp/
